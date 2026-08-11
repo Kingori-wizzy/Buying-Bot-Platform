@@ -1,0 +1,38 @@
+{
+  "name": "buying-bot-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Buying Bot Platform — AI-powered omnichannel commerce monorepo",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "prettier": "@buying-bot/prettier-config",
+  "scripts": {
+    "prepare": "husky",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "commitlint": "commitlint --edit"
+  },
+  "devDependencies": {
+    "@buying-bot/eslint-config": "workspace:*",
+    "@buying-bot/prettier-config": "workspace:*",
+    "@buying-bot/typescript-config": "workspace:*",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
+    "eslint": "^9.32.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  }
+}

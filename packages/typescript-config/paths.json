@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "baseUrl": "${configDir}/../..",
+    "paths": {
+      "@buying-bot/*": ["packages/*/src"]
+    }
+  }
+}

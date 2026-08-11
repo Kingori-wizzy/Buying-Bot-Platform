@@ -1,0 +1,75 @@
+name: Bug Report
+description: Report a defect or unexpected behavior in the Buying Bot Platform
+title: 'bug: '
+labels: ['bug', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the platform. Provide enough detail for maintainers to reproduce the issue.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the platform is affected?
+      options:
+        - Customer Website
+        - Admin Dashboard
+        - Backend API
+        - AI Service
+        - Background Worker
+        - Shared Packages
+        - Infrastructure / CI
+        - Documentation
+        - Other / Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Clear, concise description of the bug.
+      placeholder: When I do X, Y happens instead of Z.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps that reliably reproduce the issue.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser/runtime, Node version, deployment target, etc.
+      placeholder: Windows 11 / Node 22 / pnpm 9 / local
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs / screenshots
+      description: Paste relevant logs (redact secrets) or attach screenshots.
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround
+      description: Optional temporary mitigation, if any.

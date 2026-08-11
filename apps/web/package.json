@@ -1,0 +1,19 @@
+{
+  "name": "@buying-bot/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Customer website application shell",
+  "type": "module",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "node -e \"console.log('[@buying-bot/web] No tests yet')\"",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "devDependencies": {
+    "@buying-bot/typescript-config": "workspace:*",
+    "typescript": "^5.8.3"
+  }
+}

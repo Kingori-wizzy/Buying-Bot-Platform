@@ -1,0 +1,24 @@
+# CODEOWNERS — Buying Bot Platform
+#
+# Owner: https://github.com/Kingori-wizzy/Buying-Bot-Platform
+# Personal-account ownership uses @Kingori-wizzy. Switch to @org/team slugs
+# when the repository moves under a GitHub Organization.
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repository
+* @Kingori-wizzy
+
+# Engineering standards and shared tooling
+/.github/ @Kingori-wizzy
+/packages/ @Kingori-wizzy
+/docs/ @Kingori-wizzy
+
+# Applications (split ownership when teams exist)
+/apps/web/ @Kingori-wizzy
+/apps/admin/ @Kingori-wizzy
+/apps/api/ @Kingori-wizzy
+/apps/ai-service/ @Kingori-wizzy
+/apps/worker/ @Kingori-wizzy
+/apps/docs/ @Kingori-wizzy
+/infrastructure/ @Kingori-wizzy

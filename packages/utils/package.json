@@ -1,0 +1,7 @@
+{
+  "name": "@buying-bot/utils",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Generic domain-agnostic utility helpers for Buying Bot Platform",
+  "license": "UNLICENSED"
+}

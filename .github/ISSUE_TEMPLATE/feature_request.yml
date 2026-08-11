@@ -1,0 +1,67 @@
+name: Feature Request
+description: Propose a new capability or improvement for the Buying Bot Platform
+title: 'feat: '
+labels: ['enhancement', 'triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the outcome you want. Focus on the problem and user value, not only an implementation idea.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the platform would this affect?
+      options:
+        - Customer Website
+        - Admin Dashboard
+        - Backend API
+        - AI Service
+        - Background Worker
+        - Shared Packages
+        - Mobile (future)
+        - Infrastructure / CI
+        - Documentation
+        - Cross-cutting / Platform
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are users or operators facing today?
+      placeholder: Operators cannot X, which causes Y.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the platform do instead?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you evaluated and why they were rejected.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Suggested priority
+      options:
+        - Low — nice to have
+        - Medium — meaningful improvement
+        - High — blocks important workflows
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How will we know this is done?
+      placeholder: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
