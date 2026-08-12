@@ -22,4 +22,4 @@ Provide **shared authentication and authorization building blocks**—session/to
 
 ## Status
 
-Package folder only — no auth implementation yet.
+Contracts implemented (`Authenticator`, `Authorizer`, permission helpers). No IdP/session adapter yet.

@@ -22,4 +22,4 @@ Expose a **typed client SDK** for calling platform APIs from web, admin, workers
 
 ## Status
 
-Package folder only — no SDK implementation yet.
+Minimal `PlatformSdk` with health client and typed errors. Product endpoints deferred.

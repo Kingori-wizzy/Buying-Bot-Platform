@@ -13,13 +13,15 @@
     "prepare": "husky",
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "lint": "eslint . --max-warnings=0",
-    "lint:fix": "eslint . --fix --max-warnings=0",
+    "lint": "pnpm run build --filter=\"./packages/*\" && eslint . --max-warnings=0",
+    "lint:fix": "pnpm run build --filter=\"./packages/*\" && eslint . --fix --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "clean": "turbo run clean",
+    "audit:deps": "pnpm audit --audit-level=high",
+    "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run audit:deps",
     "commitlint": "commitlint --edit"
   },
   "devDependencies": {

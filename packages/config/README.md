@@ -18,8 +18,8 @@ Provide **shared configuration utilities**: typed environment loading patterns, 
 
 ## Consumers (intended)
 
-`apps/api`, `apps/worker`, `apps/ai`, `apps/web`, `apps/admin` (as needed)
+`apps/api`, `apps/worker`, `apps/ai-service`, `apps/web`, `apps/admin` (as needed)
 
 ## Status
 
-Package folder only — no configuration implementation yet.
+Foundation implemented: typed env schemas, fail-fast `loadEnv`, CORS/production guards.

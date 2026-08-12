@@ -84,17 +84,17 @@ apps/*  →  packages/*  →  (no reverse dependency on apps)
 
 Domain packages (folders reserved; implementation deferred):
 
-| Package                  | Responsibility                                       |
-| ------------------------ | ---------------------------------------------------- |
-| `@buying-bot/ui`         | Shared UI primitives / design-system building blocks |
-| `@buying-bot/types`      | Cross-app TypeScript types and domain contracts      |
-| `@buying-bot/config`     | Runtime configuration helpers and typed env patterns |
-| `@buying-bot/database`   | Data-access abstractions and persistence utilities   |
-| `@buying-bot/auth`       | Authentication/authorization contracts and utilities |
-| `@buying-bot/validation` | Shared input validation schemas and validators       |
-| `@buying-bot/utils`      | Generic, domain-agnostic helpers                     |
-| `@buying-bot/sdk`        | Typed client SDK for platform APIs                   |
-| `@buying-bot/ai-core`    | Shared AI primitives (not the `apps/ai` service)     |
+| Package                  | Responsibility                                           |
+| ------------------------ | -------------------------------------------------------- |
+| `@buying-bot/ui`         | Shared UI primitives / design-system building blocks     |
+| `@buying-bot/types`      | Cross-app TypeScript types and domain contracts          |
+| `@buying-bot/config`     | Runtime configuration helpers and typed env patterns     |
+| `@buying-bot/database`   | Data-access abstractions and persistence utilities       |
+| `@buying-bot/auth`       | Authentication/authorization contracts and utilities     |
+| `@buying-bot/validation` | Shared input validation schemas and validators           |
+| `@buying-bot/utils`      | Generic, domain-agnostic helpers                         |
+| `@buying-bot/sdk`        | Typed client SDK for platform APIs                       |
+| `@buying-bot/ai-core`    | Shared AI primitives (not the `apps/ai-service` process) |
 
 Index: [`packages/README.md`](../packages/README.md).
 
@@ -115,16 +115,16 @@ Each app can be built with `pnpm --filter <package> build`. Portfolio details: [
 
 ## 5. Quality architecture
 
-| Layer           | Mechanism                                                              |
-| --------------- | ---------------------------------------------------------------------- |
-| Format          | Prettier (`@buying-bot/prettier-config`)                               |
-| Lint            | ESLint 9 flat config (`@buying-bot/eslint-config`)                     |
-| Types           | Shared TS presets + Turbo `typecheck`                                  |
-| Pre-commit      | Husky + lint-staged                                                    |
-| Commit messages | Commitlint + Conventional Commits                                      |
-| CI              | `.github/workflows/ci.yml` — install → lint → typecheck → build → test |
+| Layer           | Mechanism                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| Format          | Prettier (`@buying-bot/prettier-config`)                                                          |
+| Lint            | ESLint 9 flat config (`@buying-bot/eslint-config`)                                                |
+| Types           | Shared TS presets + Turbo `typecheck`                                                             |
+| Pre-commit      | Husky + lint-staged                                                                               |
+| Commit messages | Commitlint + Conventional Commits                                                                 |
+| CI              | `.github/workflows/ci.yml` — install → secrets → format → lint → typecheck → build → test → audit |
 
-Details: [code-quality.md](./code-quality.md), [github.md](./github.md).
+Details: [code-quality.md](./code-quality.md), [github.md](./github.md), [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md).
 
 ## 6. Delivery architecture
 
@@ -137,9 +137,9 @@ Details: [code-quality.md](./code-quality.md), [github.md](./github.md).
 
 ## 7. Security architecture (repository level)
 
-- Secrets never committed; use `.env.example` patterns when apps arrive.
+- Secrets never committed; use `.env.example` (committed template) and never commit `.env`.
 - Vulnerabilities reported per [SECURITY.md](../SECURITY.md).
-- CI permissions default to `contents: read`.
+- CI permissions default to `contents: read`; pipeline includes gitleaks + dependency audit.
 - Dependency updates are automated and reviewed.
 
 ## 8. Evolution model
@@ -151,11 +151,12 @@ Details: [code-quality.md](./code-quality.md), [github.md](./github.md).
 
 ## 9. Current phase boundaries
 
-**In scope now:** Engineering foundation (monorepo, TypeScript, quality, GitHub, standards).  
-**Out of scope now:** Application business logic, framework scaffolds, production infrastructure manifests.
+**In scope now:** Engineering foundation (monorepo, TypeScript, quality, GitHub, standards), shared package contracts, Node ops shells (ADR-0004), Docker packaging for Node services.  
+**Out of scope now:** Commerce business logic, product UI/API frameworks, full production IaC/Kubernetes.
 
 ## 10. Document control
 
 | Version | Date       | Notes                                                                  |
 | ------- | ---------- | ---------------------------------------------------------------------- |
+| 0.2.0   | 2026-08-12 | Ops bootstrap, shared packages, production-readiness baseline          |
 | 0.1.0   | 2026-08-11 | Initial Enterprise Architecture Document aligned to Phase 1 foundation |

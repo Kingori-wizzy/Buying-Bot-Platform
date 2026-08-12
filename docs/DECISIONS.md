@@ -55,3 +55,5 @@ Create `docs/adr/NNNN-title.md` using:
 | [ADR-0001](./adr/0001-pnpm-turborepo-monorepo.md)            | Adopt pnpm workspaces + Turborepo monorepo        | Accepted | 2026-08-11 |
 | [ADR-0002](./adr/0002-typescript-strict-shared-config.md)    | Shared strict TypeScript configuration            | Accepted | 2026-08-11 |
 | [ADR-0003](./adr/0003-conventional-commits-quality-gates.md) | Conventional Commits and repository quality gates | Accepted | 2026-08-11 |
+| [ADR-0004](./adr/0004-node-http-ops-bootstrap.md)            | Node.js HTTP ops bootstrap (interim)              | Accepted | 2026-08-12 |
+| [ADR-0005](./adr/ADR-0005-backend-framework.md)              | Backend HTTP framework for `apps/api`             | Accepted | 2026-08-12 |

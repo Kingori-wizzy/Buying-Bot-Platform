@@ -6,17 +6,23 @@ Home for **container packaging** of platform deployables: base images, per-app D
 
 ## Folder structure
 
-| Path       | Purpose                                                                     |
-| ---------- | --------------------------------------------------------------------------- |
-| `base/`    | Shared base image definitions (runtime, build toolchain) reused by apps     |
-| `apps/`    | Per-application Docker packaging (`web`, `admin`, `api`, `ai`, `worker`, …) |
-| `compose/` | Compose project files for local multi-service orchestration                 |
+| Path       | Purpose                                                                             |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `base/`    | Shared base image definitions (runtime, build toolchain) reused by apps             |
+| `apps/`    | Per-application Docker packaging (`web`, `admin`, `api`, `ai-service`, `worker`, …) |
+| `compose/` | Compose project files for local multi-service orchestration                         |
 
-## What belongs here
+## Current foundation
 
-- Dockerfiles and `.dockerignore` (when authored)
-- Image build arguments documentation
-- Compose networks/volumes layouts for non-prod local use
+- `base/Dockerfile.node` — multi-stage, non-root Node 22 image for `api` / `worker` / `ai-service`
+- `compose/docker-compose.yml` — local ops-shell stack
+- Root `.dockerignore` — keeps secrets and caches out of build context
+
+Build example:
+
+```bash
+docker build -f infrastructure/docker/base/Dockerfile.node --build-arg APP_NAME=api -t buying-bot-api .
+```
 
 ## What does not belong here
 

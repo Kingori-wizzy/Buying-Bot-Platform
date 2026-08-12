@@ -18,8 +18,8 @@ SDS implements [`../SRS/`](../SRS/) within the topology defined by [`../EAD/`](.
 
 ## Contents
 
-| Document | Purpose |
-|----------|---------|
+| Document                                           | Purpose                                     |
+| -------------------------------------------------- | ------------------------------------------- |
 | [`application-shells.md`](./application-shells.md) | Initial deployable app topology (scaffolds) |
 
 Additional SDS volumes will be added later. Do not treat this README as an SDS itself.

@@ -26,7 +26,13 @@ apps/docs         →  @buying-bot/docs        (docs website)
 4. No app-to-app imports; share via `packages/*` or network contracts.
 5. `apps/docs` is a site shell; normative engineering docs stay in `/docs`.
 
+## Ops bootstrap (ADR-0004)
+
+`api`, `worker`, and `ai-service` expose interim Node `http` ops endpoints
+(`/health`, `/health/live`, `/health/ready`) with structured logging and graceful
+shutdown. This is **not** the product API framework.
+
 ## Non-goals (current)
 
-- HTTP routers, UI frameworks, queue libraries, model providers
+- Product HTTP routers / UI frameworks / queue libraries / model providers
 - Business features and domain workflows

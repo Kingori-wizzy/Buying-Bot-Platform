@@ -4,11 +4,11 @@
 
 Own **runtime validation schemas and validators** for inputs crossing trust boundaries (HTTP, jobs, AI tool args), aligned with shared types.
 
-## In scope (when implemented)
+## In scope
 
-- Shared schema definitions (e.g. Zod/Valibot or chosen library — via future ADR)
-- Reusable validators for common fields (email, money, IDs)
-- Helpers to bridge validation results to API error shapes
+- Shared Zod schemas and helpers
+- Reusable validators for common fields
+- `parseOrThrow` for fail-fast boundary parsing
 
 ## Out of scope
 
@@ -18,8 +18,8 @@ Own **runtime validation schemas and validators** for inputs crossing trust boun
 
 ## Consumers (intended)
 
-`apps/api`, `apps/worker`, `apps/ai`, and clients that validate before submit
+`apps/api`, `apps/worker`, `apps/ai-service`, and clients that validate before submit
 
 ## Status
 
-Package folder only — no validation implementation yet.
+Foundation implemented with Zod schemas and `parseOrThrow`.

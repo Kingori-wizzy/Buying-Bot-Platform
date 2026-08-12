@@ -22,4 +22,4 @@ All `apps/*` and other `packages/*` that need shared contracts
 
 ## Status
 
-Package folder only — no types implemented yet.
+Foundation contracts implemented (health, API errors, RBAC vocabulary).

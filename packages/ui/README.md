@@ -22,4 +22,4 @@ Provide **shared user-interface building blocks** consumed by customer-facing an
 
 ## Status
 
-Package folder only — no UI implementation yet.
+Design tokens foundation only. React/Vue components deferred pending frontend framework ADR.

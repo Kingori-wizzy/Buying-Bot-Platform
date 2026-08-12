@@ -1,0 +1,58 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/base/Dockerfile.node
+      args:
+        APP_NAME: api
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      SERVICE_NAME: api
+      HOST: 0.0.0.0
+      PORT: 3000
+      LOG_LEVEL: info
+      CORS_ORIGIN: http://localhost:3001
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/base/Dockerfile.node
+      args:
+        APP_NAME: worker
+    ports:
+      - '3002:3002'
+    environment:
+      NODE_ENV: production
+      SERVICE_NAME: worker
+      HOST: 0.0.0.0
+      PORT: 3002
+      LOG_LEVEL: info
+
+  ai-service:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/base/Dockerfile.node
+      args:
+        APP_NAME: ai-service
+    ports:
+      - '3003:3003'
+    environment:
+      NODE_ENV: production
+      SERVICE_NAME: ai-service
+      HOST: 0.0.0.0
+      PORT: 3003
+      LOG_LEVEL: info

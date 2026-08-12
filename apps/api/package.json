@@ -6,15 +6,21 @@
   "type": "module",
   "license": "UNLICENSED",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "tsc -p tsconfig.json --watch",
-    "test": "node -e \"console.log('[@buying-bot/api] No tests yet')\"",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@buying-bot/config": "workspace:*",
+    "@buying-bot/utils": "workspace:*"
   },
   "devDependencies": {
     "@buying-bot/typescript-config": "workspace:*",
     "@types/node": "^22.17.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
   }
 }

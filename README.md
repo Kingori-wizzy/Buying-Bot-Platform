@@ -53,10 +53,14 @@ pnpm format           # Prettier write
 pnpm format:check     # Prettier check
 pnpm typecheck        # turbo run typecheck
 pnpm test             # turbo run test
+pnpm audit:deps       # pnpm audit --audit-level=high
+pnpm verify           # format + lint + typecheck + test + build + audit
 pnpm clean            # turbo run clean
 ```
 
-Code quality details: [`docs/code-quality.md`](docs/code-quality.md).
+Copy `.env.example` to `.env` for local Node service configuration.
+
+Production readiness checklist: [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md).
 
 ## File catalog
 

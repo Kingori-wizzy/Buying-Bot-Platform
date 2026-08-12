@@ -18,8 +18,8 @@ Centralize **persistence abstractions and shared data-access utilities** so serv
 
 ## Consumers (intended)
 
-`apps/api`, `apps/worker`, optionally `apps/ai`
+`apps/api`, `apps/worker`, optionally `apps/ai-service`
 
 ## Status
 
-Package folder only — no database implementation yet.
+Ports implemented (`DatabaseClient`, health, transactions). No Prisma/PostgreSQL adapter yet.

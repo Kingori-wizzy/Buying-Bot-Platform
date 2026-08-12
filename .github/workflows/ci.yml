@@ -15,13 +15,15 @@ permissions:
 
 jobs:
   quality:
-    name: Lint, typecheck, build, test
+    name: Lint, typecheck, build, test, audit
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -39,14 +41,25 @@ jobs:
         env:
           HUSKY: '0'
 
-      - name: Lint
-        run: pnpm run lint
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Type check
-        run: pnpm run typecheck
+      - name: Format check
+        run: pnpm run format:check
 
       - name: Build
         run: pnpm run build
 
+      - name: Lint
+        run: pnpm exec eslint . --max-warnings=0
+
+      - name: Type check
+        run: pnpm run typecheck
+
       - name: Test
         run: pnpm run test
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high

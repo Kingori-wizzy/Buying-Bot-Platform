@@ -24,6 +24,7 @@ export function createConfig({ tsconfigRootDir }) {
         '**/coverage/**',
         'pnpm-lock.yaml',
         '**/*.tsbuildinfo',
+        '**/vitest.config.ts',
       ],
     },
     eslint.configs.recommended,
@@ -35,6 +36,7 @@ export function createConfig({ tsconfigRootDir }) {
         parserOptions: {
           projectService: true,
           tsconfigRootDir,
+          allowDefaultProject: ['*.mjs', '*.js'],
         },
       },
     },
