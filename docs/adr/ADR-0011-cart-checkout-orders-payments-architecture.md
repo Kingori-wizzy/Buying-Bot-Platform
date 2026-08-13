@@ -26,14 +26,14 @@
 Buying Bot Platform is a Kenya-first commerce system. Established decisions
 this ADR must not override:
 
-| ADR | Constraint used here |
-| --- | --- |
-| ADR-0005 | Nest modules; guards; provider SDKs stay in adapters |
+| ADR      | Constraint used here                                                                                                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADR-0005 | Nest modules; guards; provider SDKs stay in adapters                                                                                                                                                    |
 | ADR-0006 | PostgreSQL SoT for carts, orders, payments, reservations; Redis never ledger; integer money; short DB txs; no provider HTTP inside long txs; optional **transactional outbox** recommended for payments |
-| ADR-0007 | Browser never owns price/stock/payment status; SDK to Nest |
-| ADR-0008 | AuthZ for orders/refunds; webhook HMAC; no PAN in identity store |
-| ADR-0009 | REST + `Idempotency-Key`; webhooks ack fast then async; at-least-once jobs |
-| ADR-0010 | Cart lines reference **Offer/SKU**; order items are **snapshots**; reservations + movements; KES-first integer minor units; tax separate from catalog price |
+| ADR-0007 | Browser never owns price/stock/payment status; SDK to Nest                                                                                                                                              |
+| ADR-0008 | AuthZ for orders/refunds; webhook HMAC; no PAN in identity store                                                                                                                                        |
+| ADR-0009 | REST + `Idempotency-Key`; webhooks ack fast then async; at-least-once jobs                                                                                                                              |
+| ADR-0010 | Cart lines reference **Offer/SKU**; order items are **snapshots**; reservations + movements; KES-first integer minor units; tax separate from catalog price                                             |
 
 No cart, order, or payment implementation exists. This ADR defines the
 commerce transaction architecture **before** code.
@@ -88,9 +88,9 @@ Do **not** represent these as one enum on one row.
 
 ### 4.1 Entities (conceptual)
 
-| Entity | Role |
-| --- | --- |
-| **Cart** | Customer or guest basket; `cartId` UUID |
+| Entity       | Role                                                      |
+| ------------ | --------------------------------------------------------- |
+| **Cart**     | Customer or guest basket; `cartId` UUID                   |
 | **CartItem** | Line referencing **Offer** + **SKU** (ADR-0010); quantity |
 
 Cart items may store **display** name/image for UX but **must not** be the
@@ -102,14 +102,14 @@ product ownership, or tax.
 
 ### 4.2 Quantity rules (server-enforced)
 
-| Situation | Behavior |
-| --- | --- |
-| Below minimum (usually 1) | Reject |
-| Above max per line / policy | Reject or clamp with error — prefer **reject** |
-| SKU/Offer inactive or product not `ACTIVE` | Remove or block with error |
-| Insufficient **available-to-sell** | Reject add/update; do not oversell in cart |
-| Price change vs last display | Cart remains; UI shows updated server price |
-| `ARCHIVED` / `INACTIVE` product | Line invalid until removed |
+| Situation                                  | Behavior                                       |
+| ------------------------------------------ | ---------------------------------------------- |
+| Below minimum (usually 1)                  | Reject                                         |
+| Above max per line / policy                | Reject or clamp with error — prefer **reject** |
+| SKU/Offer inactive or product not `ACTIVE` | Remove or block with error                     |
+| Insufficient **available-to-sell**         | Reject add/update; do not oversell in cart     |
+| Price change vs last display               | Cart remains; UI shows updated server price    |
+| `ARCHIVED` / `INACTIVE` product            | Line invalid until removed                     |
 
 Cart **does not** reserve inventory. Two customers may hold the same last
 unit in carts; only checkout reservation commits stock (ADR-0010 / ADR-0006).
@@ -133,16 +133,16 @@ changed since last view.
 
 **Support guest shopping** (Kenya conversion).
 
-| Mechanism | Decision |
-| --- | --- |
-| Identifier | Server-issued opaque `cartId` |
-| Transport | **HttpOnly Secure** cookie (customer web realm, ADR-0008) — not a
-  client-generated UUID in localStorage as authorization |
-| Binding | Cookie proves possession of that cart; API ignores body `cartId`
-  that does not match cookie/session |
-| Takeover | Guest cookie must not attach to another customer’s cart; rotate
-  cart cookie on login merge |
-| Conversion | On login/register, **merge** then bind cart to `customerId` |
+| Mechanism                                              | Decision                                                          |
+| ------------------------------------------------------ | ----------------------------------------------------------------- |
+| Identifier                                             | Server-issued opaque `cartId`                                     |
+| Transport                                              | **HttpOnly Secure** cookie (customer web realm, ADR-0008) — not a |
+| client-generated UUID in localStorage as authorization |
+| Binding                                                | Cookie proves possession of that cart; API ignores body `cartId`  |
+| that does not match cookie/session                     |
+| Takeover                                               | Guest cookie must not attach to another customer’s cart; rotate   |
+| cart cookie on login merge                             |
+| Conversion                                             | On login/register, **merge** then bind cart to `customerId`       |
 
 Do not treat query-string `?cartId=` as authorization.
 
@@ -165,12 +165,12 @@ authenticated cart.
 
 ## 8. Cart lifecycle
 
-| State | Meaning |
-| --- | --- |
-| `ACTIVE` | Editable |
+| State       | Meaning                                                      |
+| ----------- | ------------------------------------------------------------ |
+| `ACTIVE`    | Editable                                                     |
 | `ABANDONED` | Inactive past marketing threshold (derived or marked by job) |
-| `EXPIRED` | Past TTL; not checkoutable |
-| `CONVERTED` | Successfully became an order (or merged away) |
+| `EXPIRED`   | Past TTL; not checkoutable                                   |
+| `CONVERTED` | Successfully became an order (or merged away)                |
 
 Abandoned carts may be retained **briefly** for analytics with minimized
 PII. Do not keep guest contact data in carts indefinitely (align ADR-0006
@@ -181,11 +181,11 @@ carts longer. Exact durations are product policy.
 
 ## 9. Cart storage
 
-| Store | Role |
-| --- | --- |
+| Store          | Role                                                      |
+| -------------- | --------------------------------------------------------- |
 | **PostgreSQL** | **Authoritative** cart and lines (ADR-0006 `cart` schema) |
-| **Redis** | Optional cache of cart read model; TTL; never sole SoT |
-| **Browser** | Cookie (cart id) + UI state; **not** authoritative lines |
+| **Redis**      | Optional cache of cart read model; TTL; never sole SoT    |
+| **Browser**    | Cookie (cart id) + UI state; **not** authoritative lines  |
 
 Restarting Redis must not empty paid-intent carts. Checkout always reads
 Postgres.
@@ -196,19 +196,19 @@ Checkout is a **server-side workflow**, not a client-calculated form post.
 
 ### 10.1 Steps
 
-| Step | Sync vs async |
-| --- | --- |
-| Identify customer (session or attach guest after auth) | Sync |
-| Load cart from Postgres | Sync |
-| Re-resolve Offer/SKU/product (ADR-0010) | Sync |
-| Validate price, qty, availability, product lifecycle | Sync |
-| Calculate promotions, tax, shipping, payable | Sync |
-| Validate shipping address / method (server quote) | Sync |
-| **DB transaction:** create Order + items snapshots + reservation + PaymentAttempt + idempotency row + **outbox** | Sync, short |
-| Commit | Sync |
-| Initiate payment with provider | **After** commit (HTTP or outbox → worker) |
-| Await provider / webhook | Async |
-| Confirm payment → convert reservation → `PAID` | Async (webhook/job) |
+| Step                                                                                                             | Sync vs async                              |
+| ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Identify customer (session or attach guest after auth)                                                           | Sync                                       |
+| Load cart from Postgres                                                                                          | Sync                                       |
+| Re-resolve Offer/SKU/product (ADR-0010)                                                                          | Sync                                       |
+| Validate price, qty, availability, product lifecycle                                                             | Sync                                       |
+| Calculate promotions, tax, shipping, payable                                                                     | Sync                                       |
+| Validate shipping address / method (server quote)                                                                | Sync                                       |
+| **DB transaction:** create Order + items snapshots + reservation + PaymentAttempt + idempotency row + **outbox** | Sync, short                                |
+| Commit                                                                                                           | Sync                                       |
+| Initiate payment with provider                                                                                   | **After** commit (HTTP or outbox → worker) |
+| Await provider / webhook                                                                                         | Async                                      |
+| Confirm payment → convert reservation → `PAID`                                                                   | Async (webhook/job)                        |
 
 The HTTP checkout response returns the **order id**, **payment attempt**
 client actions (e.g. STK prompt pending), and **never** `PAID` solely
@@ -300,11 +300,11 @@ No shipping integration is implemented in this ADR.
 A cart becomes an order **when checkout’s DB transaction commits**, not when
 payment succeeds.
 
-| Entity | Role |
-| --- | --- |
-| **Order** | Header: customer, currency, totals, statuses, addresses |
-| **OrderItem** | Snapshot lines |
-| **OrderStatus** | Commercial lifecycle (see §20) |
+| Entity          | Role                                                    |
+| --------------- | ------------------------------------------------------- |
+| **Order**       | Header: customer, currency, totals, statuses, addresses |
+| **OrderItem**   | Snapshot lines                                          |
+| **OrderStatus** | Commercial lifecycle (see §20)                          |
 
 **Idempotent:** `Idempotency-Key` + actor (ADR-0009 / ADR-0006 unique
 `(actor, idempotency_key)`). Retry returns the **same order**.
@@ -313,10 +313,10 @@ Do not create an order on “add to cart”.
 
 ## 18. Order numbers
 
-| Id | Use |
-| --- | --- |
-| `orderId` UUID | Internal, API path |
-| `orderNumber` | Customer-facing; unique; **not** raw serial `1,2,3…` |
+| Id             | Use                                                  |
+| -------------- | ---------------------------------------------------- |
+| `orderId` UUID | Internal, API path                                   |
+| `orderNumber`  | Customer-facing; unique; **not** raw serial `1,2,3…` |
 
 Use a non-trivial format (e.g. time + random or encrypted sequence) to
 reduce **enumeration** of other customers’ orders. Authorization still
@@ -327,23 +327,23 @@ required (ADR-0008); obscurity is not AuthZ.
 **Accepted: keep separate state machines. Do not collapse them into one
 status field.**
 
-| Machine | Owns |
-| --- | --- |
-| **Order status** | Commercial contract |
-| **Payment status** | Money |
-| **Fulfillment status** | Delivery (future; `UNFULFILLED` at v1) |
+| Machine                          | Owns                                                  |
+| -------------------------------- | ----------------------------------------------------- |
+| **Order status**                 | Commercial contract                                   |
+| **Payment status**               | Money                                                 |
+| **Fulfillment status**           | Delivery (future; `UNFULFILLED` at v1)                |
 | **Inventory reservation status** | Stock hold for an order (HELD / COMMITTED / RELEASED) |
 
 ### 19.1 Minimal order status
 
-| Status | Meaning |
-| --- | --- |
-| `PENDING_PAYMENT` | Created; awaiting confirmed payment |
-| `PAID` | Payable collected (provider-confirmed) |
-| `PROCESSING` | Accepted for operations / pick |
-| `COMPLETED` | Fulfilled (or digital complete) |
-| `CANCELLED` | Voided; not fulfilled |
-| `FAILED` | Terminal unsuccessful (e.g. payment never confirmed, expired) |
+| Status            | Meaning                                                       |
+| ----------------- | ------------------------------------------------------------- |
+| `PENDING_PAYMENT` | Created; awaiting confirmed payment                           |
+| `PAID`            | Payable collected (provider-confirmed)                        |
+| `PROCESSING`      | Accepted for operations / pick                                |
+| `COMPLETED`       | Fulfilled (or digital complete)                               |
+| `CANCELLED`       | Voided; not fulfilled                                         |
+| `FAILED`          | Terminal unsuccessful (e.g. payment never confirmed, expired) |
 
 Refunds: keep order `PAID`/`COMPLETED`/`CANCELLED` as appropriate and use
 **payment/refund records** plus optional `refundStatus`:
@@ -370,23 +370,23 @@ event.
 
 Allowed examples (illustrative, enforced in domain):
 
-| From | To | Typical actor |
-| --- | --- | --- |
-| `PENDING_PAYMENT` | `PAID` | system (confirmed payment) |
-| `PENDING_PAYMENT` | `FAILED` / `CANCELLED` | system (expiry) or customer/admin |
-| `PAID` | `PROCESSING` | system/ops |
-| `PAID` / `PROCESSING` | `CANCELLED` | admin/customer per policy + refund path |
-| `PROCESSING` | `COMPLETED` | fulfillment |
+| From                  | To                     | Typical actor                           |
+| --------------------- | ---------------------- | --------------------------------------- |
+| `PENDING_PAYMENT`     | `PAID`                 | system (confirmed payment)              |
+| `PENDING_PAYMENT`     | `FAILED` / `CANCELLED` | system (expiry) or customer/admin       |
+| `PAID`                | `PROCESSING`           | system/ops                              |
+| `PAID` / `PROCESSING` | `CANCELLED`            | admin/customer per policy + refund path |
+| `PROCESSING`          | `COMPLETED`            | fulfillment                             |
 
 Forbidden: client PATCH `status=PAID`; skip `CONFIRMED` payment; revival of
 `FAILED` without a new checkout.
 
 ## 21. Payment architecture
 
-| Entity | Role |
-| --- | --- |
-| **Payment** | Money obligation for an order (amount, currency) |
-| **PaymentAttempt** | One try with a provider (STK, card session, etc.) |
+| Entity                 | Role                                                           |
+| ---------------------- | -------------------------------------------------------------- |
+| **Payment**            | Money obligation for an order (amount, currency)               |
+| **PaymentAttempt**     | One try with a provider (STK, card session, etc.)              |
 | **PaymentTransaction** | Provider-confirmed movement (charge, refund) with provider ids |
 
 An order may have multiple **attempts** (retry STK) but one logical
@@ -453,13 +453,13 @@ Retries must not double-capture or double-release stock.
 
 PostgreSQL is the SoT for financial idempotency (ADR-0006). Redis may cache.
 
-| Operation | Key |
-| --- | --- |
-| Checkout / order create | Client `Idempotency-Key` + actor |
-| Payment initiation | Order + attempt policy (don’t spawn duplicate in-flight attempts) |
-| Webhook | Provider event id |
-| Refund | `Idempotency-Key` + payment id |
-| Cancel | Order id + command id |
+| Operation               | Key                                                               |
+| ----------------------- | ----------------------------------------------------------------- |
+| Checkout / order create | Client `Idempotency-Key` + actor                                  |
+| Payment initiation      | Order + attempt policy (don’t spawn duplicate in-flight attempts) |
+| Webhook                 | Provider event id                                                 |
+| Refund                  | `Idempotency-Key` + payment id                                    |
+| Cancel                  | Order id + command id                                             |
 
 At-least-once delivery + **idempotent handlers**. Not exactly-once.
 
@@ -467,13 +467,13 @@ At-least-once delivery + **idempotent handlers**. Not exactly-once.
 
 Periodic job (`payments.reconcile` per ADR-0006):
 
-| Drift | Action |
-| --- | --- |
-| Platform unpaid, provider paid | Confirm payment path (same as webhook); never ignore |
+| Drift                                  | Action                                                           |
+| -------------------------------------- | ---------------------------------------------------------------- |
+| Platform unpaid, provider paid         | Confirm payment path (same as webhook); never ignore             |
 | Platform paid, provider failed/unknown | Flag `RECONCILIATION_HOLD`; do not silently unpay without policy |
-| Duplicate callbacks | Idempotent no-op |
-| Missing callback | Poll provider by attempt reference |
-| Partial / unknown txn | Ops queue; do not auto-fulfill |
+| Duplicate callbacks                    | Idempotent no-op                                                 |
+| Missing callback                       | Poll provider by attempt reference                               |
+| Partial / unknown txn                  | Ops queue; do not auto-fulfill                                   |
 
 Reconciliation **must not** invent stock; it uses the same domain
 transitions as live webhooks.
@@ -491,11 +491,11 @@ provider confirmation (or documented sync confirm).
 
 ## 29. Cancellations
 
-| Timing | Inventory | Payment |
-| --- | --- | --- |
-| Before confirmed payment | Release reservation; order `CANCELLED`/`FAILED` | No capture |
-| After paid, before fulfillment | Release/restock per policy; refund requested | Refund flow |
-| During/after fulfillment | Generally no auto-restock; admin exception | Refund policy |
+| Timing                         | Inventory                                       | Payment       |
+| ------------------------------ | ----------------------------------------------- | ------------- |
+| Before confirmed payment       | Release reservation; order `CANCELLED`/`FAILED` | No capture    |
+| After paid, before fulfillment | Release/restock per policy; refund requested    | Refund flow   |
+| During/after fulfillment       | Generally no auto-restock; admin exception      | Refund policy |
 
 Customers cannot cancel another customer’s order. Admin requires
 permissions. Late webhook after cancel: reconciliation hold — **do not**
@@ -563,7 +563,7 @@ PostgreSQL is the correctness boundary.
 **Inside short Postgres transactions:**
 
 - inventory reservation + order + items + payment attempt row + idempotency
-  + outbox
+  - outbox
 
 **Outside transactions:**
 
@@ -596,20 +596,20 @@ DLQ + alert for financial jobs.
 
 ## 36. Failure scenarios
 
-| Scenario | Recovery |
-| --- | --- |
-| 1. Provider unavailable | Order `PENDING_PAYMENT`; attempt `FAILED`; retry initiate with new attempt / backoff; stock remains reserved until expiry |
-| 2. Customer payment timeout | Expiry job; release reservation; order `FAILED`; notify |
-| 3. Webhook delayed | Poll/reconcile; same confirm path |
-| 4. Webhook duplicated | Idempotent |
-| 5. Webhook missing | Reconcile poll |
-| 6. Database unavailable | API not ready; no checkout |
-| 7. Redis unavailable | Cart/checkout via Postgres; enqueue via **outbox**; rate-limit degrade per ADR-0006 |
-| 8. Worker unavailable | Outbox/queue backlog; orders remain correct in PG |
-| 9. Payment succeeds, response lost | Webhook or reconcile confirms; idempotent |
-| 10. Order created, client timeout | GET checkout/order by idempotency key / order id; **no second order** |
-| 11. Reservation expires while paying | §31 hold; no oversell |
-| 12. Refund requested, callback delayed | Stay `REFUND_REQUESTED`; reconcile |
+| Scenario                               | Recovery                                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 1. Provider unavailable                | Order `PENDING_PAYMENT`; attempt `FAILED`; retry initiate with new attempt / backoff; stock remains reserved until expiry |
+| 2. Customer payment timeout            | Expiry job; release reservation; order `FAILED`; notify                                                                   |
+| 3. Webhook delayed                     | Poll/reconcile; same confirm path                                                                                         |
+| 4. Webhook duplicated                  | Idempotent                                                                                                                |
+| 5. Webhook missing                     | Reconcile poll                                                                                                            |
+| 6. Database unavailable                | API not ready; no checkout                                                                                                |
+| 7. Redis unavailable                   | Cart/checkout via Postgres; enqueue via **outbox**; rate-limit degrade per ADR-0006                                       |
+| 8. Worker unavailable                  | Outbox/queue backlog; orders remain correct in PG                                                                         |
+| 9. Payment succeeds, response lost     | Webhook or reconcile confirms; idempotent                                                                                 |
+| 10. Order created, client timeout      | GET checkout/order by idempotency key / order id; **no second order**                                                     |
+| 11. Reservation expires while paying   | §31 hold; no oversell                                                                                                     |
+| 12. Refund requested, callback delayed | Stay `REFUND_REQUESTED`; reconcile                                                                                        |
 
 ## 37. At-least-once vs exactly-once
 
@@ -619,16 +619,16 @@ in PostgreSQL. Do not design as if the bus is exactly-once.
 
 ## 38. Security
 
-| Threat | Mitigation |
-| --- | --- |
-| Cart takeover | HttpOnly cart cookie; merge rules; no body-id auth |
-| IDOR | Orders scoped by principal; uniform 404 |
-| Price/qty tampering | Server reprice; ignore client money |
-| Unauthorized order access | ADR-0008; customers see own; admin `orders:read` |
-| Payment/webhook replay | HMAC + timestamp + event id |
-| Refund/coupon abuse | Permissions; server promotions; rate limits |
-| Enumeration | Non-sequential order numbers + AuthZ |
-| Brute-force pay | Rate-limit payment initiate (ADR-0009) |
+| Threat                    | Mitigation                                         |
+| ------------------------- | -------------------------------------------------- |
+| Cart takeover             | HttpOnly cart cookie; merge rules; no body-id auth |
+| IDOR                      | Orders scoped by principal; uniform 404            |
+| Price/qty tampering       | Server reprice; ignore client money                |
+| Unauthorized order access | ADR-0008; customers see own; admin `orders:read`   |
+| Payment/webhook replay    | HMAC + timestamp + event id                        |
+| Refund/coupon abuse       | Permissions; server promotions; rate limits        |
+| Enumeration               | Non-sequential order numbers + AuthZ               |
+| Brute-force pay           | Rate-limit payment initiate (ADR-0009)             |
 
 `customerId` / `orderId` in the body never override the session principal.
 
@@ -680,11 +680,11 @@ imported by order aggregates.
 
 ## 44. Invoicing / receipts
 
-| Document | When |
-| --- | --- |
-| Order confirmation | After order create (unpaid ok) |
-| Receipt | After **payment confirmed** |
-| Tax invoice | After confirmed payment + tax ADR/legal rules |
+| Document           | When                                          |
+| ------------------ | --------------------------------------------- |
+| Order confirmation | After order create (unpaid ok)                |
+| Receipt            | After **payment confirmed**                   |
+| Tax invoice        | After confirmed payment + tax ADR/legal rules |
 
 Document generation is **async**. **Future invoicing/tax ADR** for Kenya
 invoice regulations. This ADR does not implement PDFs.
@@ -707,12 +707,12 @@ No PAN, PIN, tokens, or raw provider secrets in logs.
 
 ## 47. Performance targets (**ASPIRATIONAL**)
 
-| Operation | p95 goal |
-| --- | --- |
-| Cart GET/PATCH | < 200 ms |
-| Checkout validation + commit | < 800 ms (ADR-0009) |
+| Operation                                    | p95 goal                     |
+| -------------------------------------------- | ---------------------------- |
+| Cart GET/PATCH                               | < 200 ms                     |
+| Checkout validation + commit                 | < 800 ms (ADR-0009)          |
 | Payment initiation (until provider accepted) | < 3 s excluding customer PIN |
-| Webhook acknowledgement | < 1 s |
+| Webhook acknowledgement                      | < 1 s                        |
 
 Unmeasured.
 
@@ -733,11 +733,11 @@ go-live; current 24h RPO is **not** a payment SLO.
 
 ## 49. Data retention
 
-| Data | Direction |
-| --- | --- |
+| Data                                                 | Direction                                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Orders, payments, attempts, webhooks, refunds, audit | **Retain** for accounting/ops; not deleted because account is deleted (anonymize PII where law allows) |
-| Carts | Shorter TTL; purge expired/abandoned |
-| Guest identifiers | Minimize |
+| Carts                                                | Shorter TTL; purge expired/abandoned                                                                   |
+| Guest identifiers                                    | Minimize                                                                                               |
 
 Exact periods → legal/compliance review. No compliance claim here.
 
@@ -835,46 +835,46 @@ without reconciliation hold.
 
 ## 52. Decision matrix
 
-| Area | Decision | Alternatives | Reason |
-| --- | --- | --- | --- |
-| Cart persistence | PostgreSQL SoT; Redis optional | Redis-only; localStorage | ADR-0006; restart safety |
-| Guest cart | Server cartId + HttpOnly cookie | Client UUID | Takeover resistance |
-| Cart merging | Sum qty; reprice; drop invalid | Last-write-wins | Predictable; no stale price |
-| Cart expiry | ACTIVE/ABANDONED/EXPIRED/CONVERTED | Keep forever | PII + hygiene |
-| Checkout | Server workflow; order before confirm | Pay then order | STK needs reference; idempotency |
-| Price authority | Server pipeline only | Client totals | Tamper-proof |
-| Order creation | On checkout commit; idempotent | On payment confirm only | Retry-safe; reservation owner |
-| Order lifecycle | Separate order/payment/fulfillment | One mega-status | Clarity |
-| Payment model | Payment + Attempt + Transaction | Single payment row | Retries + audit |
-| Payment provider | Port/adapters; M-Pesa first | Hardcode Daraja in Order | Kenya + future cards |
-| Payment confirmation | Webhook/query; never frontend | Thank-you page | Fraud/safety |
-| Webhooks | Verify, persist, ack, async | Sync business in HTTP | ADR-0009 |
-| Idempotency | Postgres keys | Redis-only | Financial SoT |
-| Inventory reservation | At checkout, not cart | Reserve on add | Oversell vs UX |
-| Concurrency | PG constraints + versions | Redis lock only | Correctness |
-| Transactions | Short; no provider I/O inside | One long tx | ADR-0006 |
-| Outbox | **Mandatory** for payment side effects | Best-effort enqueue | Lost-intent risk |
-| Async processing | BullMQ workers | Sync emails/pay wait | Resilience |
-| Refunds | Request vs confirm; partial OK | Assume HTTP 200 | Provider truth |
-| Cancellation | Policy by payment/fulfillment stage | Always instant | Stock + money |
-| Reconciliation | Scheduled poll + holds | Webhook-only | Missing callbacks |
-| Financial audit | Append-only PG events | Logs only | Durability |
-| Notifications | Async ports | In-domain SMS | Coupling |
+| Area                  | Decision                               | Alternatives             | Reason                           |
+| --------------------- | -------------------------------------- | ------------------------ | -------------------------------- |
+| Cart persistence      | PostgreSQL SoT; Redis optional         | Redis-only; localStorage | ADR-0006; restart safety         |
+| Guest cart            | Server cartId + HttpOnly cookie        | Client UUID              | Takeover resistance              |
+| Cart merging          | Sum qty; reprice; drop invalid         | Last-write-wins          | Predictable; no stale price      |
+| Cart expiry           | ACTIVE/ABANDONED/EXPIRED/CONVERTED     | Keep forever             | PII + hygiene                    |
+| Checkout              | Server workflow; order before confirm  | Pay then order           | STK needs reference; idempotency |
+| Price authority       | Server pipeline only                   | Client totals            | Tamper-proof                     |
+| Order creation        | On checkout commit; idempotent         | On payment confirm only  | Retry-safe; reservation owner    |
+| Order lifecycle       | Separate order/payment/fulfillment     | One mega-status          | Clarity                          |
+| Payment model         | Payment + Attempt + Transaction        | Single payment row       | Retries + audit                  |
+| Payment provider      | Port/adapters; M-Pesa first            | Hardcode Daraja in Order | Kenya + future cards             |
+| Payment confirmation  | Webhook/query; never frontend          | Thank-you page           | Fraud/safety                     |
+| Webhooks              | Verify, persist, ack, async            | Sync business in HTTP    | ADR-0009                         |
+| Idempotency           | Postgres keys                          | Redis-only               | Financial SoT                    |
+| Inventory reservation | At checkout, not cart                  | Reserve on add           | Oversell vs UX                   |
+| Concurrency           | PG constraints + versions              | Redis lock only          | Correctness                      |
+| Transactions          | Short; no provider I/O inside          | One long tx              | ADR-0006                         |
+| Outbox                | **Mandatory** for payment side effects | Best-effort enqueue      | Lost-intent risk                 |
+| Async processing      | BullMQ workers                         | Sync emails/pay wait     | Resilience                       |
+| Refunds               | Request vs confirm; partial OK         | Assume HTTP 200          | Provider truth                   |
+| Cancellation          | Policy by payment/fulfillment stage    | Always instant           | Stock + money                    |
+| Reconciliation        | Scheduled poll + holds                 | Webhook-only             | Missing callbacks                |
+| Financial audit       | Append-only PG events                  | Logs only                | Durability                       |
+| Notifications         | Async ports                            | In-domain SMS            | Coupling                         |
 
 ## 53. Major trade-offs
 
-| Trade-off | Choice | Cost |
-| --- | --- | --- |
-| Guest vs auth cart | Guest + secure cookie + merge | Merge edge cases |
-| Cart persistence | Postgres | Extra writes vs Redis-only speed |
-| Snapshot vs live price | Live in cart; snapshot at order | Price can change before pay |
-| Reservation timing | Checkout, not cart | Possible stock disappointment |
-| Provider abstraction | Port | Adapter work |
-| Sync vs async confirm | Async webhook | UX “pending payment” |
-| Tx boundary | No HTTP in DB tx | More states to reconcile |
-| Outbox | Mandatory for pay | Operational table/worker |
-| Exactly-once | Rejected | Must build idempotency |
-| Simplicity vs safety | Safety | More entities/statuses |
+| Trade-off              | Choice                          | Cost                             |
+| ---------------------- | ------------------------------- | -------------------------------- |
+| Guest vs auth cart     | Guest + secure cookie + merge   | Merge edge cases                 |
+| Cart persistence       | Postgres                        | Extra writes vs Redis-only speed |
+| Snapshot vs live price | Live in cart; snapshot at order | Price can change before pay      |
+| Reservation timing     | Checkout, not cart              | Possible stock disappointment    |
+| Provider abstraction   | Port                            | Adapter work                     |
+| Sync vs async confirm  | Async webhook                   | UX “pending payment”             |
+| Tx boundary            | No HTTP in DB tx                | More states to reconcile         |
+| Outbox                 | Mandatory for pay               | Operational table/worker         |
+| Exactly-once           | Rejected                        | Must build idempotency           |
+| Simplicity vs safety   | Safety                          | More entities/statuses           |
 
 ## 54. Future ADRs
 
@@ -890,14 +890,14 @@ without reconciliation hold.
 
 ## 55. Dependencies
 
-| ADR | Effect on ADR-0011 |
-| --- | --- |
-| ADR-0005 | Nest checkout/payment modules; adapters not domain |
+| ADR      | Effect on ADR-0011                                                                                    |
+| -------- | ----------------------------------------------------------------------------------------------------- |
+| ADR-0005 | Nest checkout/payment modules; adapters not domain                                                    |
 | ADR-0006 | PG SoT, reservations, idempotency tables, outbox, `cart`/`orders`/`payments` schemas, no Redis ledger |
-| ADR-0007 | Checkout UI; never trusts payment query params |
-| ADR-0008 | Order AuthZ; admin refunds; webhook HMAC; no card data |
-| ADR-0009 | Idempotency-Key, webhook ack, correlation ids, REST resources |
-| ADR-0010 | Offer/SKU lines; snapshots; movements; money; tax split |
+| ADR-0007 | Checkout UI; never trusts payment query params                                                        |
+| ADR-0008 | Order AuthZ; admin refunds; webhook HMAC; no card data                                                |
+| ADR-0009 | Idempotency-Key, webhook ack, correlation ids, REST resources                                         |
+| ADR-0010 | Offer/SKU lines; snapshots; movements; money; tax split                                               |
 
 ## 56. Implementation boundary
 

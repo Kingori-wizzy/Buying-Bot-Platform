@@ -24,13 +24,13 @@
 Buying Bot Platform is a Kenya-first AI-powered omnichannel commerce system.
 Established decisions this ADR must not override:
 
-| ADR | Status | Relevant constraint |
-| --- | --- | --- |
-| ADR-0005 | Accepted | NestJS + Fastify; catalog as a bounded context module |
+| ADR      | Status   | Relevant constraint                                                                                                                                                                                         |
+| -------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ADR-0005 | Accepted | NestJS + Fastify; catalog as a bounded context module                                                                                                                                                       |
 | ADR-0006 | Accepted | PostgreSQL SoT; `catalog` + `inventory` schemas; Redis cache only; object storage for blobs; PG FTS + pgvector for stage-1 search; dedicated search engine **deferred**; inventory reservations in Postgres |
-| ADR-0007 | Accepted | Next.js SSR/RSC for PLP/PDP/SEO; catalog data via SDK; browser never owns price/stock |
-| ADR-0008 | Accepted | `catalog:*` / `inventory:*` permissions; future org/membership; backend AuthZ |
-| ADR-0009 | Accepted | REST `/v1/products`, `/v1/search/products`; whitelist filters; cursor pagination for catalog; events → worker → derived index |
+| ADR-0007 | Accepted | Next.js SSR/RSC for PLP/PDP/SEO; catalog data via SDK; browser never owns price/stock                                                                                                                       |
+| ADR-0008 | Accepted | `catalog:*` / `inventory:*` permissions; future org/membership; backend AuthZ                                                                                                                               |
+| ADR-0009 | Accepted | REST `/v1/products`, `/v1/search/products`; whitelist filters; cursor pagination for catalog; events → worker → derived index                                                                               |
 
 Current repository reality: no product tables, no search index, no media
 pipeline. `@buying-bot/database` holds ports only. SRS/SDS/EAD folders are
@@ -77,15 +77,15 @@ auditable stock, and historical orders.
 
 A **Product** is merchandising content, not a price or a warehouse quantity.
 
-| Concern | Lives on |
-| --- | --- |
-| Identity | UUID `productId` (API); human `slug` for SEO |
-| Content | name, short description, description, brand, primary category |
-| Attributes / specs | see §16 |
-| Media | `MediaAsset` references (object keys) |
-| Lifecycle | status (see §13) |
-| SEO | title, meta description, canonical slug, structured-data fields |
-| Audit | `createdAt`, `updatedAt`, created/updated by (subject id) |
+| Concern            | Lives on                                                        |
+| ------------------ | --------------------------------------------------------------- |
+| Identity           | UUID `productId` (API); human `slug` for SEO                    |
+| Content            | name, short description, description, brand, primary category   |
+| Attributes / specs | see §16                                                         |
+| Media              | `MediaAsset` references (object keys)                           |
+| Lifecycle          | status (see §13)                                                |
+| SEO                | title, meta description, canonical slug, structured-data fields |
+| Audit              | `createdAt`, `updatedAt`, created/updated by (subject id)       |
 
 Operational data that changes independently:
 
@@ -118,12 +118,12 @@ Rules:
 
 ## 6. SKU architecture
 
-| Identifier | Role |
-| --- | --- |
-| `skuId` (UUID) | Immutable technical identity |
-| `internalSku` | Platform-unique business code (human-readable, unique) |
-| `sellerSku` | Optional merchant-supplied code (unique **per seller**) |
-| `barcode` / `gtin` | Optional; unique when present |
+| Identifier         | Role                                                    |
+| ------------------ | ------------------------------------------------------- |
+| `skuId` (UUID)     | Immutable technical identity                            |
+| `internalSku`      | Platform-unique business code (human-readable, unique)  |
+| `sellerSku`        | Optional merchant-supplied code (unique **per seller**) |
+| `barcode` / `gtin` | Optional; unique when present                           |
 
 Rules:
 
@@ -137,10 +137,10 @@ Rules:
 
 ### 7.1 Launch vs future
 
-| Phase | Model |
-| --- | --- |
-| **v1 Kenya launch** | **Single merchant** (the platform operator) |
-| **Readiness** | **Offer** entity owned by an Organization (ADR-0008 membership) |
+| Phase               | Model                                                           |
+| ------------------- | --------------------------------------------------------------- |
+| **v1 Kenya launch** | **Single merchant** (the platform operator)                     |
+| **Readiness**       | **Offer** entity owned by an Organization (ADR-0008 membership) |
 
 **Accepted for v1:** the **Offer** entity is the commercial boundary even
 while the platform operates as a **single merchant**. Price, currency, and
@@ -152,11 +152,11 @@ P&L) at v1. Do **not** bind price and stock directly to Product.
 
 ### 7.2 Terms
 
-| Term | Meaning |
-| --- | --- |
-| **Organization / Tenant** | ADR-0008 membership boundary |
-| **Merchant / Seller** | Organization that can own Offers |
-| **Offer** | Seller-specific commercial terms for a SKU |
+| Term                      | Meaning                                    |
+| ------------------------- | ------------------------------------------ |
+| **Organization / Tenant** | ADR-0008 membership boundary               |
+| **Merchant / Seller**     | Organization that can own Offers           |
+| **Offer**                 | Seller-specific commercial terms for a SKU |
 
 v1: one default Organization; all Offers belong to it. Adding Seller B later
 adds Offers, not a catalog rewrite.
@@ -194,15 +194,15 @@ order time (future cart/order ADR). Catalog “display price” is a read model.
 
 ### 9.2 Model
 
-| Field | Rule |
-| --- | --- |
-| Currency | ISO 4217 code on every money amount — **KES first**, never hardcoded |
-| Base / list price | Merchant list price |
-| Sale price | Optional; effective `from`/`to` |
-| Display price | Derived: sale if in window else list |
-| Promotions | Separate `promotions` schema (ADR-0006); applied at cart/checkout |
-| Customer-specific price | Deferred; do not encode in Product |
-| Price history | Append-only price-change events for audit |
+| Field                   | Rule                                                                 |
+| ----------------------- | -------------------------------------------------------------------- |
+| Currency                | ISO 4217 code on every money amount — **KES first**, never hardcoded |
+| Base / list price       | Merchant list price                                                  |
+| Sale price              | Optional; effective `from`/`to`                                      |
+| Display price           | Derived: sale if in window else list                                 |
+| Promotions              | Separate `promotions` schema (ADR-0006); applied at cart/checkout    |
+| Customer-specific price | Deferred; do not encode in Product                                   |
+| Price history           | Append-only price-change events for audit                            |
 
 Minor units stored as integer (e.g. cents/cents-equivalent for KES) plus
 currency code. Do not use float.
@@ -231,12 +231,12 @@ tax/order ADR. Catalog must not bake a single VAT percentage into Product.
 
 ### 11.1 Distinguish availability vs stock
 
-| Concept | Meaning |
-| --- | --- |
-| **Catalog / offer availability** | Merchant will sell this SKU (ACTIVE offer, not discontinued) |
-| **Inventory** | Counted stock at a location |
-| **Available to sell** | `on_hand - reserved - damaged` (policy-defined) |
-| **Inventory availability** | Derived from quantities: `AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK` — **never** a product lifecycle state |
+| Concept                          | Meaning                                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Catalog / offer availability** | Merchant will sell this SKU (ACTIVE offer, not discontinued)                                            |
+| **Inventory**                    | Counted stock at a location                                                                             |
+| **Available to sell**            | `on_hand - reserved - damaged` (policy-defined)                                                         |
+| **Inventory availability**       | Derived from quantities: `AVAILABLE`, `LOW_STOCK`, `OUT_OF_STOCK` — **never** a product lifecycle state |
 
 ### 11.2 Quantities (PostgreSQL, not Redis)
 
@@ -255,11 +255,11 @@ Inventory availability is independent of product lifecycle. An `ACTIVE`
 product may be `OUT_OF_STOCK`. An `ARCHIVED` product is not sold regardless
 of remaining quantity.
 
-| Availability | Meaning |
-| --- | --- |
-| `AVAILABLE` | Available-to-sell quantity is above the low-stock threshold |
-| `LOW_STOCK` | Available-to-sell is greater than zero and at or below the low-stock threshold |
-| `OUT_OF_STOCK` | Available-to-sell is zero (or below sellable policy) |
+| Availability   | Meaning                                                                        |
+| -------------- | ------------------------------------------------------------------------------ |
+| `AVAILABLE`    | Available-to-sell quantity is above the low-stock threshold                    |
+| `LOW_STOCK`    | Available-to-sell is greater than zero and at or below the low-stock threshold |
+| `OUT_OF_STOCK` | Available-to-sell is zero (or below sellable policy)                           |
 
 Thresholds (including low-stock) are **configurable** per SKU, location, or
 catalog policy — not hardcoded in the lifecycle state machine.
@@ -311,13 +311,13 @@ pickup in this ADR.
 
 **Accepted lifecycle** (product/content, **not** stock):
 
-| State | Meaning |
-| --- | --- |
-| `DRAFT` | Incomplete; not public |
+| State            | Meaning                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `DRAFT`          | Incomplete; not public                                    |
 | `PENDING_REVIEW` | Submitted; awaiting catalog/quality review before publish |
-| `ACTIVE` | Published; may still have zero stock |
-| `INACTIVE` | Hidden from storefront; retained |
-| `ARCHIVED` | Soft-end of life; admin-only; historical orders remain |
+| `ACTIVE`         | Published; may still have zero stock                      |
+| `INACTIVE`       | Hidden from storefront; retained                          |
+| `ARCHIVED`       | Soft-end of life; admin-only; historical orders remain    |
 
 **Do not** treat `OUT_OF_STOCK` as a product lifecycle state. Stock is
 inventory availability (`AVAILABLE` / `LOW_STOCK` / `OUT_OF_STOCK`) per §11.4.
@@ -347,9 +347,9 @@ validation, not an unbounded graph.
 Categories may **declare** which attributes are recommended or required
 (electronics: brand, model, storage; fashion: size, color, material).
 
-| Kind | Storage |
-| --- | --- |
-| **Global attributes** | Shared definitions (brand, color, size) |
+| Kind                  | Storage                                                         |
+| --------------------- | --------------------------------------------------------------- |
+| **Global attributes** | Shared definitions (brand, color, size)                         |
 | **Category-specific** | Assigned to category; inherited down the tree unless overridden |
 
 Variant axes (size, color) are attributes marked `isVariantAxis`.
@@ -358,12 +358,12 @@ Variant axes (size, color) are attributes marked `isVariantAxis`.
 
 ### 17.1 Options
 
-| Approach | Verdict |
-| --- | --- |
-| Fully relational attribute tables only | Rigid; explosion of columns |
-| JSONB-only bag | Weak validation, weak faceting, hard uniqueness |
-| Classic EAV | Query pain, rejected unless proven necessary |
-| **Hybrid relational + JSONB** | **Recommend** |
+| Approach                               | Verdict                                         |
+| -------------------------------------- | ----------------------------------------------- |
+| Fully relational attribute tables only | Rigid; explosion of columns                     |
+| JSONB-only bag                         | Weak validation, weak faceting, hard uniqueness |
+| Classic EAV                            | Query pain, rejected unless proven necessary    |
+| **Hybrid relational + JSONB**          | **Recommend**                                   |
 
 ### 17.2 Recommendation
 
@@ -428,13 +428,13 @@ Do not process images inside the API request that accepts checkout.
 
 ### 21.1 Engine evaluation
 
-| Option | Fit for v1 Kenya launch | Verdict |
-| --- | --- | --- |
-| **PostgreSQL FTS + `pg_trgm`** | Already chosen in ADR-0006; same ops as SoT | **Adopt stage 1** |
-| pgvector | Semantic / “similar products” / AI retrieval | **Adopt as derived, in PG** |
-| Meilisearch / Typesense | Better typo/facet UX; extra cluster | Stage 2 if FTS limits proven |
-| OpenSearch / Elasticsearch | Heavy ops; not justified at initial scale | Stage 3 / reject for v1 |
-| Search SaaS only | Cost, lock-in, Kenya data path | Reject as SoT |
+| Option                         | Fit for v1 Kenya launch                      | Verdict                      |
+| ------------------------------ | -------------------------------------------- | ---------------------------- |
+| **PostgreSQL FTS + `pg_trgm`** | Already chosen in ADR-0006; same ops as SoT  | **Adopt stage 1**            |
+| pgvector                       | Semantic / “similar products” / AI retrieval | **Adopt as derived, in PG**  |
+| Meilisearch / Typesense        | Better typo/facet UX; extra cluster          | Stage 2 if FTS limits proven |
+| OpenSearch / Elasticsearch     | Heavy ops; not justified at initial scale    | Stage 3 / reject for v1      |
+| Search SaaS only               | Cost, lock-in, Kenya data path               | Reject as SoT                |
 
 **Accepted:** **PostgreSQL FTS + `pg_trgm` + pgvector** is the initial
 search architecture (aligns with ADR-0006).
@@ -477,11 +477,11 @@ changes.
 
 Separate three layers:
 
-| Layer | Examples |
-| --- | --- |
-| **Deterministic filters** | category, brand, in-stock, price range, attribute |
-| **Relevance ranking** | FTS rank, prefix match, availability boost, recency |
-| **AI recommendations** | Separate from search result ranking at v1 |
+| Layer                     | Examples                                            |
+| ------------------------- | --------------------------------------------------- |
+| **Deterministic filters** | category, brand, in-stock, price range, attribute   |
+| **Relevance ranking**     | FTS rank, prefix match, availability boost, recency |
+| **AI recommendations**    | Separate from search result ranking at v1           |
 
 v1 ranking factors (simple, documented, tunable later):
 
@@ -600,13 +600,13 @@ External sources identified by `(sourceSystem, sourceId)`.
 
 Conceptual admin capabilities (ADR-0007 admin app + ADR-0008 permissions):
 
-| Action | Permission (illustrative) |
-| --- | --- |
-| Create/edit product, media, attributes, categories | `catalog:create` / `update` |
-| Publish / deactivate | `catalog:update` or `catalog:manage` |
-| Price / offer edits | `catalog:update` (or future `pricing:update`) |
-| Inventory adjust | `inventory:adjust` |
-| Read | `catalog:read` / `inventory:read` |
+| Action                                             | Permission (illustrative)                     |
+| -------------------------------------------------- | --------------------------------------------- |
+| Create/edit product, media, attributes, categories | `catalog:create` / `update`                   |
+| Publish / deactivate                               | `catalog:update` or `catalog:manage`          |
+| Price / offer edits                                | `catalog:update` (or future `pricing:update`) |
+| Inventory adjust                                   | `inventory:adjust`                            |
+| Read                                               | `catalog:read` / `inventory:read`             |
 
 UI hiding is not authorization. All mutations authorized in Nest.
 
@@ -625,12 +625,12 @@ Include `requestId` / `correlationId`.
 
 ## 34. Soft delete / archiving
 
-| Record | Policy |
-| --- | --- |
+| Record                        | Policy                                        |
+| ----------------------------- | --------------------------------------------- |
 | Products referenced by orders | **Archive / discontinue**; do not hard-delete |
-| Media | Soft-delete metadata; GC objects later |
-| Categories | Deactivate; reassign products before delete |
-| Inventory movements | **Never delete**; they are the ledger |
+| Media                         | Soft-delete metadata; GC objects later        |
+| Categories                    | Deactivate; reassign products before delete   |
+| Inventory movements           | **Never delete**; they are the ledger         |
 
 Hard delete only for `DRAFT` products never sold. Order history remains
 consistent via **order-line snapshots**.
@@ -674,38 +674,38 @@ Slug changes should preserve redirects (implementation later).
 
 Illustrative resources — **not implemented**:
 
-| Resource | Notes |
-| --- | --- |
-| `/v1/products` | Public: ACTIVE only; cursor pagination |
-| `/v1/products/{id}` | By UUID; slug resolution may be web-only or `?slug=` |
-| `/v1/categories` | Tree or flat with `parentId` |
-| `/v1/brands` | List/get |
-| `/v1/search/products` | `q`, filters, facets, sort, cursor |
-| `/v1/search/suggestions` | Autocomplete |
-| Admin `/v1/products` etc. | Full lifecycle; AuthZ |
-| Inventory admin | Adjustments, not public writable qty |
+| Resource                  | Notes                                                |
+| ------------------------- | ---------------------------------------------------- |
+| `/v1/products`            | Public: ACTIVE only; cursor pagination               |
+| `/v1/products/{id}`       | By UUID; slug resolution may be web-only or `?slug=` |
+| `/v1/categories`          | Tree or flat with `parentId`                         |
+| `/v1/brands`              | List/get                                             |
+| `/v1/search/products`     | `q`, filters, facets, sort, cursor                   |
+| `/v1/search/suggestions`  | Autocomplete                                         |
+| Admin `/v1/products` etc. | Full lifecycle; AuthZ                                |
+| Inventory admin           | Adjustments, not public writable qty                 |
 
 Prices and stock on public GET are **server-computed** from Offer +
 inventory. Do not duplicate ADR-0009 error/pagination rules.
 
 ## 39. Storage boundaries
 
-| Store | Catalog role | Class |
-| --- | --- | --- |
-| **PostgreSQL** | Products, variants, SKUs, offers, prices, inventory balances + movements, categories, attributes, media **metadata**, FTS documents | **System of record** |
-| **Redis** | Product card cache, rate limits, hot autocomplete, optional hot-SKU lock | **Cache / coordination** |
-| **Object storage** | Image/video/document **bytes** | **Blob SoT for files**; DB holds keys |
-| **Search index** | PG `tsvector` now; later dedicated engine | **Derived index** |
-| **pgvector** | Product/chunk embeddings | **Derived**; rebuildable |
+| Store              | Catalog role                                                                                                                        | Class                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| **PostgreSQL**     | Products, variants, SKUs, offers, prices, inventory balances + movements, categories, attributes, media **metadata**, FTS documents | **System of record**                  |
+| **Redis**          | Product card cache, rate limits, hot autocomplete, optional hot-SKU lock                                                            | **Cache / coordination**              |
+| **Object storage** | Image/video/document **bytes**                                                                                                      | **Blob SoT for files**; DB holds keys |
+| **Search index**   | PG `tsvector` now; later dedicated engine                                                                                           | **Derived index**                     |
+| **pgvector**       | Product/chunk embeddings                                                                                                            | **Derived**; rebuildable              |
 
 ## 40. Consistency model
 
-| Domain | Consistency |
-| --- | --- |
-| Inventory, reservations, checkout stock | **Strong** (Postgres transactions) |
-| Offer price at order time | **Strong** (read Offer in checkout tx / snapshot) |
-| Catalog content publish | Strong in DB; storefront cache TTL |
-| Search, autocomplete, embeddings, recommendations, analytics | **Eventual** |
+| Domain                                                       | Consistency                                       |
+| ------------------------------------------------------------ | ------------------------------------------------- |
+| Inventory, reservations, checkout stock                      | **Strong** (Postgres transactions)                |
+| Offer price at order time                                    | **Strong** (read Offer in checkout tx / snapshot) |
+| Catalog content publish                                      | Strong in DB; storefront cache TTL                |
+| Search, autocomplete, embeddings, recommendations, analytics | **Eventual**                                      |
 
 If search is stale, PDP by id still shows authoritative Postgres data.
 
@@ -713,29 +713,29 @@ If search is stale, PDP by id still shows authoritative Postgres data.
 
 Not measured:
 
-| Operation | p95 goal |
-| --- | --- |
-| Catalog get-by-id / PDP payload | < 200 ms (cached card < 50 ms) |
-| Category / PLP filtered list | < 300 ms |
-| Search `q` + filters | < 500 ms (ADR-0009) |
-| Autocomplete | < 150 ms |
-| Inventory available-to-sell check | < 50 ms in checkout path |
+| Operation                         | p95 goal                       |
+| --------------------------------- | ------------------------------ |
+| Catalog get-by-id / PDP payload   | < 200 ms (cached card < 50 ms) |
+| Category / PLP filtered list      | < 300 ms                       |
+| Search `q` + filters              | < 500 ms (ADR-0009)            |
+| Autocomplete                      | < 150 ms                       |
+| Inventory available-to-sell check | < 50 ms in checkout path       |
 
 Mark as **ASPIRATIONAL**.
 
 ## 42. Security
 
-| Threat | Mitigation |
-| --- | --- |
-| Price tampering | Server recomputes; ignore client price |
-| Inventory manipulation | `inventory:adjust` only; movements + AuthZ |
-| IDOR | UUID + AuthZ; unpublished products 404 for public |
-| Unauthorized edits | ADR-0008 permissions; admin realm |
-| Seller isolation | Offers scoped by organization |
-| Mass assignment | Strict Zod DTOs (ADR-0009) |
-| Malicious content | Validate HTML/markdown policy; scan uploads |
-| Upload abuse | Type/size limits; authenticated admin |
-| Search abuse | Rate limits; no raw SQL from query string |
+| Threat                 | Mitigation                                        |
+| ---------------------- | ------------------------------------------------- |
+| Price tampering        | Server recomputes; ignore client price            |
+| Inventory manipulation | `inventory:adjust` only; movements + AuthZ        |
+| IDOR                   | UUID + AuthZ; unpublished products 404 for public |
+| Unauthorized edits     | ADR-0008 permissions; admin realm                 |
+| Seller isolation       | Offers scoped by organization                     |
+| Mass assignment        | Strict Zod DTOs (ADR-0009)                        |
+| Malicious content      | Validate HTML/markdown policy; scan uploads       |
+| Upload abuse           | Type/size limits; authenticated admin             |
+| Search abuse           | Rate limits; no raw SQL from query string         |
 
 Client is never trusted for price, stock, discounts, or ownership.
 
@@ -754,13 +754,13 @@ Never log full customer PII in catalog logs; never log storage credentials.
 
 ## 44. Failure modes
 
-| Dependency | Behavior |
-| --- | --- |
-| PostgreSQL down | API not ready (ADR-0006); no catalog writes/reads of SoT |
-| Redis down | Skip product-card cache; read Postgres; rate-limit fail closed on abuse paths |
+| Dependency           | Behavior                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL down      | API not ready (ADR-0006); no catalog writes/reads of SoT                                                                                                                  |
+| Redis down           | Skip product-card cache; read Postgres; rate-limit fail closed on abuse paths                                                                                             |
 | FTS / search degrade | **Exact get-by-id and checkout still work**; search endpoint 503 or degraded keyword `ILIKE` fallback if explicitly implemented later — prefer fail search, keep commerce |
-| Object storage down | Uploads fail; PDP degrades missing images; metadata remains |
-| Index worker down | Catalog/inventory remain correct; search goes stale until catch-up |
+| Object storage down  | Uploads fail; PDP degrades missing images; metadata remains                                                                                                               |
+| Index worker down    | Catalog/inventory remain correct; search goes stale until catch-up                                                                                                        |
 
 **Search outage must not stop checkout** of known product ids.
 
@@ -777,28 +777,28 @@ Search is always rebuildable. Inventory is not.
 
 ## 46. Decision matrix
 
-| Area | Decision | Alternatives | Reason |
-| --- | --- | --- | --- |
-| Product model | Product ≠ price ≠ stock | Single product row | Variants, history, marketplace |
-| Variant model | Product → Variant → SKU | Duplicate products | Avoid SKU explosion as products |
-| SKU | UUID + immutable internal code | DB id as SKU | Business identity + barcodes |
-| Offer | **Accepted for v1** — commercial boundary | Price on Product | Multi-seller without catalog rewrite |
-| Seller | Single merchant v1 + org on Offer | Full marketplace now | Complexity vs path |
-| Pricing | Integer minor units + ISO currency; KES first | Hardcoded KES float | Accuracy + expansion |
-| Inventory | **Accepted:** movements + reservations; availability derived | Qty column; OUT_OF_STOCK as product state | Audit + separate lifecycle |
-| Categories | Hierarchical data tree | Hardcoded enums | Merchandising flexibility |
-| Attributes | Hybrid relational + JSONB specs | EAV / JSONB-only | Facets + evolution |
-| Media | Object storage + PG metadata; **images not required for ACTIVE** | BYTEA; hardcoded image-required | ADR-0006; configurable policy |
-| Search engine | **Accepted:** PG FTS + `pg_trgm` + pgvector | Dedicated engine at v1 | Ops + ADR-0006; future ADR to change |
-| Search indexing | Events → BullMQ → worker | Sync index in API tx | API latency; rebuildable |
-| Facets | Controlled attributes only | Free JSON facets | Safety + indexability |
-| Recommendations | Rules/popularity v1 | ML cluster | Premature infrastructure |
-| AI discovery | **Accepted:** tools-only; **never** direct PG | Direct SQL / invented facts | AuthZ + truth |
-| Product lifecycle | `DRAFT` `PENDING_REVIEW` `ACTIVE` `INACTIVE` `ARCHIVED` | OUT_OF_STOCK as lifecycle | Stock ≠ content state |
-| Imports | Async validate-then-activate | Sync HTTP import | Size + quality |
-| Consistency | Strong stock/price; eventual search | Search as SoT | Commerce safety |
-| Storage | PG SoT; Redis cache; S3 blobs; derived FTS | Redis stock | ADR-0006 |
-| Multi-tenancy | `organizationId` on Offer/inventory | Schema-per-seller v1 | ADR-0008 readiness |
+| Area              | Decision                                                         | Alternatives                              | Reason                               |
+| ----------------- | ---------------------------------------------------------------- | ----------------------------------------- | ------------------------------------ |
+| Product model     | Product ≠ price ≠ stock                                          | Single product row                        | Variants, history, marketplace       |
+| Variant model     | Product → Variant → SKU                                          | Duplicate products                        | Avoid SKU explosion as products      |
+| SKU               | UUID + immutable internal code                                   | DB id as SKU                              | Business identity + barcodes         |
+| Offer             | **Accepted for v1** — commercial boundary                        | Price on Product                          | Multi-seller without catalog rewrite |
+| Seller            | Single merchant v1 + org on Offer                                | Full marketplace now                      | Complexity vs path                   |
+| Pricing           | Integer minor units + ISO currency; KES first                    | Hardcoded KES float                       | Accuracy + expansion                 |
+| Inventory         | **Accepted:** movements + reservations; availability derived     | Qty column; OUT_OF_STOCK as product state | Audit + separate lifecycle           |
+| Categories        | Hierarchical data tree                                           | Hardcoded enums                           | Merchandising flexibility            |
+| Attributes        | Hybrid relational + JSONB specs                                  | EAV / JSONB-only                          | Facets + evolution                   |
+| Media             | Object storage + PG metadata; **images not required for ACTIVE** | BYTEA; hardcoded image-required           | ADR-0006; configurable policy        |
+| Search engine     | **Accepted:** PG FTS + `pg_trgm` + pgvector                      | Dedicated engine at v1                    | Ops + ADR-0006; future ADR to change |
+| Search indexing   | Events → BullMQ → worker                                         | Sync index in API tx                      | API latency; rebuildable             |
+| Facets            | Controlled attributes only                                       | Free JSON facets                          | Safety + indexability                |
+| Recommendations   | Rules/popularity v1                                              | ML cluster                                | Premature infrastructure             |
+| AI discovery      | **Accepted:** tools-only; **never** direct PG                    | Direct SQL / invented facts               | AuthZ + truth                        |
+| Product lifecycle | `DRAFT` `PENDING_REVIEW` `ACTIVE` `INACTIVE` `ARCHIVED`          | OUT_OF_STOCK as lifecycle                 | Stock ≠ content state                |
+| Imports           | Async validate-then-activate                                     | Sync HTTP import                          | Size + quality                       |
+| Consistency       | Strong stock/price; eventual search                              | Search as SoT                             | Commerce safety                      |
+| Storage           | PG SoT; Redis cache; S3 blobs; derived FTS                       | Redis stock                               | ADR-0006                             |
+| Multi-tenancy     | `organizationId` on Offer/inventory                              | Schema-per-seller v1                      | ADR-0008 readiness                   |
 
 ## 47. Architecture diagram
 
@@ -842,17 +842,17 @@ are derived. AI reads through API tools. Media bytes live in object storage.
 
 ## 48. Major trade-offs
 
-| Trade-off | Choice | Cost |
-| --- | --- | --- |
-| Relational core vs flexible specs | Hybrid | Two attribute styles to document |
-| PG FTS vs dedicated search | FTS first | Weaker typo/synonym until stage 2 |
-| Single merchant vs marketplace | Offer-ready, marketplace later | Extra Offer entity at v1 |
-| Strong vs eventual | Strong stock; eventual search | Stale PLP possible |
-| Sync vs async index | Async | Brief search lag after edits |
-| Simple vs pricing engine | List + sale | Revisit for B2B/promotions |
-| Simple vs multi-warehouse | One location + `locationId` | No ATP routing yet |
-| AI vs deterministic discovery | Deterministic search default | Assistant is a client of search |
-| Ops simplicity vs scale | One Postgres | Extract search/vectors when SLOs fail |
+| Trade-off                         | Choice                         | Cost                                  |
+| --------------------------------- | ------------------------------ | ------------------------------------- |
+| Relational core vs flexible specs | Hybrid                         | Two attribute styles to document      |
+| PG FTS vs dedicated search        | FTS first                      | Weaker typo/synonym until stage 2     |
+| Single merchant vs marketplace    | Offer-ready, marketplace later | Extra Offer entity at v1              |
+| Strong vs eventual                | Strong stock; eventual search  | Stale PLP possible                    |
+| Sync vs async index               | Async                          | Brief search lag after edits          |
+| Simple vs pricing engine          | List + sale                    | Revisit for B2B/promotions            |
+| Simple vs multi-warehouse         | One location + `locationId`    | No ATP routing yet                    |
+| AI vs deterministic discovery     | Deterministic search default   | Assistant is a client of search       |
+| Ops simplicity vs scale           | One Postgres                   | Extract search/vectors when SLOs fail |
 
 ## 49. Future evolution
 
@@ -869,13 +869,13 @@ Not in this ADR’s implementation:
 
 ## 50. Implementation dependencies
 
-| ADR | How ADR-0010 depends |
-| --- | --- |
-| ADR-0005 | Nest catalog/inventory modules; guards |
+| ADR      | How ADR-0010 depends                                                                   |
+| -------- | -------------------------------------------------------------------------------------- |
+| ADR-0005 | Nest catalog/inventory modules; guards                                                 |
 | ADR-0006 | PG schemas, Redis cache, BullMQ index jobs, object storage, FTS/pgvector, reservations |
-| ADR-0007 | PLP/PDP/SEO consume catalog APIs |
-| ADR-0008 | `catalog:*` / `inventory:*`; org on offers |
-| ADR-0009 | REST resources, filters, search contract, events, async import jobs |
+| ADR-0007 | PLP/PDP/SEO consume catalog APIs                                                       |
+| ADR-0008 | `catalog:*` / `inventory:*`; org on offers                                             |
+| ADR-0009 | REST resources, filters, search contract, events, async import jobs                    |
 
 **Future ADRs recommended before or alongside first catalog code:**
 

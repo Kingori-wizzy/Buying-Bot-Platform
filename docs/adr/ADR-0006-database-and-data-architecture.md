@@ -58,17 +58,17 @@ This ADR answers:
 
 The data plane must support:
 
-| Need | Implication |
-| --- | --- |
-| ACID orders, inventory, payments | Relational SoT with real transactions |
-| Relationships + reporting | Foreign keys, constraints, SQL |
-| AI/RAG without a second ops plane on day one | Vectors next to metadata if viable |
-| Modular monolith | One primary DB; domain schemas, not new databases per domain |
-| ADR-0005 worker split | API enqueues; `apps/worker` consumes |
-| Clean Architecture | Domain/application code talks to ports, not Prisma |
-| Rebuildability | Cache, search, vectors, analytics are reconstructable |
-| DR honesty | Existing RPO/RTO stay until explicitly revised |
-| Extraction later | Schema/module boundaries, not distributed transactions now |
+| Need                                         | Implication                                                  |
+| -------------------------------------------- | ------------------------------------------------------------ |
+| ACID orders, inventory, payments             | Relational SoT with real transactions                        |
+| Relationships + reporting                    | Foreign keys, constraints, SQL                               |
+| AI/RAG without a second ops plane on day one | Vectors next to metadata if viable                           |
+| Modular monolith                             | One primary DB; domain schemas, not new databases per domain |
+| ADR-0005 worker split                        | API enqueues; `apps/worker` consumes                         |
+| Clean Architecture                           | Domain/application code talks to ports, not Prisma           |
+| Rebuildability                               | Cache, search, vectors, analytics are reconstructable        |
+| DR honesty                                   | Existing RPO/RTO stay until explicitly revised               |
+| Extraction later                             | Schema/module boundaries, not distributed transactions now   |
 
 ## 4. Primary database (system of record)
 
@@ -82,21 +82,21 @@ store may be the sole copy of that state.
 
 ### 4.2 Comparison
 
-| Criterion | PostgreSQL | MySQL / MariaDB | MongoDB |
-| --- | --- | --- | --- |
-| ACID for checkout / payments | Strong, mature | Strong for InnoDB; weaker JSON/extension story | Multi-doc transactions exist; poor default for relational commerce |
-| Inventory consistency + FKs | Native | Native | Application-enforced |
-| Payments / refunds auditability | Constraints + JSONB + triggers | Constraints; JSON weaker | Flexible docs; easy to lose invariants |
-| Relationships (catalog, orders, customers) | First-class | First-class | Embed or manual refs |
-| Reporting / analytics stage 1 | SQL in-place | SQL in-place | Aggregation pipeline; awkward joins |
-| Indexing | B-tree, GIN, GiST, partial, expression | Strong B-tree; fewer extension indexes | Flexible; different ops model |
-| Full-text search (stage 1) | `tsvector` / GIN | FULLTEXT | Text indexes |
-| JSON | JSONB + GIN | JSON (less indexing maturity) | Document-native |
-| Extensions | `pgvector`, `pgcrypto`, `pg_trgm` | Limited equivalent to pgvector | N/A (separate vector product) |
-| Scale path | Vertical → replicas → Citus/partition later | Vertical → replicas | Shard-oriented; ops different |
-| Reliability / PITR | WAL + PITR (cloud and self-host) | Binlog PITR | Oplog; different restore model |
-| Ecosystem with Nest/Prisma/Node 22 | Best fit in this repo’s direction | Fine ORM support; weaker AI extension | Prisma support exists; wrong data model |
-| DX for this TypeScript monorepo | Prisma + SQL + one backup plane | Similar ORM; two-system AI later | Schema-less fights ADR-0002 contracts |
+| Criterion                                  | PostgreSQL                                  | MySQL / MariaDB                                | MongoDB                                                            |
+| ------------------------------------------ | ------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
+| ACID for checkout / payments               | Strong, mature                              | Strong for InnoDB; weaker JSON/extension story | Multi-doc transactions exist; poor default for relational commerce |
+| Inventory consistency + FKs                | Native                                      | Native                                         | Application-enforced                                               |
+| Payments / refunds auditability            | Constraints + JSONB + triggers              | Constraints; JSON weaker                       | Flexible docs; easy to lose invariants                             |
+| Relationships (catalog, orders, customers) | First-class                                 | First-class                                    | Embed or manual refs                                               |
+| Reporting / analytics stage 1              | SQL in-place                                | SQL in-place                                   | Aggregation pipeline; awkward joins                                |
+| Indexing                                   | B-tree, GIN, GiST, partial, expression      | Strong B-tree; fewer extension indexes         | Flexible; different ops model                                      |
+| Full-text search (stage 1)                 | `tsvector` / GIN                            | FULLTEXT                                       | Text indexes                                                       |
+| JSON                                       | JSONB + GIN                                 | JSON (less indexing maturity)                  | Document-native                                                    |
+| Extensions                                 | `pgvector`, `pgcrypto`, `pg_trgm`           | Limited equivalent to pgvector                 | N/A (separate vector product)                                      |
+| Scale path                                 | Vertical → replicas → Citus/partition later | Vertical → replicas                            | Shard-oriented; ops different                                      |
+| Reliability / PITR                         | WAL + PITR (cloud and self-host)            | Binlog PITR                                    | Oplog; different restore model                                     |
+| Ecosystem with Nest/Prisma/Node 22         | Best fit in this repo’s direction           | Fine ORM support; weaker AI extension          | Prisma support exists; wrong data model                            |
+| DX for this TypeScript monorepo            | Prisma + SQL + one backup plane             | Similar ORM; two-system AI later               | Schema-less fights ADR-0002 contracts                              |
 
 MongoDB is rejected for **orders, inventory, and payments**: those domains
 need invariants, unique constraints, and multi-row transactions as the
@@ -135,18 +135,18 @@ adapter. Nest providers bind ports to Prisma implementations.
 
 ### 5.2 Comparison
 
-| Criterion | Prisma | Drizzle | TypeORM | `node-postgres` only |
-| --- | --- | --- | --- | --- |
-| Type safety with ADR-0002 | Generated client; good | SQL-schema TS; excellent | Decorators; weaker exactOptional fit | Manual |
-| Migrations | Prisma Migrate; reviewable SQL | Drizzle Kit; SQL-first | Mixed quality historically | Hand-rolled |
-| Schema as contract | `schema.prisma` | TS schema | Entities | None |
-| Transactions | `$transaction`; must wrap behind `UnitOfWork` | Explicit SQL tx | QueryRunner | Explicit |
-| Query flexibility | Improving; raw SQL escape hatch | Closest to SQL | Query builder + raw | Full |
-| Performance | Good; watch N+1 and `$queryRaw` | Typically leaner | Variable | Best if expert |
-| DX / Nest | Largest Nest + TS mindshare | Growing | Nest historically used it | Slowest delivery |
-| Testing | Test DB + transaction rollback | Same | Same | Same |
-| PostgreSQL | First-class | First-class | First-class | First-class |
-| Long-term | Vendor (Prisma) risk; SQL dump/migrate out is possible | Lower lock-in | Stale patterns in many codebases | Highest staff cost |
+| Criterion                 | Prisma                                                 | Drizzle                  | TypeORM                              | `node-postgres` only |
+| ------------------------- | ------------------------------------------------------ | ------------------------ | ------------------------------------ | -------------------- |
+| Type safety with ADR-0002 | Generated client; good                                 | SQL-schema TS; excellent | Decorators; weaker exactOptional fit | Manual               |
+| Migrations                | Prisma Migrate; reviewable SQL                         | Drizzle Kit; SQL-first   | Mixed quality historically           | Hand-rolled          |
+| Schema as contract        | `schema.prisma`                                        | TS schema                | Entities                             | None                 |
+| Transactions              | `$transaction`; must wrap behind `UnitOfWork`          | Explicit SQL tx          | QueryRunner                          | Explicit             |
+| Query flexibility         | Improving; raw SQL escape hatch                        | Closest to SQL           | Query builder + raw                  | Full                 |
+| Performance               | Good; watch N+1 and `$queryRaw`                        | Typically leaner         | Variable                             | Best if expert       |
+| DX / Nest                 | Largest Nest + TS mindshare                            | Growing                  | Nest historically used it            | Slowest delivery     |
+| Testing                   | Test DB + transaction rollback                         | Same                     | Same                                 | Same                 |
+| PostgreSQL                | First-class                                            | First-class              | First-class                          | First-class          |
+| Long-term                 | Vendor (Prisma) risk; SQL dump/migrate out is possible | Lower lock-in            | Stale patterns in many codebases     | Highest staff cost   |
 
 ### 5.3 Decision
 
@@ -176,16 +176,16 @@ Qdrant, Weaviate, or OpenSearch **because the product is AI-first**.
 
 ### 6.2 Comparison
 
-| Criterion | PG + pgvector | Pinecone | Qdrant / Weaviate | OpenSearch k-NN |
-| --- | --- | --- | --- | --- |
-| Ops complexity now | One database we already run | New SaaS + network + keys | New cluster | New search cluster |
-| Cost at low QPS | Marginal (same PG) | Always-on SaaS | Cluster cost | Cluster cost |
-| Transactional metadata + vector | Same row / same tx | App-level sync | App-level sync | App-level sync |
-| Filtering (tenant, product, locale) | SQL + vector in one query | Metadata filters | Strong | Strong |
-| ANN performance at huge scale | Good until proven otherwise | Purpose-built | Purpose-built | Purpose-built |
-| Backup | Same PITR as commerce | Separate | Separate | Separate |
-| Consistency with catalog deletes | FK / same tx | Drift risk | Drift risk | Drift risk |
-| Migration later | Export embeddings + ids | Standard | Standard | Standard |
+| Criterion                           | PG + pgvector               | Pinecone                  | Qdrant / Weaviate | OpenSearch k-NN    |
+| ----------------------------------- | --------------------------- | ------------------------- | ----------------- | ------------------ |
+| Ops complexity now                  | One database we already run | New SaaS + network + keys | New cluster       | New search cluster |
+| Cost at low QPS                     | Marginal (same PG)          | Always-on SaaS            | Cluster cost      | Cluster cost       |
+| Transactional metadata + vector     | Same row / same tx          | App-level sync            | App-level sync    | App-level sync     |
+| Filtering (tenant, product, locale) | SQL + vector in one query   | Metadata filters          | Strong            | Strong             |
+| ANN performance at huge scale       | Good until proven otherwise | Purpose-built             | Purpose-built     | Purpose-built      |
+| Backup                              | Same PITR as commerce       | Separate                  | Separate          | Separate           |
+| Consistency with catalog deletes    | FK / same tx                | Drift risk                | Drift risk        | Drift risk         |
+| Migration later                     | Export embeddings + ids     | Standard                  | Standard          | Standard           |
 
 Dedicated vector DBs win at **very large** ANN QPS and isolation. This
 platform does not have that load. Product/knowledge embeddings start in the
@@ -239,12 +239,12 @@ importing BullMQ in domain code.
 
 ### 8.2 Alternatives
 
-| Option | Why not as default |
-| --- | --- |
+| Option                             | Why not as default                                                               |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
 | PostgreSQL-backed queues (pg-boss) | Simpler ops; weaker delayed/repeatable job ecosystem; couples OLTP to queue load |
-| Amazon SQS / Google Pub/Sub | Cloud lock-in before IaC exists |
-| Kafka | Event streaming, not a job runner; premature |
-| Nest `@Processor` in `apps/api` | Violates deployable split |
+| Amazon SQS / Google Pub/Sub        | Cloud lock-in before IaC exists                                                  |
+| Kafka                              | Event streaming, not a job runner; premature                                     |
+| Nest `@Processor` in `apps/api`    | Violates deployable split                                                        |
 
 ### 8.3 Queue architecture (when implemented)
 
@@ -274,12 +274,12 @@ Provider is **not** locked to AWS. Implementation should use an S3 API
 (`PutObject`, `GetObject`, presigned URLs) so local MinIO, Cloudflare R2,
 or AWS S3 can be swapped via config.
 
-| Candidate | Role |
-| --- | --- |
-| S3-compatible (recommended interface) | Portable |
-| Cloudflare R2 | Strong later cost/egress option |
-| AWS S3 | Fine production choice when cloud ADR exists |
-| Postgres BYTEA | Rejected for images/video/docs/exports |
+| Candidate                             | Role                                         |
+| ------------------------------------- | -------------------------------------------- |
+| S3-compatible (recommended interface) | Portable                                     |
+| Cloudflare R2                         | Strong later cost/egress option              |
+| AWS S3                                | Fine production choice when cloud ADR exists |
+| Postgres BYTEA                        | Rejected for images/video/docs/exports       |
 
 Objects: product images/video, customer uploads, knowledge documents,
 generated reports/exports, AI source files.
@@ -289,17 +289,17 @@ server-side MIME/size checks when uploads exist (future).
 
 ## 10. Data ownership
 
-| Class | Owner store | Rebuildable? |
-| --- | --- | --- |
-| **Authoritative** | PostgreSQL | N/A (backed up) |
-| **Cache** | Redis | Yes, from PostgreSQL |
-| **Ephemeral** | Redis TTLs, in-memory | Yes, discard |
-| **Search index** | PostgreSQL FTS now; dedicated engine later | Yes, from PostgreSQL |
-| **Vector data** | PostgreSQL pgvector (column on owned rows) | Yes, re-embed from source objects/text |
-| **Object storage** | S3-compatible | Backup bucket; DB holds keys |
-| **Event / job in-flight** | Redis/BullMQ | Replay from Postgres outbox if we add one |
-| **Analytics** | PostgreSQL aggregates now; warehouse later | Yes, from facts in PostgreSQL |
-| **Audit** | PostgreSQL (append-oriented) | Backup only; not rebuilt from cache |
+| Class                     | Owner store                                | Rebuildable?                              |
+| ------------------------- | ------------------------------------------ | ----------------------------------------- |
+| **Authoritative**         | PostgreSQL                                 | N/A (backed up)                           |
+| **Cache**                 | Redis                                      | Yes, from PostgreSQL                      |
+| **Ephemeral**             | Redis TTLs, in-memory                      | Yes, discard                              |
+| **Search index**          | PostgreSQL FTS now; dedicated engine later | Yes, from PostgreSQL                      |
+| **Vector data**           | PostgreSQL pgvector (column on owned rows) | Yes, re-embed from source objects/text    |
+| **Object storage**        | S3-compatible                              | Backup bucket; DB holds keys              |
+| **Event / job in-flight** | Redis/BullMQ                               | Replay from Postgres outbox if we add one |
+| **Analytics**             | PostgreSQL aggregates now; warehouse later | Yes, from facts in PostgreSQL             |
+| **Audit**                 | PostgreSQL (append-oriented)               | Backup only; not rebuilt from cache       |
 
 Optional later: **transactional outbox** table in PostgreSQL so jobs/events
 are not lost if Redis is down at enqueue time. Recommended when payment and
@@ -323,13 +323,13 @@ Analytics           → derived
 
 **If lost:**
 
-| Lost | Recovery |
-| --- | --- |
-| PostgreSQL | Restore PITR/backup (only true disaster for commerce) |
-| Redis | Cold cache; recreate queues; **do not** restore commerce from Redis |
-| Object storage | Restore bucket; reconcile keys vs DB |
-| pgvector | Re-run embedding jobs from documents/products |
-| FTS / analytics | Reindex / reaggregate from PostgreSQL |
+| Lost            | Recovery                                                            |
+| --------------- | ------------------------------------------------------------------- |
+| PostgreSQL      | Restore PITR/backup (only true disaster for commerce)               |
+| Redis           | Cold cache; recreate queues; **do not** restore commerce from Redis |
+| Object storage  | Restore bucket; reconcile keys vs DB                                |
+| pgvector        | Re-run embedding jobs from documents/products                       |
+| FTS / analytics | Reindex / reaggregate from PostgreSQL                               |
 
 ## 12. Transaction strategy
 
@@ -365,14 +365,14 @@ Not implemented. Architectural rules:
 
 ## 14. Idempotency
 
-| Operation | Store of record |
-| --- | --- |
-| Checkout / order create | PostgreSQL unique `(actor, idempotency_key)` |
-| Payment charge/refund | PostgreSQL + provider idempotency |
-| Webhooks | PostgreSQL unique provider event id + signature verify (future) |
-| Inventory adjust | PostgreSQL unique command id |
-| BullMQ jobs | Key in job id + Postgres check before side effects |
-| Integrations | Postgres unique external id |
+| Operation               | Store of record                                                 |
+| ----------------------- | --------------------------------------------------------------- |
+| Checkout / order create | PostgreSQL unique `(actor, idempotency_key)`                    |
+| Payment charge/refund   | PostgreSQL + provider idempotency                               |
+| Webhooks                | PostgreSQL unique provider event id + signature verify (future) |
+| Inventory adjust        | PostgreSQL unique command id                                    |
+| BullMQ jobs             | Key in job id + Postgres check before side effects              |
+| Integrations            | Postgres unique external id                                     |
 
 Redis may cache “already processed” for TTL to shed load. **Redis alone is
 not** the permanent idempotency record for payments, orders, or webhooks.
@@ -396,22 +396,22 @@ When Prisma is introduced (later milestone):
 Do not create tables now. When created, use **PostgreSQL schemas** aligned
 to bounded contexts (not one flat `public` junk drawer):
 
-| Schema (illustrative) | Ownership |
-| --- | --- |
-| `identity` | users, credentials refs, roles |
-| `customers` | shopper profiles, addresses |
-| `catalog` | products, categories, media refs |
-| `inventory` | on-hand, reservations |
-| `cart` | carts, lines |
-| `orders` | orders, lines, state |
-| `payments` | intents, captures, refunds (tokenized refs only) |
-| `promotions` | campaigns, redemptions |
-| `notifications` | delivery records |
-| `conversations` | threads, messages |
-| `ai` | prompts, runs, chunks, embedding columns |
-| `integrations` | provider accounts, webhook receipts |
-| `analytics` | derived rollups (stage 1) |
-| `audit` | append-only security/business events |
+| Schema (illustrative) | Ownership                                        |
+| --------------------- | ------------------------------------------------ |
+| `identity`            | users, credentials refs, roles                   |
+| `customers`           | shopper profiles, addresses                      |
+| `catalog`             | products, categories, media refs                 |
+| `inventory`           | on-hand, reservations                            |
+| `cart`                | carts, lines                                     |
+| `orders`              | orders, lines, state                             |
+| `payments`            | intents, captures, refunds (tokenized refs only) |
+| `promotions`          | campaigns, redemptions                           |
+| `notifications`       | delivery records                                 |
+| `conversations`       | threads, messages                                |
+| `ai`                  | prompts, runs, chunks, embedding columns         |
+| `integrations`        | provider accounts, webhook receipts              |
+| `analytics`           | derived rollups (stage 1)                        |
+| `audit`               | append-only security/business events             |
 
 Nest modules and future extraction map to these schemas. Cross-schema FKs
 are allowed in the monolith; extraction later copies a schema to a new
@@ -426,12 +426,12 @@ database.
 shared-schema multi-tenant move does not rewrite every table. Do not
 implement tenant isolation, routing, or RLS yet.
 
-| Model | Verdict |
-| --- | --- |
-| Shared DB + `tenant_id` | **Recommended evolution path** |
-| Schema-per-tenant | Rejected for v1 (ops and migration cost) |
-| Database-per-tenant | Rejected until a true isolation/compliance ADR |
-| Ignore tenancy in all tables | Rejected (expensive retrofit) |
+| Model                        | Verdict                                        |
+| ---------------------------- | ---------------------------------------------- |
+| Shared DB + `tenant_id`      | **Recommended evolution path**                 |
+| Schema-per-tenant            | Rejected for v1 (ops and migration cost)       |
+| Database-per-tenant          | Rejected until a true isolation/compliance ADR |
+| Ignore tenancy in all tables | Rejected (expensive retrofit)                  |
 
 ## 18. Audit data
 
@@ -491,9 +491,9 @@ test of a sample prefix.
 Existing foundation targets ([disaster-recovery.md](../Deployment/disaster-recovery.md)):
 
 | Metric | Current documented target |
-| --- | --- |
-| RPO | ≤ 24 hours |
-| RTO | ≤ 4 hours |
+| ------ | ------------------------- |
+| RPO    | ≤ 24 hours                |
+| RTO    | ≤ 4 hours                 |
 
 **This ADR does not change those numbers.** They remain appropriate for the
 **current stage** (no production datastore, no customer money in-system).
@@ -509,17 +509,17 @@ SLA.
 
 ## 22. Scalability (introduce when measured)
 
-| Technique | When |
-| --- | --- |
-| Vertical PG | First years; default |
-| Connection pooling (Prisma `connection_limit`, then PgBouncer) | When `too many connections` or worker+api share PG |
-| Indexes | With schema; verify via slow-query log |
-| Read replicas | When read-heavy catalog/admin load dominates writes |
-| Partitioning | Large time-series (audit, messages) at size pain |
-| Redis scale | When rate-limit/queue/cache memory or CPU saturates |
-| Worker replicas | Queue depth / lag SLO breach |
-| Vector extract | When pgvector recall/latency SLO fails |
-| Object CDN | When media bandwidth hurts origin |
+| Technique                                                      | When                                                |
+| -------------------------------------------------------------- | --------------------------------------------------- |
+| Vertical PG                                                    | First years; default                                |
+| Connection pooling (Prisma `connection_limit`, then PgBouncer) | When `too many connections` or worker+api share PG  |
+| Indexes                                                        | With schema; verify via slow-query log              |
+| Read replicas                                                  | When read-heavy catalog/admin load dominates writes |
+| Partitioning                                                   | Large time-series (audit, messages) at size pain    |
+| Redis scale                                                    | When rate-limit/queue/cache memory or CPU saturates |
+| Worker replicas                                                | Queue depth / lag SLO breach                        |
+| Vector extract                                                 | When pgvector recall/latency SLO fails              |
+| Object CDN                                                     | When media bandwidth hurts origin                   |
 
 Do not start with Citus, Kafka, or multi-region active-active.
 
@@ -548,16 +548,16 @@ Do not start with Citus, Kafka, or multi-region active-active.
 
 ## 25. Testing strategy (later)
 
-| Layer | Intent |
-| --- | --- |
-| Unit | Domain + ports; mock `DatabaseClient` |
-| Repository | Adapter tests against test Postgres |
-| Integration | Nest API + test DB |
-| Migration | Apply from empty in CI |
-| Transaction / concurrency | Reservation race tests |
-| Rollback | Expand/contract rehearsals on staging |
-| Backup/restore | Periodic drill — NOT VERIFIED until run |
-| Failure | PG down → API readiness 503; Redis down → degrade cache, fail enqueue or outbox |
+| Layer                     | Intent                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| Unit                      | Domain + ports; mock `DatabaseClient`                                           |
+| Repository                | Adapter tests against test Postgres                                             |
+| Integration               | Nest API + test DB                                                              |
+| Migration                 | Apply from empty in CI                                                          |
+| Transaction / concurrency | Reservation race tests                                                          |
+| Rollback                  | Expand/contract rehearsals on staging                                           |
+| Backup/restore            | Periodic drill — NOT VERIFIED until run                                         |
+| Failure                   | PG down → API readiness 503; Redis down → degrade cache, fail enqueue or outbox |
 
 Do not implement these tests in this ADR.
 
@@ -587,14 +587,14 @@ OpenTelemetry is not implemented here.
 
 ## 28. Failure behavior
 
-| Dependency down | Default behavior |
-| --- | --- |
-| PostgreSQL | **Fail closed** for commerce writes/reads that need SoT. Liveness up; readiness down. |
-| Redis | **Degrade:** skip cache; **fail** new job enqueue unless outbox exists; rate-limit may fail closed (safer) for auth/AI. Commerce reads from PG still work. |
-| Object storage | **Fail** uploads; product pages degrade (broken media); metadata in PG remains. |
-| Workers | API accepts; jobs queue (if Redis up) or outbox; **degrade** notifications/embeddings. Checkout still commits in PG. |
-| pgvector / FTS | **Degrade** semantic/keyword search; exact catalog ID lookup still works. |
-| External providers | Timeout + retry + persist intent; never lose order because Stripe was slow. |
+| Dependency down    | Default behavior                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PostgreSQL         | **Fail closed** for commerce writes/reads that need SoT. Liveness up; readiness down.                                                                      |
+| Redis              | **Degrade:** skip cache; **fail** new job enqueue unless outbox exists; rate-limit may fail closed (safer) for auth/AI. Commerce reads from PG still work. |
+| Object storage     | **Fail** uploads; product pages degrade (broken media); metadata in PG remains.                                                                            |
+| Workers            | API accepts; jobs queue (if Redis up) or outbox; **degrade** notifications/embeddings. Checkout still commits in PG.                                       |
+| pgvector / FTS     | **Degrade** semantic/keyword search; exact catalog ID lookup still works.                                                                                  |
+| External providers | Timeout + retry + persist intent; never lose order because Stripe was slow.                                                                                |
 
 ## 29. Future service extraction
 
@@ -636,65 +636,65 @@ until scale says otherwise.
 
 ## 31. Decision matrix
 
-| Component | Decision | Purpose | Source of truth? |
-| --- | --- | --- | --- |
-| PostgreSQL | **Adopt** (16+) | Transactional commerce, identity, audit, AI metadata | **Yes** — authoritative |
-| Prisma | **Adopt** behind `@buying-bot/database` | Typed access + migrations | No (client only) |
-| pgvector | **Adopt in-cluster** | Embeddings / RAG / semantic search | Derived; rebuildable; stored in PG |
-| Redis | **Adopt** | Cache, rate limit, locks, queue broker | **No** |
-| BullMQ | **Adopt** on Redis | Async jobs in `apps/worker` | In-flight only; business result in PG |
-| Object storage | **S3-compatible** | Images, docs, exports | Authoritative for **bytes**; keys in PG |
-| Search engine | **Deferred** | Dedicated ES/Meilisearch/etc. | Derived when introduced |
-| Analytics store | **Deferred** | Warehouse / OLAP | Derived when introduced |
+| Component       | Decision                                | Purpose                                              | Source of truth?                        |
+| --------------- | --------------------------------------- | ---------------------------------------------------- | --------------------------------------- |
+| PostgreSQL      | **Adopt** (16+)                         | Transactional commerce, identity, audit, AI metadata | **Yes** — authoritative                 |
+| Prisma          | **Adopt** behind `@buying-bot/database` | Typed access + migrations                            | No (client only)                        |
+| pgvector        | **Adopt in-cluster**                    | Embeddings / RAG / semantic search                   | Derived; rebuildable; stored in PG      |
+| Redis           | **Adopt**                               | Cache, rate limit, locks, queue broker               | **No**                                  |
+| BullMQ          | **Adopt** on Redis                      | Async jobs in `apps/worker`                          | In-flight only; business result in PG   |
+| Object storage  | **S3-compatible**                       | Images, docs, exports                                | Authoritative for **bytes**; keys in PG |
+| Search engine   | **Deferred**                            | Dedicated ES/Meilisearch/etc.                        | Derived when introduced                 |
+| Analytics store | **Deferred**                            | Warehouse / OLAP                                     | Derived when introduced                 |
 
 ## 32. Search engine
 
 PostgreSQL `tsvector` + `pg_trgm` + pgvector cover stage 1 catalog and RAG.
 
-| Stage | When | What |
-| --- | --- | --- |
-| **1** | First product search | PostgreSQL FTS + filters + pgvector |
+| Stage | When                             | What                                                   |
+| ----- | -------------------------------- | ------------------------------------------------------ |
+| **1** | First product search             | PostgreSQL FTS + filters + pgvector                    |
 | **2** | Ranking/typo/facet limits proven | Evaluate Meilisearch/Typesense (lighter) or OpenSearch |
-| **3** | Cross-channel relevance at scale | Dedicated search cluster; PG remains SoT |
+| **3** | Cross-channel relevance at scale | Dedicated search cluster; PG remains SoT               |
 
 Do **not** add Elasticsearch now.
 
 ## 33. Analytics
 
-| Stage | Approach |
-| --- | --- |
+| Stage | Approach                                                       |
+| ----- | -------------------------------------------------------------- |
 | **1** | Facts in PostgreSQL; `analytics` schema rollups; admin SQL/API |
-| **2** | Nightly extracts if OLTP suffers |
-| **3** | Warehouse (BigQuery/Snowflake/ClickHouse) only with a new ADR |
+| **2** | Nightly extracts if OLTP suffers                               |
+| **3** | Warehouse (BigQuery/Snowflake/ClickHouse) only with a new ADR  |
 
 No Kafka/ClickHouse/Snowflake now.
 
 ## 34. AI data placement
 
-| Data | Store |
-| --- | --- |
-| Prompts, prompt versions, model metadata | PostgreSQL `ai` |
-| Conversations, messages | PostgreSQL `conversations` / `ai` |
-| Documents, chunk text, retrieval metadata | PostgreSQL + object key for original file |
-| Embeddings | pgvector column on chunk/product rows |
-| Tool execution records | PostgreSQL `audit` + `ai` (high-risk tools) |
-| Evaluation sets/scores | PostgreSQL `ai` |
-| Knowledge files | Object storage + PG metadata |
+| Data                                      | Store                                       |
+| ----------------------------------------- | ------------------------------------------- |
+| Prompts, prompt versions, model metadata  | PostgreSQL `ai`                             |
+| Conversations, messages                   | PostgreSQL `conversations` / `ai`           |
+| Documents, chunk text, retrieval metadata | PostgreSQL + object key for original file   |
+| Embeddings                                | pgvector column on chunk/product rows       |
+| Tool execution records                    | PostgreSQL `audit` + `ai` (high-risk tools) |
+| Evaluation sets/scores                    | PostgreSQL `ai`                             |
+| Knowledge files                           | Object storage + PG metadata                |
 
 Transactional AI records ≠ the ANN index. Deleting a product deletes or
 tombstones its embedding row in the same database.
 
 ## 35. Data lifecycle
 
-| Category | Create | Update | Archive / delete | Restore |
-| --- | --- | --- | --- | --- |
-| Customer PII | PG | PG | Anonymize/delete per future policy; keep financial skeleton | From PG backup |
-| Orders / payments | PG | State machine only | Retain for accounting; no silent delete | PITR |
-| Logs | App logs (not PG blobs) | — | Retention on log store | Not a ledger |
-| Conversations | PG | PG | Retention/delete with PII policy | PG backup |
-| Embeddings | Worker job | Re-embed on source change | Delete with source | Rebuild |
-| Documents | S3 + PG | New version object | Delete object + row | Bucket + DB |
-| Audit | Append PG | No update | Retention then purge | Backup only |
+| Category          | Create                  | Update                    | Archive / delete                                            | Restore        |
+| ----------------- | ----------------------- | ------------------------- | ----------------------------------------------------------- | -------------- |
+| Customer PII      | PG                      | PG                        | Anonymize/delete per future policy; keep financial skeleton | From PG backup |
+| Orders / payments | PG                      | State machine only        | Retain for accounting; no silent delete                     | PITR           |
+| Logs              | App logs (not PG blobs) | —                         | Retention on log store                                      | Not a ledger   |
+| Conversations     | PG                      | PG                        | Retention/delete with PII policy                            | PG backup      |
+| Embeddings        | Worker job              | Re-embed on source change | Delete with source                                          | Rebuild        |
+| Documents         | S3 + PG                 | New version object        | Delete object + row                                         | Bucket + DB    |
+| Audit             | Append PG               | No update                 | Retention then purge                                        | Backup only    |
 
 ## 36. Final recommendation
 
@@ -770,18 +770,18 @@ Those require separate implementation milestones after this ADR is
 
 ## 39. Rejected alternatives (summary)
 
-| Alternative | Why not now |
-| --- | --- |
-| MongoDB as SoT | Weak invariants for orders/inventory/payments |
-| MySQL as SoT | Weaker extension/pgvector path |
-| Drizzle as default ORM | Viable; Prisma preferred for migrate/DX unless Prisma blocks |
-| TypeORM | Poor fit to strict TS and migration discipline |
-| Pinecone/Qdrant/Weaviate at v1 | Extra ops/cost; consistency split |
-| Elasticsearch at v1 | PG FTS + vectors suffice |
-| Redis as order/cart/payment store | Violates SoT and existing package comments |
-| Kafka / warehouse at v1 | Premature |
-| Schema- or DB-per-tenant at v1 | Ops cost; `tenant_id` readiness instead |
-| BYTEA for product media | Use object storage |
+| Alternative                       | Why not now                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| MongoDB as SoT                    | Weak invariants for orders/inventory/payments                |
+| MySQL as SoT                      | Weaker extension/pgvector path                               |
+| Drizzle as default ORM            | Viable; Prisma preferred for migrate/DX unless Prisma blocks |
+| TypeORM                           | Poor fit to strict TS and migration discipline               |
+| Pinecone/Qdrant/Weaviate at v1    | Extra ops/cost; consistency split                            |
+| Elasticsearch at v1               | PG FTS + vectors suffice                                     |
+| Redis as order/cart/payment store | Violates SoT and existing package comments                   |
+| Kafka / warehouse at v1           | Premature                                                    |
+| Schema- or DB-per-tenant at v1    | Ops cost; `tenant_id` readiness instead                      |
+| BYTEA for product media           | Use object storage                                           |
 
 ## 40. Decision status
 

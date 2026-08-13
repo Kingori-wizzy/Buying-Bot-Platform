@@ -8,3 +8,4 @@ out
 pnpm-lock.yaml
 *.tsbuildinfo
 CHANGELOG.md
+results.sarif

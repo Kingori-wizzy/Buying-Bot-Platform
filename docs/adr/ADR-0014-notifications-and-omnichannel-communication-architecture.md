@@ -45,23 +45,23 @@ Critical commerce transactions **never wait** on provider HTTP.
 
 ## 5. Communication classes
 
-| Class | Examples | Required for checkout? | Consent |
-| --- | --- | --- | --- |
-| **Transactional** | Order/payment confirmation, OTP, shipping updates, refunds | Yes (attempted) | Account/service necessity |
-| **Operational** | Admin alerts, fraud flags (future) | N/A | Staff accounts |
-| **Marketing** | Promos, abandoned cart campaigns | **Never** | Explicit opt-in |
+| Class             | Examples                                                   | Required for checkout? | Consent                   |
+| ----------------- | ---------------------------------------------------------- | ---------------------- | ------------------------- |
+| **Transactional** | Order/payment confirmation, OTP, shipping updates, refunds | Yes (attempted)        | Account/service necessity |
+| **Operational**   | Admin alerts, fraud flags (future)                         | N/A                    | Staff accounts            |
+| **Marketing**     | Promos, abandoned cart campaigns                           | **Never**              | Explicit opt-in           |
 
 Marketing must **never** be treated as mandatory transactional mail.
 
 ## 6. Channels (v1 vs future)
 
-| Channel | v1 | Notes |
-| --- | --- | --- |
-| Email | **Yes** | Primary receipts |
-| SMS | **Yes** (Kenya) | OTP + critical alerts |
-| WhatsApp | **Ready** via adapter; enable when Business API ready | Omnichannel |
-| Push | Future (mobile) | — |
-| In-app | Future | Store notification rows |
+| Channel  | v1                                                    | Notes                   |
+| -------- | ----------------------------------------------------- | ----------------------- |
+| Email    | **Yes**                                               | Primary receipts        |
+| SMS      | **Yes** (Kenya)                                       | OTP + critical alerts   |
+| WhatsApp | **Ready** via adapter; enable when Business API ready | Omnichannel             |
+| Push     | Future (mobile)                                       | —                       |
+| In-app   | Future                                                | Store notification rows |
 
 ## 7. Architecture
 
@@ -106,13 +106,13 @@ Fail closed on OTP abuse paths.
 
 ## 10. Data ownership
 
-| Store | Role |
-| --- | --- |
-| PostgreSQL | Intents, deliveries, templates, preferences, consent |
-| Redis | Rate limits, ephemeral queues |
-| BullMQ | Transport |
-| Object storage | Large template assets / attachments if any |
-| Providers | External delivery state |
+| Store          | Role                                                 |
+| -------------- | ---------------------------------------------------- |
+| PostgreSQL     | Intents, deliveries, templates, preferences, consent |
+| Redis          | Rate limits, ephemeral queues                        |
+| BullMQ         | Transport                                            |
+| Object storage | Large template assets / attachments if any           |
+| Providers      | External delivery state                              |
 
 ## 11. Security / PII
 

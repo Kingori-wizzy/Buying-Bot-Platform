@@ -4,11 +4,11 @@
 
 ## Apps
 
-| App | Focus |
-| --- | --- |
-| web | Catalog, PDP, cart, checkout, account, AI chat |
+| App   | Focus                                                       |
+| ----- | ----------------------------------------------------------- |
+| web   | Catalog, PDP, cart, checkout, account, AI chat              |
 | admin | Catalog, inventory, orders, payments, promos, audit, AI ops |
-| docs | Architecture documentation site |
+| docs  | Architecture documentation site                             |
 
 ## Patterns
 

@@ -1,12 +1,12 @@
 # System Design Specification (SDS)
 
-| Field | Value |
-| --- | --- |
-| Document ID | BBP-SDS-001 |
-| Version | 1.0.0 |
-| Date | 2026-08-13 |
-| Status | Design baseline from Accepted ADRs |
-| Precedence | Accepted ADRs > SDS |
+| Field       | Value                              |
+| ----------- | ---------------------------------- |
+| Document ID | BBP-SDS-001                        |
+| Version     | 1.0.0                              |
+| Date        | 2026-08-13                         |
+| Status      | Design baseline from Accepted ADRs |
+| Precedence  | Accepted ADRs > SDS                |
 
 ## 1. Architecture overview
 

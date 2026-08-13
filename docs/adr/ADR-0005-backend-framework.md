@@ -16,16 +16,16 @@ microservice extraction without starting as a distributed system.
 
 Current backend reality (verified in-repo, not aspirational):
 
-| Asset | Current state |
-| --- | --- |
-| `apps/api` | Node ops shell (ADR-0004). Health/live/ready, typed env, JSON logs, graceful shutdown. **No product routes.** |
-| `apps/worker` | Separate deployable. Ops shell only. Queue consumers deferred. |
-| `apps/ai-service` | Separate deployable. Model orchestration process. Ports live in `@buying-bot/ai-core`. |
-| `@buying-bot/auth` | `Authenticator` / `Authorizer` / `AuthPrincipal` / RBAC vocabulary. No IdP. |
-| `@buying-bot/validation` | Zod + `parseOrThrow`. |
-| `@buying-bot/database` | `DatabaseClient` / `UnitOfWork` ports. No Prisma. |
-| `@buying-bot/utils` | `createOpsServer` on `node:http`. ADR-0004 forbids growing business routes here. |
-| `@buying-bot/sdk` | Typed client with health + `PlatformApiError`. |
+| Asset                    | Current state                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `apps/api`               | Node ops shell (ADR-0004). Health/live/ready, typed env, JSON logs, graceful shutdown. **No product routes.** |
+| `apps/worker`            | Separate deployable. Ops shell only. Queue consumers deferred.                                                |
+| `apps/ai-service`        | Separate deployable. Model orchestration process. Ports live in `@buying-bot/ai-core`.                        |
+| `@buying-bot/auth`       | `Authenticator` / `Authorizer` / `AuthPrincipal` / RBAC vocabulary. No IdP.                                   |
+| `@buying-bot/validation` | Zod + `parseOrThrow`.                                                                                         |
+| `@buying-bot/database`   | `DatabaseClient` / `UnitOfWork` ports. No Prisma.                                                             |
+| `@buying-bot/utils`      | `createOpsServer` on `node:http`. ADR-0004 forbids growing business routes here.                              |
+| `@buying-bot/sdk`        | Typed client with health + `PlatformApiError`.                                                                |
 
 ADR-0004 explicitly deferred NestJS/Fastify until this ADR. Contributors must
 not add domain HTTP on the interim ops server.
@@ -94,11 +94,11 @@ Must support, in this repository’s topology:
 
 ## 4. Options considered
 
-| ID | Option | What it would mean here |
-| --- | --- | --- |
-| A | **NestJS + Fastify adapter** | Nest application framework (`@nestjs/core`) with `@nestjs/platform-fastify` as the HTTP server for `apps/api`. |
-| B | **NestJS + Express adapter** | Same Nest programming model with `@nestjs/platform-express` (Nest default). |
-| C | **Fastify standalone** | Fastify + plugins (`@fastify/sensible`, `@fastify/swagger`, custom DI such as Awilix) as the application framework. |
+| ID  | Option                       | What it would mean here                                                                                             |
+| --- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| A   | **NestJS + Fastify adapter** | Nest application framework (`@nestjs/core`) with `@nestjs/platform-fastify` as the HTTP server for `apps/api`.      |
+| B   | **NestJS + Express adapter** | Same Nest programming model with `@nestjs/platform-express` (Nest default).                                         |
+| C   | **Fastify standalone**       | Fastify + plugins (`@fastify/sensible`, `@fastify/swagger`, custom DI such as Awilix) as the application framework. |
 
 Not in scope for this comparison: Koa, Hono, tRPC, GraphQL-first, or remaining
 on `node:http`.
@@ -108,28 +108,28 @@ on `node:http`.
 Scoring is relative to Buying Bot Platform (higher is better). 1 = poor fit,
 5 = strong fit.
 
-| Requirement | A Nest + Fastify | B Nest + Express | C Fastify standalone |
-| --- | ---: | ---: | ---: |
-| Modular monolith / Nest-style modules as bounded contexts | 5 | 5 | 2 |
-| DDD + Clean Architecture (ports in `packages/*`) | 5 | 5 | 3 |
-| First-class DI matching `Authenticator` / `DatabaseClient` | 5 | 5 | 2 |
-| AuthN/AuthZ/RBAC guards on every route | 5 | 5 | 3 |
-| Zod validation (`@buying-bot/validation`) | 4 | 4 | 5 |
-| API versioning | 5 | 5 | 3 |
-| OpenAPI → future SDK generation | 5 | 5 | 4 |
-| Keep `apps/worker` separate; API only enqueues | 4 | 4 | 4 |
-| In-process events, later broker | 5 | 5 | 3 |
-| Call `apps/ai-service` without coupling AI into API modules | 5 | 5 | 4 |
-| Payment/omnichannel webhooks (raw body, idempotency) | 4 | 4 | 5 |
-| Observability (replace `createOpsServer`, keep contracts) | 4 | 4 | 4 |
-| Testing (Vitest + HTTP) | 4 | 4 | 4 |
-| Runtime performance (webhooks, AI proxy, fan-in) | 5 | 3 | 5 |
-| Horizontal scale / statelessness | 5 | 5 | 5 |
-| Maintainability as domains grow | 5 | 5 | 2 |
-| Developer experience for this monorepo | 4 | 4 | 3 |
-| Future module → microservice extraction | 5 | 5 | 3 |
-| Team scalability / convention over invention | 5 | 5 | 2 |
-| **Weighted fit (unweighted sum)** | **89** | **85** | **71** |
+| Requirement                                                 | A Nest + Fastify | B Nest + Express | C Fastify standalone |
+| ----------------------------------------------------------- | ---------------: | ---------------: | -------------------: |
+| Modular monolith / Nest-style modules as bounded contexts   |                5 |                5 |                    2 |
+| DDD + Clean Architecture (ports in `packages/*`)            |                5 |                5 |                    3 |
+| First-class DI matching `Authenticator` / `DatabaseClient`  |                5 |                5 |                    2 |
+| AuthN/AuthZ/RBAC guards on every route                      |                5 |                5 |                    3 |
+| Zod validation (`@buying-bot/validation`)                   |                4 |                4 |                    5 |
+| API versioning                                              |                5 |                5 |                    3 |
+| OpenAPI → future SDK generation                             |                5 |                5 |                    4 |
+| Keep `apps/worker` separate; API only enqueues              |                4 |                4 |                    4 |
+| In-process events, later broker                             |                5 |                5 |                    3 |
+| Call `apps/ai-service` without coupling AI into API modules |                5 |                5 |                    4 |
+| Payment/omnichannel webhooks (raw body, idempotency)        |                4 |                4 |                    5 |
+| Observability (replace `createOpsServer`, keep contracts)   |                4 |                4 |                    4 |
+| Testing (Vitest + HTTP)                                     |                4 |                4 |                    4 |
+| Runtime performance (webhooks, AI proxy, fan-in)            |                5 |                3 |                    5 |
+| Horizontal scale / statelessness                            |                5 |                5 |                    5 |
+| Maintainability as domains grow                             |                5 |                5 |                    2 |
+| Developer experience for this monorepo                      |                4 |                4 |                    3 |
+| Future module → microservice extraction                     |                5 |                5 |                    3 |
+| Team scalability / convention over invention                |                5 |                5 |                    2 |
+| **Weighted fit (unweighted sum)**                           |           **89** |           **85** |               **71** |
 
 Notes on close scores:
 
@@ -224,14 +224,14 @@ Notes on close scores:
 
 ## 8. Operational implications
 
-| Concern | A Nest + Fastify | B Nest + Express | C Fastify |
-| --- | --- | --- | --- |
-| Replace ADR-0004 `createOpsServer` | Nest Terminus or Fastify routes calling existing `aggregateHealth` / `processHealthCheck` | Same | Fastify routes wrapping the same helpers |
-| Graceful shutdown | Nest `enableShutdownHooks` + existing `installGracefulShutdown` pattern | Same | Fastify `onClose` |
-| Docker / non-root / healthcheck | Unchanged image contract (`/health/live`) | Unchanged | Unchanged |
-| Process split | API ≠ worker ≠ AI service (EAD) | Same | Same |
-| Redis | Cache + BullMQ **producer** in API; **consumer** in `apps/worker` | Same | Same |
-| Config | Keep `@buying-bot/config` fail-fast; Nest `ConfigModule` must not introduce a second env parser | Same | Fastify env plugin must not fork env schemas |
+| Concern                            | A Nest + Fastify                                                                                | B Nest + Express | C Fastify                                    |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------- | -------------------------------------------- |
+| Replace ADR-0004 `createOpsServer` | Nest Terminus or Fastify routes calling existing `aggregateHealth` / `processHealthCheck`       | Same             | Fastify routes wrapping the same helpers     |
+| Graceful shutdown                  | Nest `enableShutdownHooks` + existing `installGracefulShutdown` pattern                         | Same             | Fastify `onClose`                            |
+| Docker / non-root / healthcheck    | Unchanged image contract (`/health/live`)                                                       | Unchanged        | Unchanged                                    |
+| Process split                      | API ≠ worker ≠ AI service (EAD)                                                                 | Same             | Same                                         |
+| Redis                              | Cache + BullMQ **producer** in API; **consumer** in `apps/worker`                               | Same             | Same                                         |
+| Config                             | Keep `@buying-bot/config` fail-fast; Nest `ConfigModule` must not introduce a second env parser | Same             | Fastify env plugin must not fork env schemas |
 
 Operational rule for all options: **do not run BullMQ processors inside
 `apps/api`**. That would collapse the worker deployable the EAD already
@@ -240,19 +240,19 @@ separated for independent scale and failure isolation.
 ## 9. Security implications
 
 Buying Bot Platform will handle commerce, personal data, payments, and AI
-tool calls. Framework choice affects *where* controls live, not whether they
+tool calls. Framework choice affects _where_ controls live, not whether they
 exist.
 
-| Control | A / B (Nest) | C (Fastify) |
-| --- | --- | --- |
-| AuthN | Guard wrapping `Authenticator.authenticate` | `preHandler` wrapping the same port |
-| AuthZ / RBAC | Guard wrapping `Authorizer.isAllowed` per route metadata | Manual hook; easy to forget on a new route |
-| Admin vs public API | Nest modules + distinct guard sets | Plugin encapsulation; weaker default |
-| Webhook authenticity | Fastify raw body (A) or Express raw body (B) + adapter | Fastify raw body (strong) |
-| Validation / mass assignment | Zod DTOs at the HTTP edge | Fastify schema (strong) |
-| Error leakage | Nest exception filter mapping to `ApiErrorBody`; no stacks in production (already in ops server) | Custom error handler; must reimplement |
-| AI tool abuse | Guard + `AiToolDefinition.requiresHumanApproval` before any write/payment tool | Same ports; easier to call tools from a route accidentally |
-| Rate limiting | Nest guard + later Redis store | Fastify rate-limit plugin |
+| Control                      | A / B (Nest)                                                                                     | C (Fastify)                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| AuthN                        | Guard wrapping `Authenticator.authenticate`                                                      | `preHandler` wrapping the same port                        |
+| AuthZ / RBAC                 | Guard wrapping `Authorizer.isAllowed` per route metadata                                         | Manual hook; easy to forget on a new route                 |
+| Admin vs public API          | Nest modules + distinct guard sets                                                               | Plugin encapsulation; weaker default                       |
+| Webhook authenticity         | Fastify raw body (A) or Express raw body (B) + adapter                                           | Fastify raw body (strong)                                  |
+| Validation / mass assignment | Zod DTOs at the HTTP edge                                                                        | Fastify schema (strong)                                    |
+| Error leakage                | Nest exception filter mapping to `ApiErrorBody`; no stacks in production (already in ops server) | Custom error handler; must reimplement                     |
+| AI tool abuse                | Guard + `AiToolDefinition.requiresHumanApproval` before any write/payment tool                   | Same ports; easier to call tools from a route accidentally |
+| Rate limiting                | Nest guard + later Redis store                                                                   | Fastify rate-limit plugin                                  |
 
 Nest does **not** implement AuthN/Z by itself. This ADR does not authorize
 Passport, JWT libraries, or session stores. It only requires that the chosen
@@ -271,11 +271,11 @@ Expected API hot paths (future, not measured):
 - Catalog search/read (cacheable; Redis later)
 - Admin RBAC-heavy reads
 
-| Option | Implication for those paths |
-| --- | --- |
-| A | Fastify I/O + Nest overhead (DI, guards, interceptors). Overhead is CPU-cheap relative to model/DB/network. Acceptable. |
-| B | Express adapter adds unnecessary HTTP overhead on webhook/AI fan-in with **no** compensating platform need. |
-| C | Fastest HTTP. Gains are real but smaller than queue offload, caching, and not blocking webhooks on AI/provider I/O. |
+| Option | Implication for those paths                                                                                             |
+| ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| A      | Fastify I/O + Nest overhead (DI, guards, interceptors). Overhead is CPU-cheap relative to model/DB/network. Acceptable. |
+| B      | Express adapter adds unnecessary HTTP overhead on webhook/AI fan-in with **no** compensating platform need.             |
+| C      | Fastest HTTP. Gains are real but smaller than queue offload, caching, and not blocking webhooks on AI/provider I/O.     |
 
 Performance rule (all options): webhooks must acknowledge and enqueue;
 reconciliation and AI work belong in `apps/worker` / `apps/ai-service`.
@@ -288,10 +288,10 @@ benchmarked on this repo. **NOT VERIFIED** as numbers.
 Current tests: Vitest on packages + HTTP smoke tests against ADR-0004 ops
 endpoints.
 
-| Option | How `apps/api` should be tested |
-| --- | --- |
-| A / B | Nest testing module: mock `Authenticator`, `DatabaseClient`, queue port; `supertest` or Fastify inject against the Nest app. Domain unit tests stay in packages with **zero** Nest imports. |
-| C | Fastify `app.inject()`. Same mock ports. Team must invent module test harnesses. |
+| Option | How `apps/api` should be tested                                                                                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A / B  | Nest testing module: mock `Authenticator`, `DatabaseClient`, queue port; `supertest` or Fastify inject against the Nest app. Domain unit tests stay in packages with **zero** Nest imports. |
+| C      | Fastify `app.inject()`. Same mock ports. Team must invent module test harnesses.                                                                                                            |
 
 All options must keep `packages/*` unit-testable without booting HTTP.
 
@@ -391,15 +391,15 @@ Justification specific to this platform:
 
 ## 16. Rejected alternatives
 
-| Alternative | Why rejected for Buying Bot Platform |
-| --- | --- |
-| **B — NestJS + Express adapter** | Same application model as A with a slower HTTP adapter and Express middleware gravity. No in-repo Express requirement. Worse fit for webhook/AI ingress. |
-| **C — Fastify standalone** | Strong HTTP, weak modular-monolith enforcement. Would force a custom DI/module/guard system while domains, payments, and channels are being built. Poor team-scale and extraction story. |
-| Remain on `node:http` (`createOpsServer`) | ADR-0004 already forbids product routes there. |
-| Koa / Hono / tRPC | Would add a stack not aligned with Nest module extraction or the existing OpenAPI/SDK path; not requested. |
-| Nest default `class-validator` DTO style | Conflicts with `@buying-bot/validation` (Zod) and ADR-0002 strict TS. |
-| Nest monolith that also runs workers and AI | Violates EAD deployable split (`api` / `worker` / `ai-service`) and failure isolation. |
-| Microservices now | Violates modular-monolith-first principle. |
+| Alternative                                 | Why rejected for Buying Bot Platform                                                                                                                                                     |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **B — NestJS + Express adapter**            | Same application model as A with a slower HTTP adapter and Express middleware gravity. No in-repo Express requirement. Worse fit for webhook/AI ingress.                                 |
+| **C — Fastify standalone**                  | Strong HTTP, weak modular-monolith enforcement. Would force a custom DI/module/guard system while domains, payments, and channels are being built. Poor team-scale and extraction story. |
+| Remain on `node:http` (`createOpsServer`)   | ADR-0004 already forbids product routes there.                                                                                                                                           |
+| Koa / Hono / tRPC                           | Would add a stack not aligned with Nest module extraction or the existing OpenAPI/SDK path; not requested.                                                                               |
+| Nest default `class-validator` DTO style    | Conflicts with `@buying-bot/validation` (Zod) and ADR-0002 strict TS.                                                                                                                    |
+| Nest monolith that also runs workers and AI | Violates EAD deployable split (`api` / `worker` / `ai-service`) and failure isolation.                                                                                                   |
+| Microservices now                           | Violates modular-monolith-first principle.                                                                                                                                               |
 
 ## 17. Decision status
 

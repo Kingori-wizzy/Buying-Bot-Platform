@@ -2,26 +2,26 @@
 
 ## Phases
 
-| Phase | Milestones | Type |
-| --- | --- | --- |
-| Documentation | M0 | DOCUMENTATION |
-| Foundation | M1–M3 | ARCHITECTURE→IMPLEMENTATION |
-| Identity | M4–M5 | IMPLEMENTATION + TESTING |
-| Sellable catalog | M6–M8 | IMPLEMENTATION + TESTING |
-| Commerce core | M9–M12 | IMPLEMENTATION + HARDENING |
-| Experiences | M13–M14 | IMPLEMENTATION |
-| AI | M15–M17 | IMPLEMENTATION + EVAL |
-| Platform ops | M18–M22 | HARDENING + TESTING |
-| Launch | M23–M25 | DEPLOYMENT |
+| Phase            | Milestones | Type                        |
+| ---------------- | ---------- | --------------------------- |
+| Documentation    | M0         | DOCUMENTATION               |
+| Foundation       | M1–M3      | ARCHITECTURE→IMPLEMENTATION |
+| Identity         | M4–M5      | IMPLEMENTATION + TESTING    |
+| Sellable catalog | M6–M8      | IMPLEMENTATION + TESTING    |
+| Commerce core    | M9–M12     | IMPLEMENTATION + HARDENING  |
+| Experiences      | M13–M14    | IMPLEMENTATION              |
+| AI               | M15–M17    | IMPLEMENTATION + EVAL       |
+| Platform ops     | M18–M22    | HARDENING + TESTING         |
+| Launch           | M23–M25    | DEPLOYMENT                  |
 
 ## Work package template (each milestone)
 
-1. Design spike against ADR/SRS  
-2. Implement behind feature flags if needed  
-3. Unit + integration tests in same PR  
-4. Update OpenAPI/SDK when APIs land  
-5. Docs delta  
-6. Acceptance gate from milestones.md  
+1. Design spike against ADR/SRS
+2. Implement behind feature flags if needed
+3. Unit + integration tests in same PR
+4. Update OpenAPI/SDK when APIs land
+5. Docs delta
+6. Acceptance gate from milestones.md
 
 ## Critical path
 

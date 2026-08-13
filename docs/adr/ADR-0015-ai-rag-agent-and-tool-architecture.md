@@ -52,12 +52,12 @@ Customer → Nest API (AuthN/AuthZ) → apps/ai-service (service JWT)
 
 ## 5. Service boundary
 
-| Component | Role |
-| --- | --- |
-| `apps/api` | AuthZ edge; conversation CRUD; tool gateway for user-scoped calls |
-| `apps/ai-service` | Model orchestration, RAG retrieval planning, streaming |
-| `@buying-bot/ai-core` | Ports: ModelProvider, embeddings, tool defs, risk levels |
-| `apps/worker` | Ingestion/embedding jobs |
+| Component             | Role                                                              |
+| --------------------- | ----------------------------------------------------------------- |
+| `apps/api`            | AuthZ edge; conversation CRUD; tool gateway for user-scoped calls |
+| `apps/ai-service`     | Model orchestration, RAG retrieval planning, streaming            |
+| `@buying-bot/ai-core` | Ports: ModelProvider, embeddings, tool defs, risk levels          |
+| `apps/worker`         | Ingestion/embedding jobs                                          |
 
 ## 6. Model & embeddings
 
@@ -70,11 +70,11 @@ pgvector embeddings in PostgreSQL (ADR-0006); rebuildable.
 
 ## 7. RAG architecture
 
-| Corpus | Purpose | Trust |
-| --- | --- | --- |
-| Policy / FAQ / help docs | Informational | Knowledge — cite sources |
+| Corpus                           | Purpose                | Trust                          |
+| -------------------------------- | ---------------------- | ------------------------------ |
+| Policy / FAQ / help docs         | Informational          | Knowledge — cite sources       |
 | Catalog text for semantic recall | Candidate **ids** only | Then hydrate via catalog tools |
-| Operational/transactional data | **Not** RAG corpus | Tools only |
+| Operational/transactional data   | **Not** RAG corpus     | Tools only                     |
 
 Flow: ingest (object storage + PG metadata) → chunk → embed → retrieve →
 optional rerank → citations/provenance in response.

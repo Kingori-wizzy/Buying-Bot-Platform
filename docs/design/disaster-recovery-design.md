@@ -4,20 +4,20 @@
 
 ## Targets (foundation — existing)
 
-| Metric | Target | Status |
-| --- | --- | --- |
-| RPO | ≤ 24 hours | Documented; NOT VERIFIED by restore drill |
-| RTO | ≤ 4 hours | Documented; NOT VERIFIED |
+| Metric | Target     | Status                                    |
+| ------ | ---------- | ----------------------------------------- |
+| RPO    | ≤ 24 hours | Documented; NOT VERIFIED by restore drill |
+| RTO    | ≤ 4 hours  | Documented; NOT VERIFIED                  |
 
 Before production payments: tighten RPO/RTO and **mandatory restore drills**.
 
 ## Recovery priority
 
-1. PostgreSQL (orders, payments, inventory, identity, audit)  
-2. Object storage (reconcile keys)  
-3. Rebuild FTS/pgvector/search  
-4. Redis cold; outbox replay  
-5. Redeploy apps from known images  
+1. PostgreSQL (orders, payments, inventory, identity, audit)
+2. Object storage (reconcile keys)
+3. Rebuild FTS/pgvector/search
+4. Redis cold; outbox replay
+5. Redeploy apps from known images
 
 ## Scenarios
 

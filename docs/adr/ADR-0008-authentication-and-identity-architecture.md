@@ -21,11 +21,11 @@
 Buying Bot Platform is an AI-powered omnichannel commerce system. Established
 decisions:
 
-| ADR | Status | Relevant constraint |
-| --- | --- | --- |
-| ADR-0005 | Accepted | NestJS + Fastify; Nest guards for AuthZ; OpenAPI/SDK |
+| ADR      | Status       | Relevant constraint                                                                                               |
+| -------- | ------------ | ----------------------------------------------------------------------------------------------------------------- |
+| ADR-0005 | Accepted     | NestJS + Fastify; Nest guards for AuthZ; OpenAPI/SDK                                                              |
 | ADR-0006 | **Proposed** | PostgreSQL SoT; Redis cache/rate-limit/session denylist only; `identity` + `audit` schemas; `tenant_id` readiness |
-| ADR-0007 | Accepted | Next.js web + admin, separate cookies/origins; httpOnly cookies preferred; backend is AuthZ authority |
+| ADR-0007 | Accepted     | Next.js web + admin, separate cookies/origins; httpOnly cookies preferred; backend is AuthZ authority             |
 
 Existing contracts (not final design):
 
@@ -68,20 +68,20 @@ whether Nest remains the security boundary. Wrong choices would:
 
 ## 4. Identity model
 
-| Concept | Meaning |
-| --- | --- |
-| **Identity / User** | Stable subject (`subjectId`) representing a human or service principal |
-| **Account** | Login-capable record for a user (status, primary contacts) |
-| **Credential** | Password hash, OTP secret, WebAuthn credential, OAuth link |
-| **Customer** | Commerce profile linked 1:1 (or 1:N later) to a user for shopping |
-| **Staff / Administrator** | Same user table; elevated via **roles/membership**, not a second IdP |
-| **Role** | Named bundle of permissions (e.g. `ORDER_MANAGER`) |
-| **Permission** | `resource:action` (matches `@buying-bot/types`) |
-| **Session** | Server-side authenticated period for a client |
-| **Authentication factor** | Password, TOTP, WebAuthn, OTP, etc. |
-| **Service identity** | Non-human principal for api/worker/ai-service/jobs |
-| **Organization / Tenant** | Future merchant boundary; membership carries per-tenant roles |
-| **Channel identity** | External id (WhatsApp MSISDN, Instagram PSID) linked to a user/customer |
+| Concept                   | Meaning                                                                 |
+| ------------------------- | ----------------------------------------------------------------------- |
+| **Identity / User**       | Stable subject (`subjectId`) representing a human or service principal  |
+| **Account**               | Login-capable record for a user (status, primary contacts)              |
+| **Credential**            | Password hash, OTP secret, WebAuthn credential, OAuth link              |
+| **Customer**              | Commerce profile linked 1:1 (or 1:N later) to a user for shopping       |
+| **Staff / Administrator** | Same user table; elevated via **roles/membership**, not a second IdP    |
+| **Role**                  | Named bundle of permissions (e.g. `ORDER_MANAGER`)                      |
+| **Permission**            | `resource:action` (matches `@buying-bot/types`)                         |
+| **Session**               | Server-side authenticated period for a client                           |
+| **Authentication factor** | Password, TOTP, WebAuthn, OTP, etc.                                     |
+| **Service identity**      | Non-human principal for api/worker/ai-service/jobs                      |
+| **Organization / Tenant** | Future merchant boundary; membership carries per-tenant roles           |
+| **Channel identity**      | External id (WhatsApp MSISDN, Instagram PSID) linked to a user/customer |
 
 **Rules:**
 
@@ -95,14 +95,14 @@ whether Nest remains the security boundary. Wrong choices would:
 
 ## 5. Authentication approach evaluation
 
-| Option | Fit for Buying Bot | Verdict |
-| --- | --- | --- |
-| **Custom Nest-owned auth** | Full data ownership; Nest guards; mobile/omnichannel; Kenya PII control; uses `@buying-bot/auth` ports | **Recommend** |
-| NextAuth/Auth.js | Good for Next UI; weak as sole IdP for Nest + WhatsApp + workers | Reject as system of record |
-| Better Auth | Modern TS; still needs Nest as authority; early ecosystem risk | Reject for v1 SoR |
-| Auth0 / Clerk | Fast MFA/OAuth; cost, lock-in, Kenya data residency/ops, omnichannel linking friction | Reject as primary |
-| Keycloak | Strong IdP; heavy ops for current stage | Defer |
-| Supabase Auth | Couples to Supabase stack; conflicts with Nest+Postgres direction | Reject |
+| Option                     | Fit for Buying Bot                                                                                     | Verdict                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------------- |
+| **Custom Nest-owned auth** | Full data ownership; Nest guards; mobile/omnichannel; Kenya PII control; uses `@buying-bot/auth` ports | **Recommend**              |
+| NextAuth/Auth.js           | Good for Next UI; weak as sole IdP for Nest + WhatsApp + workers                                       | Reject as system of record |
+| Better Auth                | Modern TS; still needs Nest as authority; early ecosystem risk                                         | Reject for v1 SoR          |
+| Auth0 / Clerk              | Fast MFA/OAuth; cost, lock-in, Kenya data residency/ops, omnichannel linking friction                  | Reject as primary          |
+| Keycloak                   | Strong IdP; heavy ops for current stage                                                                | Defer                      |
+| Supabase Auth              | Couples to Supabase stack; conflicts with Nest+Postgres direction                                      | Reject                     |
 
 **Decision:** **First-party authentication owned by `apps/api` (Nest)**, with
 shared contracts in `@buying-bot/auth`. Frontends are clients of the API auth
@@ -132,13 +132,13 @@ session presence for UX routing only.
 
 ## 7. Session and token strategy
 
-| Client | Mechanism |
-| --- | --- |
-| **Customer web** | Server-side **session** in PostgreSQL; opaque session id in **httpOnly** cookie |
-| **Admin web** | Separate server-side session + **separate cookie name/domain**; shorter TTL |
-| **Mobile** | Short-lived **JWT access token** + **rotating opaque refresh token** stored server-side |
-| **Service-to-service** | Short-lived **signed service JWT** (or mTLS later); never human passwords |
-| **External integrations** | Hashed **API keys** with scopes |
+| Client                    | Mechanism                                                                               |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| **Customer web**          | Server-side **session** in PostgreSQL; opaque session id in **httpOnly** cookie         |
+| **Admin web**             | Separate server-side session + **separate cookie name/domain**; shorter TTL             |
+| **Mobile**                | Short-lived **JWT access token** + **rotating opaque refresh token** stored server-side |
+| **Service-to-service**    | Short-lived **signed service JWT** (or mTLS later); never human passwords               |
+| **External integrations** | Hashed **API keys** with scopes                                                         |
 
 **Hybrid rationale:** Cookie sessions fit ADR-0007 SSR/RSC and CSRF controls
 for browsers. Bearer access tokens fit mobile and service callers without
@@ -164,15 +164,15 @@ Postgres or force re-auth.
 
 ## 8. Cookie strategy
 
-| Attribute | Recommendation |
-| --- | --- |
-| HttpOnly | **Required** |
-| Secure | **Required** in staging/production |
-| SameSite | `Lax` default; `Strict` for admin if UX allows |
-| Path | `/` within each app origin |
-| Domain | Prefer **host-only** cookies; do **not** share one cookie across `web` and `admin` |
-| Names | Distinct, e.g. `bb_cust_session` vs `bb_admin_session` |
-| Expiration | Sliding session with absolute cap; admin shorter |
+| Attribute  | Recommendation                                                                     |
+| ---------- | ---------------------------------------------------------------------------------- |
+| HttpOnly   | **Required**                                                                       |
+| Secure     | **Required** in staging/production                                                 |
+| SameSite   | `Lax` default; `Strict` for admin if UX allows                                     |
+| Path       | `/` within each app origin                                                         |
+| Domain     | Prefer **host-only** cookies; do **not** share one cookie across `web` and `admin` |
+| Names      | Distinct, e.g. `bb_cust_session` vs `bb_admin_session`                             |
+| Expiration | Sliding session with absolute cap; admin shorter                                   |
 
 **Cross-origin:** `web`, `admin`, and `api` on separate origins. Browser
 sessions use cookies scoped to each frontend origin; frontends call API with
@@ -181,30 +181,30 @@ parent-domain cookie for both apps.
 
 ## 9. Customer authentication (Kenya-first)
 
-| Method | Launch posture |
-| --- | --- |
-| Email + password | **MUST** at launch |
-| Email verification | **MUST** |
-| Password reset | **MUST** |
-| Phone/SMS OTP (login or step-up) | **SHOULD** soon after launch |
-| Magic link | Optional later |
-| OAuth (Google/Apple) | **SHOULD** later |
-| Passkeys / WebAuthn | **OPTIONAL** future |
-| MFA (customer) | Optional; encourage for high-value accounts later |
+| Method                           | Launch posture                                    |
+| -------------------------------- | ------------------------------------------------- |
+| Email + password                 | **MUST** at launch                                |
+| Email verification               | **MUST**                                          |
+| Password reset                   | **MUST**                                          |
+| Phone/SMS OTP (login or step-up) | **SHOULD** soon after launch                      |
+| Magic link                       | Optional later                                    |
+| OAuth (Google/Apple)             | **SHOULD** later                                  |
+| Passkeys / WebAuthn              | **OPTIONAL** future                               |
+| MFA (customer)                   | Optional; encourage for high-value accounts later |
 
 Phone OTP **complements** email/password; it does not replace password SoR
 at launch unless product later decides OTP-primary.
 
 ## 10. Admin / staff authentication
 
-| Control | Admin / privileged staff |
-| --- | --- |
-| MFA | **Mandatory** (TOTP first; WebAuthn preferred when ready) |
-| Password policy | Stronger than customer |
-| Session length | Shorter idle/absolute |
-| Step-up auth | Refunds, role changes, secret rotation, payouts |
-| Device/session list | Required |
-| IP/risk signals | Optional later |
+| Control             | Admin / privileged staff                                  |
+| ------------------- | --------------------------------------------------------- |
+| MFA                 | **Mandatory** (TOTP first; WebAuthn preferred when ready) |
+| Password policy     | Stronger than customer                                    |
+| Session length      | Shorter idle/absolute                                     |
+| Step-up auth        | Refunds, role changes, secret rotation, payouts           |
+| Device/session list | Required                                                  |
+| IP/risk signals     | Optional later                                            |
 
 Staff roles are permission-scoped (support ≠ finance ≠ catalog).
 
@@ -264,15 +264,15 @@ delegated context and still pass AuthZ.
 
 ## 14. Nest placement
 
-| Step | Nest home |
-| --- | --- |
-| Parse cookie/bearer | Middleware / guard |
-| Authenticate session/token | Guard → `Authenticator` port |
-| Attach `AuthPrincipal` | Request context / custom decorator |
-| Permission check | Guard metadata (`@RequirePermissions`) |
-| Validation | Pipes + Zod |
-| Ownership / domain rules | Application services / domain policies |
-| Audit | Interceptor or domain event → audit writer |
+| Step                       | Nest home                                  |
+| -------------------------- | ------------------------------------------ |
+| Parse cookie/bearer        | Middleware / guard                         |
+| Authenticate session/token | Guard → `Authenticator` port               |
+| Attach `AuthPrincipal`     | Request context / custom decorator         |
+| Permission check           | Guard metadata (`@RequirePermissions`)     |
+| Validation                 | Pipes + Zod                                |
+| Ownership / domain rules   | Application services / domain policies     |
+| Audit                      | Interceptor or domain event → audit writer |
 
 HTTP-layer AuthZ is necessary but **not sufficient** for IDOR-sensitive
 operations.
@@ -303,11 +303,11 @@ Never store plaintext. Never log password or reset tokens.
 
 ## 17. MFA
 
-| Audience | Recommendation |
-| --- | --- |
-| Admin / SUPER_ADMIN | **Mandatory TOTP**; WebAuthn/passkeys as upgrade path |
-| Staff with privileged perms | Mandatory when role includes refunds/system |
-| Customer | Optional later; SMS OTP as step-up for risky actions |
+| Audience                    | Recommendation                                        |
+| --------------------------- | ----------------------------------------------------- |
+| Admin / SUPER_ADMIN         | **Mandatory TOTP**; WebAuthn/passkeys as upgrade path |
+| Staff with privileged perms | Mandatory when role includes refunds/system           |
+| Customer                    | Optional later; SMS OTP as step-up for risky actions  |
 
 SMS OTP is weaker (SIM swap)—acceptable for Kenya customer step-up with rate
 limits; **not** sole admin MFA.
@@ -338,15 +338,15 @@ credentials, flag `COMPROMISED`); locked (time/unlock policy).
 
 ## 21. Account states
 
-| State | Meaning |
-| --- | --- |
-| `PENDING_VERIFICATION` | Registered; limited until email/phone verified |
-| `ACTIVE` | Normal |
-| `SUSPENDED` | Admin block; no login |
-| `LOCKED` | Automated lockout; temporary |
-| `DEACTIVATED` | User-requested close; no login |
-| `DELETED` | Soft-deleted/anonymized per policy; financial records retained per ADR-0006 |
-| `COMPROMISED` | Forced recovery path |
+| State                  | Meaning                                                                     |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `PENDING_VERIFICATION` | Registered; limited until email/phone verified                              |
+| `ACTIVE`               | Normal                                                                      |
+| `SUSPENDED`            | Admin block; no login                                                       |
+| `LOCKED`               | Automated lockout; temporary                                                |
+| `DEACTIVATED`          | User-requested close; no login                                              |
+| `DELETED`              | Soft-deleted/anonymized per policy; financial records retained per ADR-0006 |
+| `COMPROMISED`          | Forced recovery path                                                        |
 
 ## 22. Session management
 
@@ -374,17 +374,17 @@ in-process limits. Exact numbers at implementation.
 
 ## 25. Threat mitigations (summary)
 
-| Threat | Mitigation |
-| --- | --- |
-| Credential stuffing / brute force | Rate limits, lockout, breached password checks |
-| Session/token theft | HttpOnly Secure cookies, short JWT TTL, rotation, revoke |
-| CSRF | SameSite + CSRF token/origin check for cookie sessions |
-| XSS → session | CSP, React escaping, no tokens in JS storage |
-| Privilege escalation | Server AuthZ + domain ownership checks |
-| IDOR | Resource-scoped queries by `subjectId`/tenant |
-| OTP abuse / SIM swap | Rate limits, TTL, prefer TOTP/WebAuthn for admin |
-| OAuth takeover | Verified email linking rules |
-| Session fixation | Rotate session id on login |
+| Threat                            | Mitigation                                               |
+| --------------------------------- | -------------------------------------------------------- |
+| Credential stuffing / brute force | Rate limits, lockout, breached password checks           |
+| Session/token theft               | HttpOnly Secure cookies, short JWT TTL, rotation, revoke |
+| CSRF                              | SameSite + CSRF token/origin check for cookie sessions   |
+| XSS → session                     | CSP, React escaping, no tokens in JS storage             |
+| Privilege escalation              | Server AuthZ + domain ownership checks                   |
+| IDOR                              | Resource-scoped queries by `subjectId`/tenant            |
+| OTP abuse / SIM swap              | Rate limits, TTL, prefer TOTP/WebAuthn for admin         |
+| OAuth takeover                    | Verified email linking rules                             |
+| Session fixation                  | Rotate session id on login                               |
 
 ## 26. CSRF
 
@@ -520,27 +520,27 @@ schema. Revisit managed IdP only with export/migration ADR.
 
 ## 45. Decision matrix
 
-| Area | Decision | Alternative | Recommendation |
-| --- | --- | --- | --- |
-| Identity model | Unified User + roles/memberships | Separate customer/staff IdPs | One directory; separate realms |
-| Customer auth | Email/password + verify | OTP-only; magic-link-only | MUST password; SHOULD phone OTP |
-| Admin auth | Password + mandatory MFA | Password-only | Stronger than customer |
-| Session model | Server sessions (browser) | JWT-only browsers | Postgres session + cookie |
-| Access tokens | Short JWT for mobile/services | Long-lived JWT | Minutes-lived |
-| Refresh tokens | Opaque rotating in Postgres | Stateless refresh JWT | Reuse detection |
-| Cookies | HttpOnly Secure; separate names | Shared parent domain cookie | Isolate web/admin |
-| RBAC | Roles → permissions | Roles only | Fine-grained permissions |
-| ABAC | Contextual ownership checks | Full ABAC engine | RBAC + context |
-| MFA | TOTP mandatory admin | SMS for admin | TOTP/WebAuthn |
-| OAuth | Later, link by verified email | Launch blocker | SHOULD later |
-| Phone OTP | Complementary | Replace passwords | Kenya SHOULD |
-| Service auth | Signed service JWT | Human creds in workers | Never human creds |
-| API keys | Hashed scoped keys | Plaintext DB keys | Hash + rotate |
-| Webhooks | HMAC + timestamp + idempotency | IP allowlist only | HMAC required |
-| CSRF | Token/origin + SameSite | SameSite only | Defense in depth |
-| CORS | Explicit origins | `*` | No wildcard+creds |
-| Rate limiting | Redis-backed on auth routes | None | Fail closed on abuse |
-| Audit | Postgres security events | Logs only | Durable audit |
+| Area           | Decision                         | Alternative                  | Recommendation                  |
+| -------------- | -------------------------------- | ---------------------------- | ------------------------------- |
+| Identity model | Unified User + roles/memberships | Separate customer/staff IdPs | One directory; separate realms  |
+| Customer auth  | Email/password + verify          | OTP-only; magic-link-only    | MUST password; SHOULD phone OTP |
+| Admin auth     | Password + mandatory MFA         | Password-only                | Stronger than customer          |
+| Session model  | Server sessions (browser)        | JWT-only browsers            | Postgres session + cookie       |
+| Access tokens  | Short JWT for mobile/services    | Long-lived JWT               | Minutes-lived                   |
+| Refresh tokens | Opaque rotating in Postgres      | Stateless refresh JWT        | Reuse detection                 |
+| Cookies        | HttpOnly Secure; separate names  | Shared parent domain cookie  | Isolate web/admin               |
+| RBAC           | Roles → permissions              | Roles only                   | Fine-grained permissions        |
+| ABAC           | Contextual ownership checks      | Full ABAC engine             | RBAC + context                  |
+| MFA            | TOTP mandatory admin             | SMS for admin                | TOTP/WebAuthn                   |
+| OAuth          | Later, link by verified email    | Launch blocker               | SHOULD later                    |
+| Phone OTP      | Complementary                    | Replace passwords            | Kenya SHOULD                    |
+| Service auth   | Signed service JWT               | Human creds in workers       | Never human creds               |
+| API keys       | Hashed scoped keys               | Plaintext DB keys            | Hash + rotate                   |
+| Webhooks       | HMAC + timestamp + idempotency   | IP allowlist only            | HMAC required                   |
+| CSRF           | Token/origin + SameSite          | SameSite only                | Defense in depth                |
+| CORS           | Explicit origins                 | `*`                          | No wildcard+creds               |
+| Rate limiting  | Redis-backed on auth routes      | None                         | Fail closed on abuse            |
+| Audit          | Postgres security events         | Logs only                    | Durable audit                   |
 
 ## 46. Architecture diagram
 
@@ -574,15 +574,15 @@ sessions; mobile/services use bearer credentials; channels link to users.
 
 ## 47. Implementation phases (planning only)
 
-1. Identity model + `packages/auth` contract expansion  
-2. Customer register/login/logout/verify/reset  
-3. Server sessions + cookies + CSRF  
-4. Admin/staff auth + mandatory MFA  
-5. RBAC permissions + Nest guards + domain ownership checks  
-6. Refresh tokens for mobile  
-7. OAuth linking  
-8. Service JWTs + API keys  
-9. Omnichannel identity linking  
+1. Identity model + `packages/auth` contract expansion
+2. Customer register/login/logout/verify/reset
+3. Server sessions + cookies + CSRF
+4. Admin/staff auth + mandatory MFA
+5. RBAC permissions + Nest guards + domain ownership checks
+6. Refresh tokens for mobile
+7. OAuth linking
+8. Service JWTs + API keys
+9. Omnichannel identity linking
 10. Hardening (headers, advanced risk, WebAuthn)
 
 Do not execute in this ADR.
@@ -595,23 +595,23 @@ implementing login/register/MFA/OAuth; modifying `apps/*` or `package.json`.
 
 ## 49. Consistency notes
 
-- ADR-0005: Nest guards/ports — reinforced.  
-- ADR-0007: separate admin/web cookies; httpOnly; backend AuthZ — reinforced.  
+- ADR-0005: Nest guards/ports — reinforced.
+- ADR-0007: separate admin/web cookies; httpOnly; backend AuthZ — reinforced.
 - ADR-0006 (**Proposed**): sessions/users/audit in Postgres; Redis not SoT;
   rate limits on Redis — **assumed**. If ADR-0006 is rejected, revisit session
   storage before implementation.
 
 ## 50. Rejected alternatives (summary)
 
-| Alternative | Why not |
-| --- | --- |
-| Auth0/Clerk as primary IdP | Lock-in, cost, omnichannel/data ownership |
-| NextAuth as SoR | Nest/mobile/channels need API-owned identity |
-| JWT-only browser auth | XSS token theft; weaker SSR session story |
-| Shared web/admin cookie | Privilege confusion / session fixation risk |
-| Redis-only sessions | Violates SoT; auth survives Redis flush poorly |
-| Roles without permissions | Too coarse for refunds/AI/admin |
-| SMS as admin MFA | SIM-swap unsuitable for privileged access |
+| Alternative                | Why not                                        |
+| -------------------------- | ---------------------------------------------- |
+| Auth0/Clerk as primary IdP | Lock-in, cost, omnichannel/data ownership      |
+| NextAuth as SoR            | Nest/mobile/channels need API-owned identity   |
+| JWT-only browser auth      | XSS token theft; weaker SSR session story      |
+| Shared web/admin cookie    | Privilege confusion / session fixation risk    |
+| Redis-only sessions        | Violates SoT; auth survives Redis flush poorly |
+| Roles without permissions  | Too coarse for refunds/AI/admin                |
+| SMS as admin MFA           | SIM-swap unsuitable for privileged access      |
 
 ## 51. Decision status
 

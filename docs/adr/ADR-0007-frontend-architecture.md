@@ -27,15 +27,15 @@ Redis + BullMQ + S3-compatible storage.
 
 Current frontend reality (verified in-repo):
 
-| Asset | Current state |
-| --- | --- |
-| `apps/web` | TypeScript shell (`tsc` → `dist/`). Empty `bootstrap()`. No React/Next. |
-| `apps/admin` | Same shell pattern. Separate deployable. |
-| `apps/docs` | Shell only. Normative engineering docs live in `/docs`. |
-| `packages/ui` | Design tokens only. Explicitly forbids React/Vue until this ADR. |
-| `packages/sdk` | Minimal `PlatformSdk` (health + errors). Product endpoints deferred. |
-| `packages/types` / `validation` / `config` | Shared contracts and Zod. |
-| Frontend tsconfigs | Extend `bundler.json` (ADR-0002). |
+| Asset                                      | Current state                                                           |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| `apps/web`                                 | TypeScript shell (`tsc` → `dist/`). Empty `bootstrap()`. No React/Next. |
+| `apps/admin`                               | Same shell pattern. Separate deployable.                                |
+| `apps/docs`                                | Shell only. Normative engineering docs live in `/docs`.                 |
+| `packages/ui`                              | Design tokens only. Explicitly forbids React/Vue until this ADR.        |
+| `packages/sdk`                             | Minimal `PlatformSdk` (health + errors). Product endpoints deferred.    |
+| `packages/types` / `validation` / `config` | Shared contracts and Zod.                                               |
+| Frontend tsconfigs                         | Extend `bundler.json` (ADR-0002).                                       |
 
 Existing shells are **not** the final frontend architecture. This ADR
 selects the product frontend stack before scaffolding.
@@ -87,25 +87,25 @@ implementation.
 
 ### 4.1 Options
 
-| ID | Option |
-| --- | --- |
-| A | **Next.js (App Router) + React** |
-| B | **React + Vite (SPA)** |
-| C | **Remix / other React meta-framework** (considered briefly) |
+| ID  | Option                                                      |
+| --- | ----------------------------------------------------------- |
+| A   | **Next.js (App Router) + React**                            |
+| B   | **React + Vite (SPA)**                                      |
+| C   | **Remix / other React meta-framework** (considered briefly) |
 
 ### 4.2 Comparison (Buying Bot specific)
 
-| Requirement | A Next.js + React | B Vite SPA | C Remix |
-| --- | --- | --- | --- |
-| Product/category SEO | Strong (SSR/SSG/ISR + metadata) | Weak without separate SSR layer | Strong |
-| PDP / category rendering | RSC + streaming | Client fetch waterfall risk | Loaders |
-| AI chat streaming | RSC + client stream / SSE fit | Client-only stream | Feasible |
-| Admin dashboard | Excellent (same stack, separate app) | Excellent | Feasible |
-| Image / metadata | Built-in | Manual | Manual/partial |
-| Monorepo / Turborepo | Mature | Mature | Less common here |
-| Nest OpenAPI + SDK | Fits as BFF consumer | Fits | Fits |
-| Ops with Docker foundation | Container or Node host | Static + CDN | Container |
-| Hiring / docs | Highest React commerce mindshare | High | Lower |
+| Requirement                | A Next.js + React                    | B Vite SPA                      | C Remix          |
+| -------------------------- | ------------------------------------ | ------------------------------- | ---------------- |
+| Product/category SEO       | Strong (SSR/SSG/ISR + metadata)      | Weak without separate SSR layer | Strong           |
+| PDP / category rendering   | RSC + streaming                      | Client fetch waterfall risk     | Loaders          |
+| AI chat streaming          | RSC + client stream / SSE fit        | Client-only stream              | Feasible         |
+| Admin dashboard            | Excellent (same stack, separate app) | Excellent                       | Feasible         |
+| Image / metadata           | Built-in                             | Manual                          | Manual/partial   |
+| Monorepo / Turborepo       | Mature                               | Mature                          | Less common here |
+| Nest OpenAPI + SDK         | Fits as BFF consumer                 | Fits                            | Fits             |
+| Ops with Docker foundation | Container or Node host               | Static + CDN                    | Container        |
+| Hiring / docs              | Highest React commerce mindshare     | High                            | Lower            |
 
 **Reject B for `apps/web`:** a pure SPA forces SEO workarounds for catalog and
 marketing pages that are core to this business. Vite remains fine for
@@ -140,16 +140,16 @@ AI: shopping assistant surfaces (embedded and/or dedicated).
 
 ### 5.2 Server vs Client
 
-| Concern | Default |
-| --- | --- |
-| Product listing / PDP / category / content | **Server Components** + server fetch via SDK |
-| Metadata, canonical, structured data | Server (`generateMetadata`) |
-| Search results (initial) | Server; refine filters may hydrate client |
-| Cart badge / mini-cart | Client island; cart **source of truth** on API |
-| Checkout steps / payment widgets | Client + server actions/API calls |
-| Account / orders | Server fetch with auth session; client for mutations |
-| AI chat UI | Client (streaming); history loaded via API |
-| Analytics beacons | Client (privacy-aware) |
+| Concern                                    | Default                                              |
+| ------------------------------------------ | ---------------------------------------------------- |
+| Product listing / PDP / category / content | **Server Components** + server fetch via SDK         |
+| Metadata, canonical, structured data       | Server (`generateMetadata`)                          |
+| Search results (initial)                   | Server; refine filters may hydrate client            |
+| Cart badge / mini-cart                     | Client island; cart **source of truth** on API       |
+| Checkout steps / payment widgets           | Client + server actions/API calls                    |
+| Account / orders                           | Server fetch with auth session; client for mutations |
+| AI chat UI                                 | Client (streaming); history loaded via API           |
+| Analytics beacons                          | Client (privacy-aware)                               |
 
 Avoid making the entire app `"use client"`.
 
@@ -167,12 +167,12 @@ deployed, **different origin/host and cookie/session scope**.
 
 ### 6.2 Shared vs isolated
 
-| Share | Do not share |
-| --- | --- |
-| `packages/ui` primitives/tokens | Customer checkout flows |
-| `packages/sdk` (admin-scoped clients) | Storefront pages |
-| `packages/types`, `validation` | Auth cookies across apps |
-| Design language | “Hide admin links” as security |
+| Share                                 | Do not share                   |
+| ------------------------------------- | ------------------------------ |
+| `packages/ui` primitives/tokens       | Customer checkout flows        |
+| `packages/sdk` (admin-scoped clients) | Storefront pages               |
+| `packages/types`, `validation`        | Auth cookies across apps       |
+| Design language                       | “Hide admin links” as security |
 
 ### 6.3 Security boundary
 
@@ -183,10 +183,10 @@ deployed, **different origin/host and cookie/session scope**.
 
 ## 7. Documentation (`apps/docs`)
 
-| Content | Home |
-| --- | --- |
+| Content                        | Home                                 |
+| ------------------------------ | ------------------------------------ |
 | ADRs, EAD, standards, runbooks | Repository `/docs` (source of truth) |
-| Publishable docs website | `apps/docs` |
+| Publishable docs website       | `apps/docs`                          |
 
 **Recommendation:** implement `apps/docs` with **Next.js + MDX** (or Nextra on
 Next) so the stack matches web/admin and can render API reference generated
@@ -225,11 +225,11 @@ React components. Until implementation, tokens remain framework-agnostic.
 
 ### 9.1 Options
 
-| Option | Fit |
-| --- | --- |
+| Option                    | Fit                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------ |
 | **Tailwind CSS** + tokens | Fast layout, consistent utilities, good a11y patterns with headless primitives |
-| CSS Modules | Fine isolation; slower cross-app design velocity |
-| CSS-in-JS runtime | Extra runtime cost; weaker default for RSC |
+| CSS Modules               | Fine isolation; slower cross-app design velocity                               |
+| CSS-in-JS runtime         | Extra runtime cost; weaker default for RSC                                     |
 
 ### 9.2 Decision
 
@@ -261,15 +261,15 @@ circular `ui` ↔ `sdk` imports (`ui` must not call the API).
 
 ### 11.1 Distinctions
 
-| Kind | Examples | Approach |
-| --- | --- | --- |
-| **Server state** | Products, orders, account | Server Components + SDK; client cache via TanStack Query when interactive |
-| **URL state** | Search query, filters, pagination, sort | Next.js searchParams / nuqs-style patterns |
-| **Client UI state** | Modal open, stepper index | React `useState` / local context |
-| **Form state** | Checkout, admin editors | React Hook Form |
-| **Auth state** | Session presence | Server session + minimal client mirror (future Auth ADR) |
-| **Cart state** | Line items | **API-backed**; optimistic UI optional |
-| **AI conversation** | Messages, stream buffer | Client for stream; persistence via API |
+| Kind                | Examples                                | Approach                                                                  |
+| ------------------- | --------------------------------------- | ------------------------------------------------------------------------- |
+| **Server state**    | Products, orders, account               | Server Components + SDK; client cache via TanStack Query when interactive |
+| **URL state**       | Search query, filters, pagination, sort | Next.js searchParams / nuqs-style patterns                                |
+| **Client UI state** | Modal open, stepper index               | React `useState` / local context                                          |
+| **Form state**      | Checkout, admin editors                 | React Hook Form                                                           |
+| **Auth state**      | Session presence                        | Server session + minimal client mirror (future Auth ADR)                  |
+| **Cart state**      | Line items                              | **API-backed**; optimistic UI optional                                    |
+| **AI conversation** | Messages, stream buffer                 | Client for stream; persistence via API                                    |
 
 ### 11.2 Decision
 
@@ -282,13 +282,13 @@ circular `ui` ↔ `sdk` imports (`ui` must not call the API).
 
 ## 12. Data fetching
 
-| Situation | Mechanism |
-| --- | --- |
-| Public PDP/PLP first paint | Server Component → `packages/sdk` (server fetch) |
-| Admin lists with filter/sort | Server first load + TanStack Query mutations/refetch |
-| Mutations (cart, checkout, admin writes) | SDK / route handlers calling Nest API |
-| Next.js Server Actions | Allowed as thin BFF to `apps/api`, **not** as a second domain layer |
-| Browser → Postgres/Redis | **Forbidden** |
+| Situation                                | Mechanism                                                           |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| Public PDP/PLP first paint               | Server Component → `packages/sdk` (server fetch)                    |
+| Admin lists with filter/sort             | Server first load + TanStack Query mutations/refetch                |
+| Mutations (cart, checkout, admin writes) | SDK / route handlers calling Nest API                               |
+| Next.js Server Actions                   | Allowed as thin BFF to `apps/api`, **not** as a second domain layer |
+| Browser → Postgres/Redis                 | **Forbidden**                                                       |
 
 Do not scatter raw `fetch('/api/...')` strings; go through SDK methods and
 shared error types (`PlatformApiError`).
@@ -308,12 +308,12 @@ SDK must not import Nest, Prisma, or server env secrets.
 
 ## 14. Type sharing
 
-| Source | Use |
-| --- | --- |
-| `@buying-bot/types` | Cross-app DTOs / domain vocabulary |
-| `@buying-bot/validation` (Zod) | Runtime parse on edges; infer types |
-| OpenAPI (future) | Contract sync for SDK |
-| Nest DTO classes | **Stay in API**; do not export to web |
+| Source                         | Use                                   |
+| ------------------------------ | ------------------------------------- |
+| `@buying-bot/types`            | Cross-app DTOs / domain vocabulary    |
+| `@buying-bot/validation` (Zod) | Runtime parse on edges; infer types   |
+| OpenAPI (future)               | Contract sync for SDK                 |
+| Nest DTO classes               | **Stay in API**; do not export to web |
 
 Avoid hand-duplicating request/response shapes in apps. Prefer
 schema-first Zod or OpenAPI-derived types.
@@ -323,10 +323,10 @@ schema-first Zod or OpenAPI-derived types.
 **Decision: versioned REST + OpenAPI** against Nest (`/v1/...`), matching
 ADR-0005.
 
-| Alternative | Why not now |
-| --- | --- |
-| GraphQL | Extra gateway and cache complexity; catalog/cart/admin map cleanly to REST resources |
-| tRPC | Couples frontend to Nest/TS RPC style; weaker for future mobile/non-TS clients and public API docs |
+| Alternative | Why not now                                                                                        |
+| ----------- | -------------------------------------------------------------------------------------------------- |
+| GraphQL     | Extra gateway and cache complexity; catalog/cart/admin map cleanly to REST resources               |
+| tRPC        | Couples frontend to Nest/TS RPC style; weaker for future mobile/non-TS clients and public API docs |
 
 REST resources cover catalog, search, cart, orders, accounts, admin CRUD, AI
 conversation endpoints, and analytics ingestion.
@@ -375,13 +375,13 @@ stores.
 
 **Initial architectural targets (not claimed achieved):**
 
-| Metric | Target |
-| --- | --- |
+| Metric                         | Target                                                 |
+| ------------------------------ | ------------------------------------------------------ |
 | JS shipped to PDP (initial JS) | ≤ 200 KB gzipped app+vendor critical path aspirational |
-| LCP (PLP/PDP, 4G mid) | ≤ 2.5 s |
-| INP | ≤ 200 ms |
-| CLS | ≤ 0.1 |
-| AI first token (UI) | ≤ 2 s after request accept (network/model dependent) |
+| LCP (PLP/PDP, 4G mid)          | ≤ 2.5 s                                                |
+| INP                            | ≤ 200 ms                                               |
+| CLS                            | ≤ 0.1                                                  |
+| AI first token (UI)            | ≤ 2 s after request accept (network/model dependent)   |
 
 Measure after scaffold; revise with evidence.
 
@@ -430,12 +430,12 @@ Client validation improves UX only. Nest + Zod remain authoritative.
 
 ## 25. Real-time
 
-| Need | Approach |
-| --- | --- |
-| AI token stream | SSE / HTTP stream |
-| Order status | Polling or SSE later; not WebSocket-first |
-| Admin inventory | Refetch / TanStack Query |
-| Support chat | Defer; may need WebSocket in a later ADR |
+| Need            | Approach                                  |
+| --------------- | ----------------------------------------- |
+| AI token stream | SSE / HTTP stream                         |
+| Order status    | Polling or SSE later; not WebSocket-first |
+| Admin inventory | Refetch / TanStack Query                  |
+| Support chat    | Defer; may need WebSocket in a later ADR  |
 
 Do not stand up a socket cluster until a product ADR requires it.
 
@@ -478,9 +478,9 @@ to data stores directly.
 
 ## 30. Environment configuration
 
-| Class | Examples |
-| --- | --- |
-| Public | `NEXT_PUBLIC_API_BASE_URL`, theme flags |
+| Class       | Examples                                              |
+| ----------- | ----------------------------------------------------- |
+| Public      | `NEXT_PUBLIC_API_BASE_URL`, theme flags               |
 | Server-only | session secrets, server API keys to internal services |
 
 Fail closed if server secrets missing in production (align with
@@ -488,15 +488,15 @@ Fail closed if server secrets missing in production (align with
 
 ## 31. Testing architecture
 
-| Layer | Tool (direction) |
-| --- | --- |
-| Unit | Vitest (already in monorepo) |
-| Component | Vitest + React Testing Library |
-| Integration | RTL + MSW against SDK |
-| E2E | Playwright |
-| a11y | axe-core / Playwright axe |
-| Visual | optional later |
-| Perf | Lighthouse CI later |
+| Layer       | Tool (direction)               |
+| ----------- | ------------------------------ |
+| Unit        | Vitest (already in monorepo)   |
+| Component   | Vitest + React Testing Library |
+| Integration | RTL + MSW against SDK          |
+| E2E         | Playwright                     |
+| a11y        | axe-core / Playwright axe      |
+| Visual      | optional later                 |
+| Perf        | Lighthouse CI later            |
 
 Do not install new runners in this ADR beyond what already exists.
 
@@ -517,23 +517,23 @@ implemented now.
 consistent with existing Docker direction for Node services; put static
 assets behind a **CDN**.
 
-| Option | Role |
-| --- | --- |
-| Containers + CDN + reverse proxy | Default; matches api/worker ops |
-| Vercel | Optional for `web` speed; do not hard-require; avoid split-brain secrets |
-| Pure static export | Insufficient for personalized/AI/checkout SSR needs |
+| Option                           | Role                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| Containers + CDN + reverse proxy | Default; matches api/worker ops                                          |
+| Vercel                           | Optional for `web` speed; do not hard-require; avoid split-brain secrets |
+| Pure static export               | Insufficient for personalized/AI/checkout SSR needs                      |
 
 Final cloud vendor remains an infrastructure ADR.
 
 ## 34. Caching
 
-| Layer | Use |
-| --- | --- |
-| CDN / ISR | Public catalog and content |
-| Framework cache | Revalidate tags on product updates (later) |
-| TanStack Query | Client session cache |
-| Browser HTTP cache | Immutable hashed assets |
-| API / Redis | Server-side (ADR-0006) |
+| Layer              | Use                                        |
+| ------------------ | ------------------------------------------ |
+| CDN / ISR          | Public catalog and content                 |
+| Framework cache    | Revalidate tags on product updates (later) |
+| TanStack Query     | Client session cache                       |
+| Browser HTTP cache | Immutable hashed assets                    |
+| API / Redis        | Server-side (ADR-0006)                     |
 
 **Never** publicly cache personalized account/cart/checkout responses.
 
@@ -595,24 +595,24 @@ API only. Data stores remain behind the API (ADR-0006 proposed).
 
 ## 39. Technology decision matrix
 
-| Area | Decision | Alternative | Recommendation reason |
-| --- | --- | --- | --- |
-| Web framework | Next.js App Router + React | Vite SPA; Remix | SEO + RSC + one stack for web/admin/docs |
-| Rendering | RSC default; client islands | SPA everywhere | Commerce SEO and TTFB |
-| Styling | Tailwind + UI tokens | CSS Modules; CSS-in-JS | Velocity + token control |
-| State | React + URL; Zustand only if needed | Redux | Avoid global store tax |
-| Server state | Server fetch + TanStack Query | Redux async | Cache/refetch without reinventing |
-| Forms | RHF + Zod | Formik | Aligns with `packages/validation` |
-| API contract | REST + OpenAPI | GraphQL; tRPC | Matches ADR-0005; mobile-friendly |
-| API SDK | `@buying-bot/sdk` | Ad-hoc fetch | Single contract surface |
-| Validation | Zod shared | Yup; class-validator on client | One schema language |
-| Testing | Vitest + RTL | Jest-only | Already in monorepo |
-| E2E | Playwright | Cypress | Strong a11y/API tooling |
-| Accessibility | WCAG 2.2 AA | None | Non-negotiable UX/legal hygiene |
-| Documentation app | Next + MDX | Docusaurus | Stack consolidation |
-| Deployment | Containers + CDN | Vercel-only | Ops parity with API |
-| Analytics | First-party events later | Heavy third-party by default | Privacy + control |
-| Error monitoring | Sentry-class later | None | Need `requestId` correlation |
+| Area              | Decision                            | Alternative                    | Recommendation reason                    |
+| ----------------- | ----------------------------------- | ------------------------------ | ---------------------------------------- |
+| Web framework     | Next.js App Router + React          | Vite SPA; Remix                | SEO + RSC + one stack for web/admin/docs |
+| Rendering         | RSC default; client islands         | SPA everywhere                 | Commerce SEO and TTFB                    |
+| Styling           | Tailwind + UI tokens                | CSS Modules; CSS-in-JS         | Velocity + token control                 |
+| State             | React + URL; Zustand only if needed | Redux                          | Avoid global store tax                   |
+| Server state      | Server fetch + TanStack Query       | Redux async                    | Cache/refetch without reinventing        |
+| Forms             | RHF + Zod                           | Formik                         | Aligns with `packages/validation`        |
+| API contract      | REST + OpenAPI                      | GraphQL; tRPC                  | Matches ADR-0005; mobile-friendly        |
+| API SDK           | `@buying-bot/sdk`                   | Ad-hoc fetch                   | Single contract surface                  |
+| Validation        | Zod shared                          | Yup; class-validator on client | One schema language                      |
+| Testing           | Vitest + RTL                        | Jest-only                      | Already in monorepo                      |
+| E2E               | Playwright                          | Cypress                        | Strong a11y/API tooling                  |
+| Accessibility     | WCAG 2.2 AA                         | None                           | Non-negotiable UX/legal hygiene          |
+| Documentation app | Next + MDX                          | Docusaurus                     | Stack consolidation                      |
+| Deployment        | Containers + CDN                    | Vercel-only                    | Ops parity with API                      |
+| Analytics         | First-party events later            | Heavy third-party by default   | Privacy + control                        |
+| Error monitoring  | Sentry-class later                  | None                           | Need `requestId` correlation             |
 
 ## 40. Recommended technology direction
 
@@ -626,15 +626,15 @@ boundaries, and AI streaming UX — not by popularity alone.
 
 ## 41. Implementation phases (planning only)
 
-1. Frontend framework foundation (Next scaffold for web/admin)  
-2. Design system tokens → primitives in `packages/ui`  
-3. Expand `packages/sdk` against API contracts  
-4. Customer web shell (layout, home, PLP/PDP skeletons)  
-5. Admin shell (layout, auth gate UX)  
-6. Authentication integration (after Auth ADR)  
-7. Commerce features  
-8. AI assistant experience  
-9. Docs site publishing from `/docs` + OpenAPI  
+1. Frontend framework foundation (Next scaffold for web/admin)
+2. Design system tokens → primitives in `packages/ui`
+3. Expand `packages/sdk` against API contracts
+4. Customer web shell (layout, home, PLP/PDP skeletons)
+5. Admin shell (layout, auth gate UX)
+6. Authentication integration (after Auth ADR)
+7. Commerce features
+8. AI assistant experience
+9. Docs site publishing from `/docs` + OpenAPI
 
 Do not execute these phases in this ADR.
 
@@ -673,23 +673,23 @@ Those require separate milestones after **Accepted**.
 
 ## 44. Consistency with prior ADRs
 
-- ADR-0001: independently deployable apps — preserved.  
-- ADR-0002: bundler TS for frontends — preserved.  
-- ADR-0005: Nest REST/OpenAPI/SDK — consumed, not contradicted.  
-- ADR-0006: Proposed data plane — frontend never bypasses API to stores.  
+- ADR-0001: independently deployable apps — preserved.
+- ADR-0002: bundler TS for frontends — preserved.
+- ADR-0005: Nest REST/OpenAPI/SDK — consumed, not contradicted.
+- ADR-0006: Proposed data plane — frontend never bypasses API to stores.
 - ADR-0004: ops HTTP remains backend concern.
 
 ## 45. Rejected alternatives (summary)
 
-| Alternative | Why not |
-| --- | --- |
-| Vite SPA for storefront | SEO and PDP discoverability |
-| GraphQL gateway now | Premature vs REST resources |
-| tRPC end-to-end | Weak multi-client story |
-| Redux default | Unnecessary for server-driven commerce |
-| CSS-in-JS runtime | RSC/ perf friction |
-| Single app for web+admin | Security boundary failure mode |
-| Browser → Postgres/Redis | Violates SoT and security |
+| Alternative              | Why not                                |
+| ------------------------ | -------------------------------------- |
+| Vite SPA for storefront  | SEO and PDP discoverability            |
+| GraphQL gateway now      | Premature vs REST resources            |
+| tRPC end-to-end          | Weak multi-client story                |
+| Redux default            | Unnecessary for server-driven commerce |
+| CSS-in-JS runtime        | RSC/ perf friction                     |
+| Single app for web+admin | Security boundary failure mode         |
+| Browser → Postgres/Redis | Violates SoT and security              |
 
 ## 46. Decision status
 

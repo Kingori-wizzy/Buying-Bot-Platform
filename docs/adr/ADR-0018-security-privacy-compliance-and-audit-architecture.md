@@ -36,13 +36,13 @@ apps/worker (service identity; no public AuthZ bypass)
 
 ## 4. Principal tiers
 
-| Principal | Auth | Trust | Notes |
-| --- | --- | --- | --- |
-| Customer | Session/cookie or mobile bearer | Low | Own resources only |
-| Staff | Admin realm + MFA | Medium | RBAC permissions |
-| Admin / Super-admin | MFA + step-up | High | Privileged actions audited |
-| Service | Short-lived service JWT | High constrained | Audience-scoped |
-| AI service | Service JWT + user delegation | Constrained | Tools re-AuthZ |
+| Principal           | Auth                            | Trust            | Notes                      |
+| ------------------- | ------------------------------- | ---------------- | -------------------------- |
+| Customer            | Session/cookie or mobile bearer | Low              | Own resources only         |
+| Staff               | Admin realm + MFA               | Medium           | RBAC permissions           |
+| Admin / Super-admin | MFA + step-up                   | High             | Privileged actions audited |
+| Service             | Short-lived service JWT         | High constrained | Audience-scoped            |
+| AI service          | Service JWT + user delegation   | Constrained      | Tools re-AuthZ             |
 
 ## 5. Controls (technical)
 

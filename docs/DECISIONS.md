@@ -50,25 +50,25 @@ Create `docs/adr/NNNN-title.md` using:
 
 ## Decision log
 
-| ADR                                                          | Title                                             | Status   | Date       |
-| ------------------------------------------------------------ | ------------------------------------------------- | -------- | ---------- |
-| [ADR-0001](./adr/0001-pnpm-turborepo-monorepo.md)            | Adopt pnpm workspaces + Turborepo monorepo        | Accepted | 2026-08-11 |
-| [ADR-0002](./adr/0002-typescript-strict-shared-config.md)    | Shared strict TypeScript configuration            | Accepted | 2026-08-11 |
-| [ADR-0003](./adr/0003-conventional-commits-quality-gates.md) | Conventional Commits and repository quality gates | Accepted | 2026-08-11 |
-| [ADR-0004](./adr/0004-node-http-ops-bootstrap.md)            | Node.js HTTP ops bootstrap (interim)              | Accepted | 2026-08-12 |
-| [ADR-0005](./adr/ADR-0005-backend-framework.md)              | Backend HTTP framework for `apps/api`             | Accepted | 2026-08-12 |
-| [ADR-0006](./adr/ADR-0006-database-and-data-architecture.md) | Database, data storage, and persistence architecture | Accepted | 2026-08-12 |
-| [ADR-0007](./adr/ADR-0007-frontend-architecture.md)          | Frontend and application experience architecture  | Accepted | 2026-08-13 |
-| [ADR-0008](./adr/ADR-0008-authentication-and-identity-architecture.md) | Authentication, identity, and authorization architecture | Accepted | 2026-08-13 |
-| [ADR-0009](./adr/ADR-0009-api-contract-and-communication-architecture.md) | API contract and communication architecture | Accepted | 2026-08-13 |
-| [ADR-0010](./adr/ADR-0010-catalog-product-inventory-search-architecture.md) | Catalog, product, inventory, and search architecture | Accepted | 2026-08-13 |
-| [ADR-0011](./adr/ADR-0011-cart-checkout-orders-payments-architecture.md) | Cart, checkout, orders, and payments architecture | Accepted | 2026-08-13 |
-| [ADR-0012](./adr/ADR-0012-pricing-promotions-tax-financial-calculation-architecture.md) | Pricing, promotions, tax, and financial calculation architecture | Accepted | 2026-08-13 |
-| [ADR-0013](./adr/ADR-0013-fulfillment-shipping-delivery-returns-order-lifecycle-architecture.md) | Fulfillment, shipping, delivery, returns, and order lifecycle | Accepted | 2026-08-13 |
-| [ADR-0014](./adr/ADR-0014-notifications-and-omnichannel-communication-architecture.md) | Notifications and omnichannel communication architecture | Accepted | 2026-08-13 |
-| [ADR-0015](./adr/ADR-0015-ai-rag-agent-and-tool-architecture.md) | AI, RAG, agent, and tool architecture | Accepted | 2026-08-13 |
-| [ADR-0016](./adr/ADR-0016-external-integrations-and-omnichannel-commerce-architecture.md) | External integrations and omnichannel commerce architecture | Accepted | 2026-08-13 |
-| [ADR-0017](./adr/ADR-0017-observability-monitoring-and-operational-reliability-architecture.md) | Observability, monitoring, and operational reliability | Accepted | 2026-08-13 |
-| [ADR-0018](./adr/ADR-0018-security-privacy-compliance-and-audit-architecture.md) | Security, privacy, compliance, and audit architecture | Accepted | 2026-08-13 |
-| [ADR-0019](./adr/ADR-0019-deployment-infrastructure-cicd-and-disaster-recovery-architecture.md) | Deployment, infrastructure, CI/CD, and disaster recovery | Accepted | 2026-08-13 |
-| [ADR-0020](./adr/ADR-0020-testing-quality-assurance-and-performance-engineering.md) | Testing, quality assurance, and performance engineering | Accepted | 2026-08-13 |
+| ADR                                                                                              | Title                                                            | Status   | Date       |
+| ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- | -------- | ---------- |
+| [ADR-0001](./adr/0001-pnpm-turborepo-monorepo.md)                                                | Adopt pnpm workspaces + Turborepo monorepo                       | Accepted | 2026-08-11 |
+| [ADR-0002](./adr/0002-typescript-strict-shared-config.md)                                        | Shared strict TypeScript configuration                           | Accepted | 2026-08-11 |
+| [ADR-0003](./adr/0003-conventional-commits-quality-gates.md)                                     | Conventional Commits and repository quality gates                | Accepted | 2026-08-11 |
+| [ADR-0004](./adr/0004-node-http-ops-bootstrap.md)                                                | Node.js HTTP ops bootstrap (interim)                             | Accepted | 2026-08-12 |
+| [ADR-0005](./adr/ADR-0005-backend-framework.md)                                                  | Backend HTTP framework for `apps/api`                            | Accepted | 2026-08-12 |
+| [ADR-0006](./adr/ADR-0006-database-and-data-architecture.md)                                     | Database, data storage, and persistence architecture             | Accepted | 2026-08-12 |
+| [ADR-0007](./adr/ADR-0007-frontend-architecture.md)                                              | Frontend and application experience architecture                 | Accepted | 2026-08-13 |
+| [ADR-0008](./adr/ADR-0008-authentication-and-identity-architecture.md)                           | Authentication, identity, and authorization architecture         | Accepted | 2026-08-13 |
+| [ADR-0009](./adr/ADR-0009-api-contract-and-communication-architecture.md)                        | API contract and communication architecture                      | Accepted | 2026-08-13 |
+| [ADR-0010](./adr/ADR-0010-catalog-product-inventory-search-architecture.md)                      | Catalog, product, inventory, and search architecture             | Accepted | 2026-08-13 |
+| [ADR-0011](./adr/ADR-0011-cart-checkout-orders-payments-architecture.md)                         | Cart, checkout, orders, and payments architecture                | Accepted | 2026-08-13 |
+| [ADR-0012](./adr/ADR-0012-pricing-promotions-tax-financial-calculation-architecture.md)          | Pricing, promotions, tax, and financial calculation architecture | Accepted | 2026-08-13 |
+| [ADR-0013](./adr/ADR-0013-fulfillment-shipping-delivery-returns-order-lifecycle-architecture.md) | Fulfillment, shipping, delivery, returns, and order lifecycle    | Accepted | 2026-08-13 |
+| [ADR-0014](./adr/ADR-0014-notifications-and-omnichannel-communication-architecture.md)           | Notifications and omnichannel communication architecture         | Accepted | 2026-08-13 |
+| [ADR-0015](./adr/ADR-0015-ai-rag-agent-and-tool-architecture.md)                                 | AI, RAG, agent, and tool architecture                            | Accepted | 2026-08-13 |
+| [ADR-0016](./adr/ADR-0016-external-integrations-and-omnichannel-commerce-architecture.md)        | External integrations and omnichannel commerce architecture      | Accepted | 2026-08-13 |
+| [ADR-0017](./adr/ADR-0017-observability-monitoring-and-operational-reliability-architecture.md)  | Observability, monitoring, and operational reliability           | Accepted | 2026-08-13 |
+| [ADR-0018](./adr/ADR-0018-security-privacy-compliance-and-audit-architecture.md)                 | Security, privacy, compliance, and audit architecture            | Accepted | 2026-08-13 |
+| [ADR-0019](./adr/ADR-0019-deployment-infrastructure-cicd-and-disaster-recovery-architecture.md)  | Deployment, infrastructure, CI/CD, and disaster recovery         | Accepted | 2026-08-13 |
+| [ADR-0020](./adr/ADR-0020-testing-quality-assurance-and-performance-engineering.md)              | Testing, quality assurance, and performance engineering          | Accepted | 2026-08-13 |

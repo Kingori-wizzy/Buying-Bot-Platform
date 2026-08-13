@@ -4,14 +4,14 @@
 
 ## Deployables
 
-| App | Role |
-| --- | --- |
-| web | Customer storefront |
-| admin | Operations UI |
-| api | System of record HTTP API |
-| worker | Async jobs |
+| App        | Role                         |
+| ---------- | ---------------------------- |
+| web        | Customer storefront          |
+| admin      | Operations UI                |
+| api        | System of record HTTP API    |
+| worker     | Async jobs                   |
 | ai-service | Model/RAG/tool orchestration |
-| docs | Publishable docs site |
+| docs       | Publishable docs site        |
 
 ## Shared packages (selected)
 

@@ -85,12 +85,12 @@ Product → Variant → SKU → Offer → Price (list / sale window)
                     payable total (checkout) → order snapshot
 ```
 
-| Stage | Price behavior |
-| --- | --- |
-| **Browsing / PDP** | Display effective Offer price (server-computed; cacheable as read model) |
-| **Cart** | **Live** re-resolve on each GET (ADR-0011); display may change |
-| **Checkout** | **Re-resolve** Offer + run full calculation; client totals ignored |
-| **Payment** | Charges the **snapshotted payable** on the order — not a new catalog price |
+| Stage              | Price behavior                                                             |
+| ------------------ | -------------------------------------------------------------------------- |
+| **Browsing / PDP** | Display effective Offer price (server-computed; cacheable as read model)   |
+| **Cart**           | **Live** re-resolve on each GET (ADR-0011); display may change             |
+| **Checkout**       | **Re-resolve** Offer + run full calculation; client totals ignored         |
+| **Payment**        | Charges the **snapshotted payable** on the order — not a new catalog price |
 
 The client is **never** authoritative for unit price, discount, promotion,
 tax, subtotal, total, or payable amount.
@@ -119,15 +119,15 @@ Example: KES 1,250.50 → `{ amount: 125050, currency: "KES" }`.
 
 ### 5.2 Rules
 
-| Concern | Rule |
-| --- | --- |
-| Precision | Currency exponent from ISO 4217 (KES = 2). No float intermediates. |
-| Arithmetic | Integer add/subtract; multiply by rational then **round per §12** |
-| Comparison | Same currency only; reject cross-currency compare |
-| Serialization | JSON integers + string currency; never number floats for money |
-| Zero / negative | Zero allowed; negative money forbidden for prices, quantities, and
-  payable totals (refunds are separate signed movements) |
-| Unsupported currency | Reject at API/domain boundary with stable error code |
+| Concern                                                | Rule                                                               |
+| ------------------------------------------------------ | ------------------------------------------------------------------ |
+| Precision                                              | Currency exponent from ISO 4217 (KES = 2). No float intermediates. |
+| Arithmetic                                             | Integer add/subtract; multiply by rational then **round per §12**  |
+| Comparison                                             | Same currency only; reject cross-currency compare                  |
+| Serialization                                          | JSON integers + string currency; never number floats for money     |
+| Zero / negative                                        | Zero allowed; negative money forbidden for prices, quantities, and |
+| payable totals (refunds are separate signed movements) |
+| Unsupported currency                                   | Reject at API/domain boundary with stable error code               |
 
 **Launch currency:** KES as platform default. Schemas store `currency` on
 every money field — **do not** hardcode KES into column names or domain
@@ -137,19 +137,19 @@ types.
 
 ## 6. Price structure
 
-| Component | Meaning |
-| --- | --- |
-| **List price** | Merchant list on Offer |
-| **Sale price** | Optional scheduled Offer sale |
-| **Effective unit price** | Deterministic result of list vs active sale window |
-| **Line subtotal** | effective unit × quantity (pre-discount) |
-| **Item promotion discount** | Catalog/auto promotion on line |
-| **Coupon discount** | Code-applied discount (item or cart allocation) |
-| **Cart promotion discount** | Order-level promotion allocation |
-| **Shipping** | From `ShippingQuote` port (ADR-0011) |
-| **Fees** | Extensible fee lines (payment/service — v1 usually empty) |
-| **Tax** | From `TaxCalculator` |
-| **Payable total** | Final amount to charge |
+| Component                   | Meaning                                                   |
+| --------------------------- | --------------------------------------------------------- |
+| **List price**              | Merchant list on Offer                                    |
+| **Sale price**              | Optional scheduled Offer sale                             |
+| **Effective unit price**    | Deterministic result of list vs active sale window        |
+| **Line subtotal**           | effective unit × quantity (pre-discount)                  |
+| **Item promotion discount** | Catalog/auto promotion on line                            |
+| **Coupon discount**         | Code-applied discount (item or cart allocation)           |
+| **Cart promotion discount** | Order-level promotion allocation                          |
+| **Shipping**                | From `ShippingQuote` port (ADR-0011)                      |
+| **Fees**                    | Extensible fee lines (payment/service — v1 usually empty) |
+| **Tax**                     | From `TaxCalculator`                                      |
+| **Payable total**           | Final amount to charge                                    |
 
 Every adjustment carries: `type`, `referenceId` (promotion/coupon/fee id),
 `amount`, `currency`, and optional human `label` for audit.
@@ -193,16 +193,16 @@ constraints without the precedence above — validation may warn on overlap.
 
 ### 8.2 V1 supported promotions
 
-| Type | v1 |
-| --- | --- |
-| Percentage off item / category / brand | **Yes** |
-| Fixed amount off item | **Yes** |
-| Cart-level percentage or fixed off (min spend) | **Yes** |
-| Max discount cap | **Yes** |
-| Date windows, channel (web), org/tenant | **Yes** |
-| Usage limit (global) / per-customer limit | **Yes** |
-| Buy-X-get-Y | **Future** |
-| Complex multi-tier / personalized / A-B | **Future** |
+| Type                                           | v1         |
+| ---------------------------------------------- | ---------- |
+| Percentage off item / category / brand         | **Yes**    |
+| Fixed amount off item                          | **Yes**    |
+| Cart-level percentage or fixed off (min spend) | **Yes**    |
+| Max discount cap                               | **Yes**    |
+| Date windows, channel (web), org/tenant        | **Yes**    |
+| Usage limit (global) / per-customer limit      | **Yes**    |
+| Buy-X-get-Y                                    | **Future** |
+| Complex multi-tier / personalized / A-B        | **Future** |
 
 ### 8.3 Future capabilities (not v1)
 
@@ -233,15 +233,15 @@ Default application sequence:
 2. **Eligible coupon** (at most one coupon per checkout)
 3. **Cart-level promotion** (on the remaining eligible base)
 
-| Question | Answer |
-| --- | --- |
-| Multiple auto-promotions on one SKU? | **No** — one winning item promotion per line |
-| Item promotion + cart promotion? | **Yes**, in the sequence above when both eligible |
-| Coupon + promotions? | **Only when** the applicable promotion/coupon configuration
-  **explicitly permits** stacking |
-| Coupon + another coupon? | **No** — one coupon per checkout |
-| Duplicate same promotion? | Prevented by unique application set |
-| Unlimited stacking? | **Rejected** for v1 |
+| Question                             | Answer                                                      |
+| ------------------------------------ | ----------------------------------------------------------- |
+| Multiple auto-promotions on one SKU? | **No** — one winning item promotion per line                |
+| Item promotion + cart promotion?     | **Yes**, in the sequence above when both eligible           |
+| Coupon + promotions?                 | **Only when** the applicable promotion/coupon configuration |
+| **explicitly permits** stacking      |
+| Coupon + another coupon?             | **No** — one coupon per checkout                            |
+| Duplicate same promotion?            | Prevented by unique application set                         |
+| Unlimited stacking?                  | **Rejected** for v1                                         |
 
 Competing promotions resolve deterministically via §8.4 (priority → larger
 discount → lower `promotionId`). Same inputs → same outputs. Policy id is
@@ -263,27 +263,27 @@ promotions.
   (constraints / unique redemption rows). **Redis is never** the
   authoritative coupon usage store (rate-limit only).
 
-| Concern | Rule |
-| --- | --- |
-| Code normalization | Trim, uppercase, collapse internal spaces **before** comparison |
-| Uniqueness | Unique active code (normalized form or hash of normalized form) |
-| Lifecycle | `DRAFT` / `ACTIVE` / `DISABLED` / `EXPIRED` |
-| Limits | Global redemptions, per-customer redemptions, min order value |
-| Scope | All / product / category / brand allow-lists |
-| Types | Percentage or fixed; optional max discount |
-| Invalid/expired | Reject at validate and at checkout; never silent ignore if code present |
-| Abuse | Rate-limit validate attempts (Redis ok); AuthZ for admin create |
-| Storage | **Chosen approach:** always normalize. Ordinary marketing coupons may
-  store the **normalized code** for admin management and support. Coupons
-  that require secrecy (high-value / single-use / unguessable) store a
-  **cryptographic hash** (or equivalent) of the normalized code for
-  validation; plaintext is shown only at creation. Hashing is **not**
-  mandatory for every low-sensitivity marketing code, but sensitive codes
-  **must** use a secure representation. Do not expose unnecessary sensitive
-  coupon material in logs or public APIs. |
-| Audit | Coupon id, normalized code **or** hash reference, discount amount,
-  customer, order — enough for validation, uniqueness, usage tracking,
-  auditing, and admin management |
+| Concern                                                                   | Rule                                                                    |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Code normalization                                                        | Trim, uppercase, collapse internal spaces **before** comparison         |
+| Uniqueness                                                                | Unique active code (normalized form or hash of normalized form)         |
+| Lifecycle                                                                 | `DRAFT` / `ACTIVE` / `DISABLED` / `EXPIRED`                             |
+| Limits                                                                    | Global redemptions, per-customer redemptions, min order value           |
+| Scope                                                                     | All / product / category / brand allow-lists                            |
+| Types                                                                     | Percentage or fixed; optional max discount                              |
+| Invalid/expired                                                           | Reject at validate and at checkout; never silent ignore if code present |
+| Abuse                                                                     | Rate-limit validate attempts (Redis ok); AuthZ for admin create         |
+| Storage                                                                   | **Chosen approach:** always normalize. Ordinary marketing coupons may   |
+| store the **normalized code** for admin management and support. Coupons   |
+| that require secrecy (high-value / single-use / unguessable) store a      |
+| **cryptographic hash** (or equivalent) of the normalized code for         |
+| validation; plaintext is shown only at creation. Hashing is **not**       |
+| mandatory for every low-sensitivity marketing code, but sensitive codes   |
+| **must** use a secure representation. Do not expose unnecessary sensitive |
+| coupon material in logs or public APIs.                                   |
+| Audit                                                                     | Coupon id, normalized code **or** hash reference, discount amount,      |
+| customer, order — enough for validation, uniqueness, usage tracking,      |
+| auditing, and admin management                                            |
 
 Coupon application is re-checked inside the checkout transaction against
 PostgreSQL usage counters.
@@ -326,16 +326,16 @@ order.
 
 **Accepted rounding rule: half-away-from-zero on integer minor units.**
 
-| Rule | Decision |
-| --- | --- |
-| Mode | **Half-away-from-zero** (commercial half-up) on minor units. This is
-  the v1 deterministic rule. Changing it requires a versioned policy /
-  future ADR. |
-| Arithmetic | **Integer minor-unit only** — no floating-point financial arithmetic |
-| When | After each multiplicative step that produces a money amount; never leave float residue |
-| Line vs order | Compute tax **per taxable line** (and shipping if taxable); sum integers for order tax. Apply a single **order-level residual adjustment** only if inclusive-price recomposition requires it — record as `ROUNDING_ADJUSTMENT` line |
-| Currency | Round to currency exponent |
-| Determinism | Same inputs + same `taxPolicyVersion` → same outputs |
+| Rule                                                                 | Decision                                                                                                                                                                                                                            |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mode                                                                 | **Half-away-from-zero** (commercial half-up) on minor units. This is                                                                                                                                                                |
+| the v1 deterministic rule. Changing it requires a versioned policy / |
+| future ADR.                                                          |
+| Arithmetic                                                           | **Integer minor-unit only** — no floating-point financial arithmetic                                                                                                                                                                |
+| When                                                                 | After each multiplicative step that produces a money amount; never leave float residue                                                                                                                                              |
+| Line vs order                                                        | Compute tax **per taxable line** (and shipping if taxable); sum integers for order tax. Apply a single **order-level residual adjustment** only if inclusive-price recomposition requires it — record as `ROUNDING_ADJUSTMENT` line |
+| Currency                                                             | Round to currency exponent                                                                                                                                                                                                          |
+| Determinism                                                          | Same inputs + same `taxPolicyVersion` → same outputs                                                                                                                                                                                |
 
 No cumulative float error: all math in integers or rational → integer round.
 
@@ -368,7 +368,7 @@ No cumulative float error: all math in integers or rational → integer round.
   is item-scoped; for cart-scoped coupons, apply **after item promos and
   before cart promos** so cart promos see remaining eligible amount.
   **Clarified v1 rule:**
-  1) item promotions → 2) coupon → 3) cart promotions.
+  1. item promotions → 2) coupon → 3) cart promotions.
 - **Shipping after merchandise discounts:** shipping quotes often depend on
   discounted merchandise total.
 - **Tax after discounts and shipping:** taxable base must reflect what the
@@ -444,13 +444,13 @@ cannot, trust the snapshot and flag drift — never overwrite.
 
 Refunds **reference the order snapshot**.
 
-| Case | Approach |
-| --- | --- |
-| Full refund | Refund payable (or remaining refundable); reverse tax/shipping per policy recorded on order |
-| Partial line qty | Proportional share of that line’s **snapshotted** discount and tax |
-| Fixed cart discount | Allocate refund using **original allocation ratios** stored on snapshot |
-| Coupon | Do not re-validate live coupon eligibility for amount; use snapshotted coupon discount allocation |
-| Cap | Refundable ≤ paid − already refunded (minor units) |
+| Case                | Approach                                                                                          |
+| ------------------- | ------------------------------------------------------------------------------------------------- |
+| Full refund         | Refund payable (or remaining refundable); reverse tax/shipping per policy recorded on order       |
+| Partial line qty    | Proportional share of that line’s **snapshotted** discount and tax                                |
+| Fixed cart discount | Allocate refund using **original allocation ratios** stored on snapshot                           |
+| Coupon              | Do not re-validate live coupon eligibility for amount; use snapshotted coupon discount allocation |
+| Cap                 | Refundable ≤ paid − already refunded (minor units)                                                |
 
 **Forbidden:** recalculating the order with **current** Offer prices or
 **current** promotion engine to decide refund amount.
@@ -466,27 +466,27 @@ Restock remains an explicit inventory movement (ADR-0010 / ADR-0011).
 
 ## 19. Shipping and fees
 
-| Component | Port / home |
-| --- | --- |
-| Shipping | `ShippingQuote` (ADR-0011); amount enters pipeline §13 step 8 |
-| Fees | Extensible `FeeLine` (payment fee, service fee) — v1 empty or minimal |
-| Marketplace commission | **Out of scope** — future settlement ADR |
+| Component              | Port / home                                                           |
+| ---------------------- | --------------------------------------------------------------------- |
+| Shipping               | `ShippingQuote` (ADR-0011); amount enters pipeline §13 step 8         |
+| Fees                   | Extensible `FeeLine` (payment fee, service fee) — v1 empty or minimal |
+| Marketplace commission | **Out of scope** — future settlement ADR                              |
 
 Shipping/fees are server-quoted; client-supplied amounts ignored.
 
 ## 20. Financial security
 
-| Threat | Mitigation |
-| --- | --- |
-| Client price/total manipulation | Ignore client money; server recalculates |
-| Coupon brute force / enumeration | Rate limits; generic errors; AuthZ on admin |
-| Promotion abuse | Usage counters in PG; eligibility checks |
-| Negative qty/price | Zod + domain invariants |
-| Integer overflow | Bounded qty and money ceilings |
-| Invalid currency | Allow-list / ISO validation |
-| Double coupon / replay | One coupon; checkout idempotency (ADR-0011) |
-| Rounding games | Fixed rounding mode + snapshot |
-| Race on limited promo | PG transaction + unique redemption constraints |
+| Threat                           | Mitigation                                     |
+| -------------------------------- | ---------------------------------------------- |
+| Client price/total manipulation  | Ignore client money; server recalculates       |
+| Coupon brute force / enumeration | Rate limits; generic errors; AuthZ on admin    |
+| Promotion abuse                  | Usage counters in PG; eligibility checks       |
+| Negative qty/price               | Zod + domain invariants                        |
+| Integer overflow                 | Bounded qty and money ceilings                 |
+| Invalid currency                 | Allow-list / ISO validation                    |
+| Double coupon / replay           | One coupon; checkout idempotency (ADR-0011)    |
+| Rounding games                   | Fixed rounding mode + snapshot                 |
+| Race on limited promo            | PG transaction + unique redemption constraints |
 
 All payable math runs **server-side** in Nest application services
 (ADR-0005), not in Next.js as authority (ADR-0007).
@@ -580,14 +580,14 @@ Required before production checkout:
 
 ## 28. Failure behavior
 
-| Failure | Behavior |
-| --- | --- |
-| Invalid pricing config / negative Offer | Fail checkout |
+| Failure                                                           | Behavior                                                                                                                                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Invalid pricing config / negative Offer                           | Fail checkout                                                                                                                                                |
 | Tax calculator error / required tax cannot be determined reliably | **Fail closed — do not complete checkout.** Do not guess tax. Do not silently use stale tax information when that could produce an incorrect payable amount. |
-| Coupon invalid | Fail if code supplied; else continue without |
-| Promotion engine error | Fail checkout |
-| Unsupported currency | Fail checkout |
-| Calculation version / policy missing | Fail checkout |
+| Coupon invalid                                                    | Fail if code supplied; else continue without                                                                                                                 |
+| Promotion engine error                                            | Fail checkout                                                                                                                                                |
+| Unsupported currency                                              | Fail checkout                                                                                                                                                |
+| Calculation version / policy missing                              | Fail checkout                                                                                                                                                |
 
 **Prefer failing safely over charging an incorrect amount.** Tax calculation
 must fail closed.
@@ -616,40 +616,40 @@ flowchart TB
 
 ## 30. Decision matrix
 
-| Area | Decision | Alternatives | Reason |
-| --- | --- | --- | --- |
-| Money | Integer minor units + ISO 4217 | Floats; BigDecimal-only without policy | Determinism; ADR-0010/0011 |
-| Launch currency | KES default, field always present | Hardcoded KES columns | Expansion |
-| Order currency | One per order | Multi-currency / FX v1 | ADR-0011; M-Pesa |
-| Price authority | Offer → engine → snapshot | Client totals; Product price | Tamper-proof |
-| Cart vs checkout | Live cart; snapshot at commit | Freeze cart for days | UX + correctness |
-| Sale windows | Priority → lowest price → stable id | Undefined overlap | Deterministic |
-| Promotions v1 | % / fixed item + cart; limits | Full rules DSL | Complexity |
-| Stacking | Item → coupon → cart; explicit stack flags; no unlimited stack | Free stack | Determinism |
-| Coupons | One per checkout; PG usage SoT; hash when secrecy required | Redis usage; multi-coupon | Abuse control |
-| Tax | TaxCalculator + config; fail closed; Kenya context no hardcoded rates | Hardcoded VAT | Correctness |
-| Rounding | Integer **half-away-from-zero** | Float; banker's v1 | Determinism |
-| Cart price | No soft-lock; re-resolve at checkout; inform on change | Soft-lock v1 | Snapshot truth |
-| Pipeline | Price → item promo → coupon → cart → ship → fee → tax → payable | Tax before discount | Correct taxable base |
-| Snapshot | Immutable at order create | Live recalculation | History |
-| Version | calculationVersion composite | None | Explainability |
-| Refunds | From snapshot allocations | Reprice with current Offer | Fairness / audit |
-| Storage | PostgreSQL SoT | Redis promo counters only | ADR-0006 |
-| Failure | Fail checkout if uncertain | Charge with guess | Financial safety |
+| Area             | Decision                                                              | Alternatives                           | Reason                     |
+| ---------------- | --------------------------------------------------------------------- | -------------------------------------- | -------------------------- |
+| Money            | Integer minor units + ISO 4217                                        | Floats; BigDecimal-only without policy | Determinism; ADR-0010/0011 |
+| Launch currency  | KES default, field always present                                     | Hardcoded KES columns                  | Expansion                  |
+| Order currency   | One per order                                                         | Multi-currency / FX v1                 | ADR-0011; M-Pesa           |
+| Price authority  | Offer → engine → snapshot                                             | Client totals; Product price           | Tamper-proof               |
+| Cart vs checkout | Live cart; snapshot at commit                                         | Freeze cart for days                   | UX + correctness           |
+| Sale windows     | Priority → lowest price → stable id                                   | Undefined overlap                      | Deterministic              |
+| Promotions v1    | % / fixed item + cart; limits                                         | Full rules DSL                         | Complexity                 |
+| Stacking         | Item → coupon → cart; explicit stack flags; no unlimited stack        | Free stack                             | Determinism                |
+| Coupons          | One per checkout; PG usage SoT; hash when secrecy required            | Redis usage; multi-coupon              | Abuse control              |
+| Tax              | TaxCalculator + config; fail closed; Kenya context no hardcoded rates | Hardcoded VAT                          | Correctness                |
+| Rounding         | Integer **half-away-from-zero**                                       | Float; banker's v1                     | Determinism                |
+| Cart price       | No soft-lock; re-resolve at checkout; inform on change                | Soft-lock v1                           | Snapshot truth             |
+| Pipeline         | Price → item promo → coupon → cart → ship → fee → tax → payable       | Tax before discount                    | Correct taxable base       |
+| Snapshot         | Immutable at order create                                             | Live recalculation                     | History                    |
+| Version          | calculationVersion composite                                          | None                                   | Explainability             |
+| Refunds          | From snapshot allocations                                             | Reprice with current Offer             | Fairness / audit           |
+| Storage          | PostgreSQL SoT                                                        | Redis promo counters only              | ADR-0006                   |
+| Failure          | Fail checkout if uncertain                                            | Charge with guess                      | Financial safety           |
 
 ## 31. Alternatives considered
 
-| Alternative | Why rejected |
-| --- | --- |
-| Floating-point money | Rounding drift and exploit risk |
-| Client-authoritative totals | Fraud |
-| Price only on Product | Conflicts with Offer (ADR-0010) |
-| Arbitrary scripted promotions | Non-determinism, security |
-| Unlimited discount stacking | Unpredictable margins and tests |
-| Tax hardcoded in checkout service | Blocks e-invoicing / multi-jurisdiction |
-| Recalculate refunds from live catalog | Breaks history and fairness |
-| FX in v1 | Complexity; ADR-0011 one-currency rule |
-| Redis as promotion usage SoT | Lost counters under flush |
+| Alternative                           | Why rejected                            |
+| ------------------------------------- | --------------------------------------- |
+| Floating-point money                  | Rounding drift and exploit risk         |
+| Client-authoritative totals           | Fraud                                   |
+| Price only on Product                 | Conflicts with Offer (ADR-0010)         |
+| Arbitrary scripted promotions         | Non-determinism, security               |
+| Unlimited discount stacking           | Unpredictable margins and tests         |
+| Tax hardcoded in checkout service     | Blocks e-invoicing / multi-jurisdiction |
+| Recalculate refunds from live catalog | Breaks history and fairness             |
+| FX in v1                              | Complexity; ADR-0011 one-currency rule  |
+| Redis as promotion usage SoT          | Lost counters under flush               |
 
 ## 32. Consequences
 
@@ -695,14 +695,14 @@ flowchart TB
 
 ## 33. Dependencies on previous ADRs
 
-| ADR | Dependency |
-| --- | --- |
-| ADR-0005 | Calculation and ports live in Nest application layer; adapters for tax/shipping |
-| ADR-0006 | PostgreSQL for prices, promotions, coupons, usage; Redis cache/rate-limit only; `promotions` schema |
-| ADR-0007 | UI displays breakdown; never authoritative |
-| ADR-0008 | Admin promotion/coupon AuthZ; AI tools cannot bypass money engine |
-| ADR-0009 | Idempotent checkout; correlation ids; REST exposes previews not client authority |
-| ADR-0010 | Offer list/sale; tax class flags; integer money; inventory separate |
+| ADR      | Dependency                                                                                               |
+| -------- | -------------------------------------------------------------------------------------------------------- |
+| ADR-0005 | Calculation and ports live in Nest application layer; adapters for tax/shipping                          |
+| ADR-0006 | PostgreSQL for prices, promotions, coupons, usage; Redis cache/rate-limit only; `promotions` schema      |
+| ADR-0007 | UI displays breakdown; never authoritative                                                               |
+| ADR-0008 | Admin promotion/coupon AuthZ; AI tools cannot bypass money engine                                        |
+| ADR-0009 | Idempotent checkout; correlation ids; REST exposes previews not client authority                         |
+| ADR-0010 | Offer list/sale; tax class flags; integer money; inventory separate                                      |
 | ADR-0011 | Checkout pipeline home; order snapshots; refunds; ShippingQuote; one currency; fail-safe payment amounts |
 
 ## 34. Future ADRs

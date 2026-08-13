@@ -4,19 +4,19 @@
 
 ## Actors
 
-| Actor | Description |
-| --- | --- |
-| Guest | Unauthenticated shopper with guest cart |
-| Customer | Authenticated shopper |
-| Staff | Operational user (support, catalog, inventory, etc.) |
-| Admin | Privileged staff with broader permissions |
-| Super-admin | Highest privilege; heavily audited |
-| Payment provider | External (e.g. M-Pesa) via webhooks |
-| Courier provider | External delivery signals |
-| Notification provider | Email/SMS/WhatsApp |
-| AI service | Internal service identity invoking tools |
-| Worker | Internal job consumer |
-| System | Automated jobs (expiry, reconcile) |
+| Actor                 | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| Guest                 | Unauthenticated shopper with guest cart              |
+| Customer              | Authenticated shopper                                |
+| Staff                 | Operational user (support, catalog, inventory, etc.) |
+| Admin                 | Privileged staff with broader permissions            |
+| Super-admin           | Highest privilege; heavily audited                   |
+| Payment provider      | External (e.g. M-Pesa) via webhooks                  |
+| Courier provider      | External delivery signals                            |
+| Notification provider | Email/SMS/WhatsApp                                   |
+| AI service            | Internal service identity invoking tools             |
+| Worker                | Internal job consumer                                |
+| System                | Automated jobs (expiry, reconcile)                   |
 
 ## Roles (conceptual RBAC)
 

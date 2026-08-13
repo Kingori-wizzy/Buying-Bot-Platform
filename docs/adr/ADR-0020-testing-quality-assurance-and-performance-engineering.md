@@ -21,14 +21,14 @@ targeted security/load.
 
 **Toolchain (aligned with repo):**
 
-| Layer | Tool |
-| --- | --- |
-| Unit / integration (TS) | **Vitest** (already in packages) |
-| React components | **React Testing Library** |
-| E2E | **Playwright** |
-| a11y | **axe** (via RTL/Playwright) |
-| API contract | OpenAPI diff / consumer checks (ADR-0009) |
-| Load | k6 or Artillery (choose at implementation; not both required) |
+| Layer                   | Tool                                                          |
+| ----------------------- | ------------------------------------------------------------- |
+| Unit / integration (TS) | **Vitest** (already in packages)                              |
+| React components        | **React Testing Library**                                     |
+| E2E                     | **Playwright**                                                |
+| a11y                    | **axe** (via RTL/Playwright)                                  |
+| API contract            | OpenAPI diff / consumer checks (ADR-0009)                     |
+| Load                    | k6 or Artillery (choose at implementation; not both required) |
 
 Do not add Jest alongside Vitest without ADR amendment.
 
@@ -41,18 +41,18 @@ prompt-injection cases, notification intents idempotency.
 
 ## 4. Test types
 
-| Type | Focus |
-| --- | --- |
-| Unit | Pure money math, policies, mappers, guards |
-| Integration | Nest + PG testcontainer; Redis optional |
-| Contract | OpenAPI vs SDK; provider adapter fixtures |
-| E2E | Customer checkout happy path; admin fulfill |
-| Security | IDOR, CSRF, webhook forgery, AuthZ bypass |
-| Worker/queue | Idempotent job handlers; DLQ |
-| AI | Tool schema validation; no invented price without tool; RAG citation |
-| Performance | Load on checkout/search; soak on webhooks |
-| Resilience | Timeout/retry; Redis down; provider 500 |
-| Smoke | Post-deploy health + critical read |
+| Type         | Focus                                                                |
+| ------------ | -------------------------------------------------------------------- |
+| Unit         | Pure money math, policies, mappers, guards                           |
+| Integration  | Nest + PG testcontainer; Redis optional                              |
+| Contract     | OpenAPI vs SDK; provider adapter fixtures                            |
+| E2E          | Customer checkout happy path; admin fulfill                          |
+| Security     | IDOR, CSRF, webhook forgery, AuthZ bypass                            |
+| Worker/queue | Idempotent job handlers; DLQ                                         |
+| AI           | Tool schema validation; no invented price without tool; RAG citation |
+| Performance  | Load on checkout/search; soak on webhooks                            |
+| Resilience   | Timeout/retry; Redis down; provider 500                              |
+| Smoke        | Post-deploy health + critical read                                   |
 
 ## 5. Coverage policy
 
@@ -63,23 +63,23 @@ prompt-injection cases, notification intents idempotency.
 
 ## 6. CI quality gates
 
-| Stage | Checks |
-| --- | --- |
-| PR | lint, typecheck, unit, affected integration, secret scan, audit |
-| Merge to main | full build + tests green |
-| Staging deploy | migrations + smoke + critical E2E subset |
-| Production deploy | gated; smoke; rollback plan (ADR-0019) |
+| Stage             | Checks                                                          |
+| ----------------- | --------------------------------------------------------------- |
+| PR                | lint, typecheck, unit, affected integration, secret scan, audit |
+| Merge to main     | full build + tests green                                        |
+| Staging deploy    | migrations + smoke + critical E2E subset                        |
+| Production deploy | gated; smoke; rollback plan (ADR-0019)                          |
 
 ## 7. Performance targets (aspirational / unverified)
 
-| Area | Target |
-| --- | --- |
-| API read p95 | &lt; 300 ms |
-| Search p95 | &lt; 500 ms |
-| Checkout commit p95 | &lt; 800 ms |
-| Webhook ack | &lt; 1 s |
-| AI first token | &lt; 2 s |
-| Frontend CWV | Meet “good” Core Web Vitals as product goal |
+| Area                | Target                                      |
+| ------------------- | ------------------------------------------- |
+| API read p95        | &lt; 300 ms                                 |
+| Search p95          | &lt; 500 ms                                 |
+| Checkout commit p95 | &lt; 800 ms                                 |
+| Webhook ack         | &lt; 1 s                                    |
+| AI first token      | &lt; 2 s                                    |
+| Frontend CWV        | Meet “good” Core Web Vitals as product goal |
 
 Benchmark in staging before calling production-ready.
 

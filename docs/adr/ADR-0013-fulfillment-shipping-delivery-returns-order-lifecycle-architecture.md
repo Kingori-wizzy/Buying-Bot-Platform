@@ -97,15 +97,15 @@ Adopt a **lightweight fulfillment domain** on Nest (ADR-0005) with:
 
 **Do not collapse these into one field** (preserves ADR-0011).
 
-| Machine | Owns | Lives on |
-| --- | --- | --- |
-| **Order status** | Commercial contract with the customer | Order |
-| **Payment status** | Money movements | Payment / PaymentAttempt |
-| **Fulfillment status** | Warehouse/ops progress for the order (or fulfillment unit) | Fulfillment |
-| **Shipment status** | Physical parcel progress | Shipment |
-| **Return status** | Reverse logistics request | ReturnRequest |
-| **Refund status** | Money return | Payment refund records (`REFUND_REQUESTED` / `REFUND_CONFIRMED`) |
-| **Inventory reservation** | Stock hold | Reservation (`HELD` / `COMMITTED` / `RELEASED`) |
+| Machine                   | Owns                                                       | Lives on                                                         |
+| ------------------------- | ---------------------------------------------------------- | ---------------------------------------------------------------- |
+| **Order status**          | Commercial contract with the customer                      | Order                                                            |
+| **Payment status**        | Money movements                                            | Payment / PaymentAttempt                                         |
+| **Fulfillment status**    | Warehouse/ops progress for the order (or fulfillment unit) | Fulfillment                                                      |
+| **Shipment status**       | Physical parcel progress                                   | Shipment                                                         |
+| **Return status**         | Reverse logistics request                                  | ReturnRequest                                                    |
+| **Refund status**         | Money return                                               | Payment refund records (`REFUND_REQUESTED` / `REFUND_CONFIRMED`) |
+| **Inventory reservation** | Stock hold                                                 | Reservation (`HELD` / `COMMITTED` / `RELEASED`)                  |
 
 Rejected as **order** statuses: `PACKED`, `READY_FOR_DISPATCH`, `SHIPPED`,
 `OUT_FOR_DELIVERY`, `DELIVERED`, `DELIVERY_FAILED`, `RETURN_*` — those belong
@@ -116,28 +116,28 @@ shipment is `OUT_FOR_DELIVERY`.
 
 ### 7.1 Accepted order statuses
 
-| Status | Meaning |
-| --- | --- |
-| `PENDING_PAYMENT` | Created; awaiting confirmed payment (ADR-0011) |
-| `PAID` | Provider-confirmed payment; eligible for fulfillment |
-| `PROCESSING` | Accepted into ops / fulfillment started |
-| `COMPLETED` | Successfully delivered (or otherwise fulfilled per policy) |
-| `CANCELLED` | Voided; not to be fulfilled (may have refunds) |
-| `FAILED` | Terminal unsuccessful before/without successful commerce outcome |
+| Status            | Meaning                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| `PENDING_PAYMENT` | Created; awaiting confirmed payment (ADR-0011)                   |
+| `PAID`            | Provider-confirmed payment; eligible for fulfillment             |
+| `PROCESSING`      | Accepted into ops / fulfillment started                          |
+| `COMPLETED`       | Successfully delivered (or otherwise fulfilled per policy)       |
+| `CANCELLED`       | Voided; not to be fulfilled (may have refunds)                   |
+| `FAILED`          | Terminal unsuccessful before/without successful commerce outcome |
 
 Optional aggregate `refundStatus` on order: `NONE` | `PARTIAL` | `FULL`
 (ADR-0011) — not a replacement for payment refund states.
 
 ### 7.2 Order transitions
 
-| From | To | Actor | Conditions |
-| --- | --- | --- | --- |
-| `PENDING_PAYMENT` | `PAID` | system | Payment `CONFIRMED` |
-| `PENDING_PAYMENT` | `FAILED` / `CANCELLED` | system / customer / admin | Expiry, cancel policy |
-| `PAID` | `PROCESSING` | system / ops | Fulfillment opened; payment still confirmed |
-| `PAID` / `PROCESSING` | `CANCELLED` | customer / admin / system | Policy allows; refund path if paid |
-| `PROCESSING` | `COMPLETED` | system | All required shipments `DELIVERED` (v1: single shipment) + policy |
-| `PROCESSING` | `CANCELLED` | admin / policy | Before dispatch or with void shipment per policy |
+| From                  | To                     | Actor                     | Conditions                                                        |
+| --------------------- | ---------------------- | ------------------------- | ----------------------------------------------------------------- |
+| `PENDING_PAYMENT`     | `PAID`                 | system                    | Payment `CONFIRMED`                                               |
+| `PENDING_PAYMENT`     | `FAILED` / `CANCELLED` | system / customer / admin | Expiry, cancel policy                                             |
+| `PAID`                | `PROCESSING`           | system / ops              | Fulfillment opened; payment still confirmed                       |
+| `PAID` / `PROCESSING` | `CANCELLED`            | customer / admin / system | Policy allows; refund path if paid                                |
+| `PROCESSING`          | `COMPLETED`            | system                    | All required shipments `DELIVERED` (v1: single shipment) + policy |
+| `PROCESSING`          | `CANCELLED`            | admin / policy            | Before dispatch or with void shipment per policy                  |
 
 **Prohibited:** client sets `PAID`/`COMPLETED`; fulfill when payment not
 confirmed; jump to `COMPLETED` without shipment delivery evidence (unless
@@ -151,15 +151,15 @@ audit event.
 One **Fulfillment** per order at v1 (1:1). Future: multiple fulfillment units
 per order without changing Order itself.
 
-| Status | Meaning |
-| --- | --- |
-| `UNFULFILLED` | Paid (or eligible) but not started |
-| `ALLOCATED` | Lines assigned to location / stock committed for pick |
-| `PICKING` | Pick in progress |
-| `PACKED` | Packed / labeled |
-| `READY_FOR_DISPATCH` | Ready for carrier handover |
-| `DISPATCHED` | Handed to carrier (shipment created/dispatched) |
-| `CANCELLED` | Fulfillment aborted |
+| Status               | Meaning                                               |
+| -------------------- | ----------------------------------------------------- |
+| `UNFULFILLED`        | Paid (or eligible) but not started                    |
+| `ALLOCATED`          | Lines assigned to location / stock committed for pick |
+| `PICKING`            | Pick in progress                                      |
+| `PACKED`             | Packed / labeled                                      |
+| `READY_FOR_DISPATCH` | Ready for carrier handover                            |
+| `DISPATCHED`         | Handed to carrier (shipment created/dispatched)       |
+| `CANCELLED`          | Fulfillment aborted                                   |
 
 Transitions (happy path):
 
@@ -176,17 +176,17 @@ client.
 
 ## 9. Shipment / delivery status machine
 
-| Status | Meaning |
-| --- | --- |
-| `PENDING` | Shipment record created, not yet with carrier |
-| `DISPATCHED` | Carrier accepted / in network |
-| `IN_TRANSIT` | Moving |
-| `OUT_FOR_DELIVERY` | Final mile |
-| `DELIVERED` | Confirmed delivery |
-| `DELIVERY_FAILED` | Failed attempt / failed delivery |
-| `RETURNING_TO_SENDER` | Reverse to origin |
-| `RETURNED_TO_SENDER` | Back at origin |
-| `CANCELLED` | Voided before/without successful delivery |
+| Status                | Meaning                                       |
+| --------------------- | --------------------------------------------- |
+| `PENDING`             | Shipment record created, not yet with carrier |
+| `DISPATCHED`          | Carrier accepted / in network                 |
+| `IN_TRANSIT`          | Moving                                        |
+| `OUT_FOR_DELIVERY`    | Final mile                                    |
+| `DELIVERED`           | Confirmed delivery                            |
+| `DELIVERY_FAILED`     | Failed attempt / failed delivery              |
+| `RETURNING_TO_SENDER` | Reverse to origin                             |
+| `RETURNED_TO_SENDER`  | Back at origin                                |
+| `CANCELLED`           | Voided before/without successful delivery     |
 
 Happy path:
 
@@ -210,17 +210,17 @@ auto-refund.
 
 ## 10. Return status machine
 
-| Status | Meaning |
-| --- | --- |
-| `REQUESTED` | Customer/admin opened return |
-| `APPROVED` | Eligible; return authorized |
-| `REJECTED` | Denied by policy/ops |
-| `IN_TRANSIT` | Customer shipping back (or pickup arranged) |
-| `RECEIVED` | Warehouse received |
-| `INSPECTING` | Inspection in progress |
-| `ACCEPTED` | Inspection accepted (qty may be partial) |
-| `REJECTED_AFTER_INSPECTION` | Received but not accepted for restock/refund |
-| `COMPLETED` | Return closed (refunds/movements done as applicable) |
+| Status                      | Meaning                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `REQUESTED`                 | Customer/admin opened return                         |
+| `APPROVED`                  | Eligible; return authorized                          |
+| `REJECTED`                  | Denied by policy/ops                                 |
+| `IN_TRANSIT`                | Customer shipping back (or pickup arranged)          |
+| `RECEIVED`                  | Warehouse received                                   |
+| `INSPECTING`                | Inspection in progress                               |
+| `ACCEPTED`                  | Inspection accepted (qty may be partial)             |
+| `REJECTED_AFTER_INSPECTION` | Received but not accepted for restock/refund         |
+| `COMPLETED`                 | Return closed (refunds/movements done as applicable) |
 
 Do **not** auto-approve every request. Do **not** restock before inspection
 when policy requires inspection.
@@ -244,12 +244,12 @@ references `skuId` + `locationId`; it does not invent a parallel stock table.
 
 ### 11.2 Launch vs future
 
-| Concern | v1 | Future |
-| --- | --- | --- |
-| Merchant | Single | Multi-seller fulfillment ADR |
-| Locations | One default | Multiple warehouses / stores |
-| Shipments | One shipment per order | Split shipments |
-| Routing | Assign default location | Optimization ADR |
+| Concern   | v1                      | Future                       |
+| --------- | ----------------------- | ---------------------------- |
+| Merchant  | Single                  | Multi-seller fulfillment ADR |
+| Locations | One default             | Multiple warehouses / stores |
+| Shipments | One shipment per order  | Split shipments              |
+| Routing   | Assign default location | Optimization ADR             |
 
 ## 12. Order allocation (become fulfillable)
 
@@ -270,14 +270,14 @@ Then: create/open Fulfillment (`UNFULFILLED` → `ALLOCATED`), assign
 
 All stock effects use **append-only movements** (ADR-0010):
 
-| Event | Movement (conceptual) |
-| --- | --- |
-| Checkout | Reservation hold |
-| Payment confirmed | Reservation → sale / commit |
-| Cancel before commit | Release |
-| Cancel/restock after commit | Restock or write-off per policy |
-| Return accepted | `RETURN_RECEIVED` then `RESTOCKED` and/or `DAMAGED_RETURN` / `WRITEOFF` |
-| Pick/pack | Optional internal allocation markers; **on_hand** changes only via movements |
+| Event                       | Movement (conceptual)                                                        |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| Checkout                    | Reservation hold                                                             |
+| Payment confirmed           | Reservation → sale / commit                                                  |
+| Cancel before commit        | Release                                                                      |
+| Cancel/restock after commit | Restock or write-off per policy                                              |
+| Return accepted             | `RETURN_RECEIVED` then `RESTOCKED` and/or `DAMAGED_RETURN` / `WRITEOFF`      |
+| Pick/pack                   | Optional internal allocation markers; **on_hand** changes only via movements |
 
 Never mutate `on_hand` without a movement. Fulfillment must not create a
 second inventory ledger.
@@ -291,11 +291,11 @@ second inventory ledger.
 
 ## 15. Shipping vs fulfillment vs delivery
 
-| Concept | Role |
-| --- | --- |
-| **Fulfillment** | Prepare order (allocate, pick, pack) |
-| **Shipment** | Parcel + carrier handover + tracking identity |
-| **Delivery** | Progress of that shipment toward the customer (events/status) |
+| Concept         | Role                                                          |
+| --------------- | ------------------------------------------------------------- |
+| **Fulfillment** | Prepare order (allocate, pick, pack)                          |
+| **Shipment**    | Parcel + carrier handover + tracking identity                 |
+| **Delivery**    | Progress of that shipment toward the customer (events/status) |
 
 Do not collapse into one “shipped” order flag.
 
@@ -317,10 +317,10 @@ zone, provider, service level, discounted merchandise total (ADR-0012).
 
 ## 17. Delivery methods
 
-| Method | v1 | Future |
-| --- | --- | --- |
-| Standard delivery | **Yes** | — |
-| Express delivery | **Optional** if quote rules exist | — |
+| Method                         | v1                                      | Future             |
+| ------------------------------ | --------------------------------------- | ------------------ |
+| Standard delivery              | **Yes**                                 | —                  |
+| Express delivery               | **Optional** if quote rules exist       | —                  |
 | Customer pickup / pickup point | **Deferred** unless product requires it | Pickup network ADR |
 
 Do not force pickup into v1 if it adds address/handover complexity without
@@ -410,27 +410,27 @@ photo/OTP for every delivery.
 
 ## 24. Delivery failures
 
-| Situation | Shipment | Order | Inventory | Refund |
-| --- | --- | --- | --- | --- |
-| Customer unavailable | `DELIVERY_FAILED` → retry or RTS | stay `PROCESSING` | unchanged until RTS/policy | **Not automatic** |
-| Incorrect address | failed / RTS | stay `PROCESSING` | per RTS receive | policy |
-| Courier failure | failed / retry | stay `PROCESSING` | unchanged | policy |
-| Damaged / refused | failed / RTS | stay `PROCESSING` | inspect on return | policy |
-| Return to sender received | `RETURNED_TO_SENDER` | may cancel or await ops | restock/write-off via movements | if policy + refund path |
+| Situation                 | Shipment                         | Order                   | Inventory                       | Refund                  |
+| ------------------------- | -------------------------------- | ----------------------- | ------------------------------- | ----------------------- |
+| Customer unavailable      | `DELIVERY_FAILED` → retry or RTS | stay `PROCESSING`       | unchanged until RTS/policy      | **Not automatic**       |
+| Incorrect address         | failed / RTS                     | stay `PROCESSING`       | per RTS receive                 | policy                  |
+| Courier failure           | failed / retry                   | stay `PROCESSING`       | unchanged                       | policy                  |
+| Damaged / refused         | failed / RTS                     | stay `PROCESSING`       | inspect on return               | policy                  |
+| Return to sender received | `RETURNED_TO_SENDER`             | may cancel or await ops | restock/write-off via movements | if policy + refund path |
 
 **Delivery failure does not automatically imply refund.** Business policy
 decides retry, RTS, cancel, or refund.
 
 ## 25. Cancellations (with ADR-0011)
 
-| Stage | Allowed? | Effects |
-| --- | --- | --- |
-| Before payment | Yes | Release reservation; order `CANCELLED`/`FAILED` |
-| After payment, before fulfillment | Yes (policy) | Cancel fulfillment; refund path; inventory release/restock |
-| During processing / packing | Restricted | Admin; void fulfillment if not dispatched |
-| After packing, before dispatch | Restricted | Admin; may scrap label |
-| After dispatch / in delivery | Generally **no** cancel → return/RTS/refund policy |
-| After delivery | No cancel → **return** flow |
+| Stage                             | Allowed?                                           | Effects                                                    |
+| --------------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| Before payment                    | Yes                                                | Release reservation; order `CANCELLED`/`FAILED`            |
+| After payment, before fulfillment | Yes (policy)                                       | Cancel fulfillment; refund path; inventory release/restock |
+| During processing / packing       | Restricted                                         | Admin; void fulfillment if not dispatched                  |
+| After packing, before dispatch    | Restricted                                         | Admin; may scrap label                                     |
+| After dispatch / in delivery      | Generally **no** cancel → return/RTS/refund policy |
+| After delivery                    | No cancel → **return** flow                        |
 
 After payment, cancellation uses the **refund path** when money was
 captured (`REFUND_REQUESTED` → `REFUND_CONFIRMED`).
@@ -531,17 +531,17 @@ Provider event ids + command ids in PostgreSQL (ADR-0009 / ADR-0011).
 
 ## 35. Failure and recovery
 
-| Failure | Behavior |
-| --- | --- |
-| Worker outage | Events/outbox remain in PG; catch up later |
-| Courier API outage | Shipment stays last known good state; retry; no corrupt invent |
-| Webhook outage | Persist when received; reconcile/poll later |
-| Notification outage | Commerce continues; retry notify |
-| Database outage | API not ready; no transitions |
-| Redis outage | Cache/queue degrade; **fulfillment state intact in PG**; outbox |
-| Object storage outage | POD upload fails; delivery status can still update |
-| Duplicate provider event | Idempotent no-op |
-| Provider timeout | Retry with backoff; no double dispatch if idempotent create |
+| Failure                  | Behavior                                                        |
+| ------------------------ | --------------------------------------------------------------- |
+| Worker outage            | Events/outbox remain in PG; catch up later                      |
+| Courier API outage       | Shipment stays last known good state; retry; no corrupt invent  |
+| Webhook outage           | Persist when received; reconcile/poll later                     |
+| Notification outage      | Commerce continues; retry notify                                |
+| Database outage          | API not ready; no transitions                                   |
+| Redis outage             | Cache/queue degrade; **fulfillment state intact in PG**; outbox |
+| Object storage outage    | POD upload fails; delivery status can still update              |
+| Duplicate provider event | Idempotent no-op                                                |
+| Provider timeout         | Retry with backoff; no double dispatch if idempotent create     |
 
 Redis outage must **not** destroy fulfillment state.
 
@@ -562,25 +562,25 @@ HMAC webhooks, rate limits, and policy gates.
 
 ## 38. Performance (aspirational)
 
-| Operation | Target |
-| --- | --- |
-| Order/shipment status read p95 | &lt; 300 ms |
-| Fulfillment command ack | Fast persist + enqueue |
-| Provider webhook ack | &lt; 1 s |
-| Heavy provider I/O | Async worker |
+| Operation                      | Target                 |
+| ------------------------------ | ---------------------- |
+| Order/shipment status read p95 | &lt; 300 ms            |
+| Fulfillment command ack        | Fast persist + enqueue |
+| Provider webhook ack           | &lt; 1 s               |
+| Heavy provider I/O             | Async worker           |
 
 Unmeasured.
 
 ## 39. Data ownership
 
-| Store | Role |
-| --- | --- |
-| **PostgreSQL** | Authoritative orders, fulfillments, shipments, returns, tracking events, inventory |
-| **Redis** | Cache, locks, BullMQ broker — never ledger |
-| **Object storage** | POD photos/signatures, labels |
-| **BullMQ** | Work transport |
-| **External courier** | External shipment signals |
-| **Normalized shipment state** | Internal truth after verified events |
+| Store                         | Role                                                                               |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| **PostgreSQL**                | Authoritative orders, fulfillments, shipments, returns, tracking events, inventory |
+| **Redis**                     | Cache, locks, BullMQ broker — never ledger                                         |
+| **Object storage**            | POD photos/signatures, labels                                                      |
+| **BullMQ**                    | Work transport                                                                     |
+| **External courier**          | External shipment signals                                                          |
+| **Normalized shipment state** | Internal truth after verified events                                               |
 
 ## 40. AI boundary
 
@@ -685,36 +685,36 @@ stateDiagram-v2
 
 ## 43. Decision matrix
 
-| Area | Decision | Alternatives | Reason |
-| --- | --- | --- | --- |
-| Status model | Separate machines | One mega order status | ADR-0011 clarity |
-| Order states | Lean commercial set | PACKED/SHIPPED on Order | Ops detail elsewhere |
-| Fulfillment | Lightweight + locationId | Full WMS v1 | Launch simplicity |
-| Inventory | ADR-0010 movements only | Second stock system | One ledger |
-| Locations | One default + abstraction | Multi-warehouse routing v1 | Path without rewrite |
-| Shipping fee | ShippingQuote port | Client fee | ADR-0012 |
-| Shipments | Entity now; 1:1 v1 | Force split v1 / no entity | Future multi-ship |
-| Couriers | DeliveryProvider adapters | Hardcoded SDK in domain | Portability |
-| Tracking | Normalized + events | Raw provider as SoT | Control |
-| Webhooks | Verify→persist→ack→async | Sync trust | ADR-0009 |
-| Failures | Policy; no auto-refund | Auto-refund all fails | Finance control |
-| Returns | Policy + inspection | Always restock | Quality |
-| Refunds | Snapshot + idempotent | Live reprice | ADR-0012 |
-| Notify | Async ports | Sync SMS in tx | Reliability |
-| SoT | PostgreSQL | Redis fulfillment | ADR-0006 |
+| Area         | Decision                  | Alternatives               | Reason               |
+| ------------ | ------------------------- | -------------------------- | -------------------- |
+| Status model | Separate machines         | One mega order status      | ADR-0011 clarity     |
+| Order states | Lean commercial set       | PACKED/SHIPPED on Order    | Ops detail elsewhere |
+| Fulfillment  | Lightweight + locationId  | Full WMS v1                | Launch simplicity    |
+| Inventory    | ADR-0010 movements only   | Second stock system        | One ledger           |
+| Locations    | One default + abstraction | Multi-warehouse routing v1 | Path without rewrite |
+| Shipping fee | ShippingQuote port        | Client fee                 | ADR-0012             |
+| Shipments    | Entity now; 1:1 v1        | Force split v1 / no entity | Future multi-ship    |
+| Couriers     | DeliveryProvider adapters | Hardcoded SDK in domain    | Portability          |
+| Tracking     | Normalized + events       | Raw provider as SoT        | Control              |
+| Webhooks     | Verify→persist→ack→async  | Sync trust                 | ADR-0009             |
+| Failures     | Policy; no auto-refund    | Auto-refund all fails      | Finance control      |
+| Returns      | Policy + inspection       | Always restock             | Quality              |
+| Refunds      | Snapshot + idempotent     | Live reprice               | ADR-0012             |
+| Notify       | Async ports               | Sync SMS in tx             | Reliability          |
+| SoT          | PostgreSQL                | Redis fulfillment          | ADR-0006             |
 
 ## 44. Alternatives considered
 
-| Alternative | Why rejected / deferred |
-| --- | --- |
-| Single order status for pack/ship/deliver | Mixes commercial and ops; violates ADR-0011 |
-| Direct courier SDK in domain | Lock-in; untestable |
-| Synchronous fulfillment HTTP to courier inside DB tx | Long txs; ADR-0006/0011 forbid |
-| Redis as fulfillment authority | Lost on flush; not ledger |
-| Immediate restock without inspection | Damaged goods pollution |
-| Only “shipped” boolean, no Shipment entity | Blocks multi-shipment later |
-| Full custom WMS at v1 | Premature ops cost |
-| Sync notifications in fulfillment command | Brittle latency |
+| Alternative                                          | Why rejected / deferred                     |
+| ---------------------------------------------------- | ------------------------------------------- |
+| Single order status for pack/ship/deliver            | Mixes commercial and ops; violates ADR-0011 |
+| Direct courier SDK in domain                         | Lock-in; untestable                         |
+| Synchronous fulfillment HTTP to courier inside DB tx | Long txs; ADR-0006/0011 forbid              |
+| Redis as fulfillment authority                       | Lost on flush; not ledger                   |
+| Immediate restock without inspection                 | Damaged goods pollution                     |
+| Only “shipped” boolean, no Shipment entity           | Blocks multi-shipment later                 |
+| Full custom WMS at v1                                | Premature ops cost                          |
+| Sync notifications in fulfillment command            | Brittle latency                             |
 
 ## 45. Consequences
 
@@ -743,15 +743,15 @@ Security: IDOR on orders/addresses; forged webhooks.
 
 ## 47. Dependencies
 
-| ADR | How ADR-0013 depends |
-| --- | --- |
+| ADR      | How ADR-0013 depends                                            |
+| -------- | --------------------------------------------------------------- |
 | ADR-0005 | Nest modules for fulfillment/shipping/returns; adapters at edge |
-| ADR-0006 | PG SoT; Redis cache/queues; BullMQ; object storage for POD |
-| ADR-0007 | Non-authoritative status UI |
-| ADR-0008 | RBAC, ownership, webhook HMAC, address privacy |
-| ADR-0009 | REST resources, webhooks, idempotency, async jobs, ports |
-| ADR-0010 | SKU, locationId, reservations, movements, restock/damage |
-| ADR-0011 | Order/payment states, cancel/refund path, reservation commit |
+| ADR-0006 | PG SoT; Redis cache/queues; BullMQ; object storage for POD      |
+| ADR-0007 | Non-authoritative status UI                                     |
+| ADR-0008 | RBAC, ownership, webhook HMAC, address privacy                  |
+| ADR-0009 | REST resources, webhooks, idempotency, async jobs, ports        |
+| ADR-0010 | SKU, locationId, reservations, movements, restock/damage        |
+| ADR-0011 | Order/payment states, cancel/refund path, reservation commit    |
 | ADR-0012 | ShippingQuote amounts, snapshot refunds, tax on shipping policy |
 
 ## 48. Future ADRs

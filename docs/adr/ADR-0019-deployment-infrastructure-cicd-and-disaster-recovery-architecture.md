@@ -30,13 +30,13 @@ are proven — via a future infra ADR amendment.
 
 ## 3. Environments
 
-| Env | Purpose |
-| --- | --- |
-| local | Developer machines; docker dependencies |
-| development | Shared optional |
-| test/CI | Ephemeral PG for migrations/tests |
-| staging | Production-like; no real customer money |
-| production | Live |
+| Env         | Purpose                                 |
+| ----------- | --------------------------------------- |
+| local       | Developer machines; docker dependencies |
+| development | Shared optional                         |
+| test/CI     | Ephemeral PG for migrations/tests       |
+| staging     | Production-like; no real customer money |
+| production  | Live                                    |
 
 Parity: staging ≈ production topology at smaller scale.
 
@@ -81,10 +81,10 @@ credentials per environment.
 
 ## 10. Disaster recovery
 
-| Metric | Pre-payments foundation | Before production payments |
-| --- | --- | --- |
-| RPO | Align ADR-0006 (≤24h until tightened) | Tighten toward ≤1h (target; verify) |
-| RTO | ≤4h aspirational until drill-proven | Drill-proven target |
+| Metric | Pre-payments foundation               | Before production payments          |
+| ------ | ------------------------------------- | ----------------------------------- |
+| RPO    | Align ADR-0006 (≤24h until tightened) | Tighten toward ≤1h (target; verify) |
+| RTO    | ≤4h aspirational until drill-proven   | Drill-proven target                 |
 
 **Mandatory:** restore drills before declaring DR production-ready and before
 real customer payments. Backups: PG PITR when available; object storage

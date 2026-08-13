@@ -41,18 +41,18 @@ ingress.
 
 ## 4. Integration catalog (v1 readiness)
 
-| Integration | Port | v1 |
-| --- | --- | --- |
-| M-Pesa / payments | PaymentProvider (ADR-0011) | Primary |
-| Future cards | PaymentProvider | Later |
-| Email/SMS/WhatsApp | Notification providers (ADR-0014) | Email+SMS; WA ready |
-| Couriers | DeliveryProvider (ADR-0013) | Adapter-ready |
-| LLM/embeddings | ModelProvider (ADR-0015) | Required for AI |
-| Object storage | ObjectStorage port (ADR-0006) | Required |
-| Catalog import | Import pipeline (ADR-0010) | Async |
-| Analytics | Outbound events (future) | Optional |
-| Search SaaS | Deferred (ADR-0010 PG FTS) | Later ADR |
-| Instagram/TikTok commerce | Channel adapters | Future omnichannel |
+| Integration               | Port                              | v1                  |
+| ------------------------- | --------------------------------- | ------------------- |
+| M-Pesa / payments         | PaymentProvider (ADR-0011)        | Primary             |
+| Future cards              | PaymentProvider                   | Later               |
+| Email/SMS/WhatsApp        | Notification providers (ADR-0014) | Email+SMS; WA ready |
+| Couriers                  | DeliveryProvider (ADR-0013)       | Adapter-ready       |
+| LLM/embeddings            | ModelProvider (ADR-0015)          | Required for AI     |
+| Object storage            | ObjectStorage port (ADR-0006)     | Required            |
+| Catalog import            | Import pipeline (ADR-0010)        | Async               |
+| Analytics                 | Outbound events (future)          | Optional            |
+| Search SaaS               | Deferred (ADR-0010 PG FTS)        | Later ADR           |
+| Instagram/TikTok commerce | Channel adapters                  | Future omnichannel  |
 
 ## 5. Credentials & secrets
 
@@ -87,7 +87,7 @@ etc.). Unverified merges forbidden.
 ## 10. Data ownership
 
 PG = integration receipts, sync cursors, canonical state. Providers =
-external truth for *their* rails until reconciled. Redis = rate limits only.
+external truth for _their_ rails until reconciled. Redis = rate limits only.
 
 ## 11. Security
 
