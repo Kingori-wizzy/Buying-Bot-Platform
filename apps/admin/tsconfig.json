@@ -9,9 +9,9 @@
     "declarationMap": false,
     "allowJs": true,
     "plugins": [{ "name": "next" }],
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@buying-bot/*": ["../../packages/*/src"]
     },
     "types": ["node", "react", "react-dom"]
   },

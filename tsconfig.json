@@ -3,9 +3,8 @@
   "extends": "@buying-bot/typescript-config/base.json",
   "compilerOptions": {
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "@buying-bot/*": ["packages/*/src"]
+      "@buying-bot/*": ["./packages/*/src"]
     }
   },
   "files": [],

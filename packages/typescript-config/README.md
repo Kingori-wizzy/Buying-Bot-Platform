@@ -21,8 +21,8 @@ Every application under `apps/<name>` must include a `tsconfig.json` that extend
   "extends": "@buying-bot/typescript-config/bundler.json",
   "compilerOptions": {
     "paths": {
-      "@/*": ["apps/<name>/src/*"],
-      "@buying-bot/*": ["packages/*/src"]
+      "@/*": ["./*"],
+      "@buying-bot/*": ["../../packages/*/src"]
     }
   },
   "include": ["src"],
@@ -68,9 +68,9 @@ Set `outDir` / `rootDir` in the consuming project (not only in the shared preset
 | --------------- | ----------------------------------------- |
 | `@buying-bot/*` | `packages/*/src` (from the monorepo root) |
 
-`paths.json` sets `baseUrl` to `${configDir}/../..`. TypeScript substitutes `${configDir}` with the **consuming** project directory, so this is valid for packages at `apps/<name>` and `packages/<name>` only. The repository root `tsconfig.json` defines the same aliases with `baseUrl: "."` instead of extending `paths.json`.
+`paths.json` maps `@buying-bot/*` with `${configDir}/../../packages/*/src` (no `baseUrl`; deprecated in TypeScript 6). TypeScript substitutes `${configDir}` with the **consuming** project directory, so this is valid for packages at `apps/<name>` and `packages/<name>` only. The repository root `tsconfig.json` defines the same aliases as `./packages/*/src`.
 
-Optional local app alias `@/*` → `src/*` (with a local `baseUrl`) may be added per app; if you override `paths`, re-declare `@buying-bot/*` as well (TypeScript replaces the whole `paths` map on override).
+Optional local app alias `@/*` → `./*` may be added per app; if you override `paths`, re-declare `@buying-bot/*` as well (TypeScript replaces the whole `paths` map on override).
 
 ## Dependency
 
