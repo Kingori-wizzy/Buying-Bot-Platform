@@ -21,26 +21,26 @@
 Buying Bot Platform is an AI-powered omnichannel commerce system. Established
 decisions:
 
-| ADR | Status | Relevant constraint |
-| --- | --- | --- |
+| ADR      | Status   | Relevant constraint                                                                                                      |
+| -------- | -------- | ------------------------------------------------------------------------------------------------------------------------ |
 | ADR-0005 | Accepted | NestJS + Fastify for `apps/api`; Zod validation; `/v1` + OpenAPI → SDK; API enqueues, worker consumes; webhooks ack fast |
-| ADR-0006 | Accepted | PostgreSQL SoT; Redis cache/limits/queues; BullMQ on worker; idempotency in Postgres; optional outbox |
-| ADR-0007 | Accepted | Next.js web/admin consume REST + OpenAPI via `@buying-bot/sdk`; SSE for AI streaming |
-| ADR-0008 | Accepted | Nest is AuthN/AuthZ authority; cookie sessions (web) + bearer tokens (mobile/service); webhook HMAC; rate limits |
+| ADR-0006 | Accepted | PostgreSQL SoT; Redis cache/limits/queues; BullMQ on worker; idempotency in Postgres; optional outbox                    |
+| ADR-0007 | Accepted | Next.js web/admin consume REST + OpenAPI via `@buying-bot/sdk`; SSE for AI streaming                                     |
+| ADR-0008 | Accepted | Nest is AuthN/AuthZ authority; cookie sessions (web) + bearer tokens (mobile/service); webhook HMAC; rate limits         |
 
 Current communication reality (verified in-repo):
 
-| Asset | Current state |
-| --- | --- |
-| `apps/api` | Ops shell only. No product routes. |
-| `apps/web` / `apps/admin` | TypeScript shells. No Next.js yet. |
-| `apps/worker` / `apps/ai-service` | Ops shells. No job/AI product routes. |
-| `@buying-bot/sdk` | `PlatformSdk` + `PlatformApiError`; health only. |
-| `@buying-bot/types` | `ApiErrorBody`, `Permission`, pagination types deferred. |
-| `@buying-bot/validation` | Zod + `paginationQuerySchema` + `parseOrThrow`. |
-| `@buying-bot/utils` | `x-request-id` / `x-correlation-id` in ops server. |
-| `@buying-bot/auth` | `Authenticator` / `Authorizer` ports. |
-| `@buying-bot/ai-core` | Model/tool ports; AI service is separate process. |
+| Asset                             | Current state                                            |
+| --------------------------------- | -------------------------------------------------------- |
+| `apps/api`                        | Ops shell only. No product routes.                       |
+| `apps/web` / `apps/admin`         | TypeScript shells. No Next.js yet.                       |
+| `apps/worker` / `apps/ai-service` | Ops shells. No job/AI product routes.                    |
+| `@buying-bot/sdk`                 | `PlatformSdk` + `PlatformApiError`; health only.         |
+| `@buying-bot/types`               | `ApiErrorBody`, `Permission`, pagination types deferred. |
+| `@buying-bot/validation`          | Zod + `paginationQuerySchema` + `parseOrThrow`.          |
+| `@buying-bot/utils`               | `x-request-id` / `x-correlation-id` in ops server.       |
+| `@buying-bot/auth`                | `Authenticator` / `Authorizer` ports.                    |
+| `@buying-bot/ai-core`             | Model/tool ports; AI service is separate process.        |
 
 No OpenAPI spec, product endpoints, queues, or webhook handlers exist. This ADR
 defines the communication architecture before implementation.
@@ -83,13 +83,13 @@ omnichannel integrations ship.
 
 ### 4.1 Options evaluated
 
-| Option | Fit | Verdict |
-| --- | --- | --- |
-| **REST (JSON over HTTP)** | Nest + Fastify native; OpenAPI; CDN/cache; mobile; external integrators; aligns with ADR-0005/0007 | **Recommend** |
-| GraphQL | Flexible reads; adds schema/auth/complexity; weak fit for webhooks, file uploads, payment callbacks | Reject as primary |
-| tRPC | Excellent TS DX; poor fit for mobile, external merchants, OpenAPI ecosystem | Reject |
-| gRPC | Strong service-to-service; poor browser/public API ergonomics | Defer for internal only if needed later |
-| RPC-style POST actions everywhere | Easy to abuse; hides resources | Reject as default pattern |
+| Option                            | Fit                                                                                                 | Verdict                                 |
+| --------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| **REST (JSON over HTTP)**         | Nest + Fastify native; OpenAPI; CDN/cache; mobile; external integrators; aligns with ADR-0005/0007  | **Recommend**                           |
+| GraphQL                           | Flexible reads; adds schema/auth/complexity; weak fit for webhooks, file uploads, payment callbacks | Reject as primary                       |
+| tRPC                              | Excellent TS DX; poor fit for mobile, external merchants, OpenAPI ecosystem                         | Reject                                  |
+| gRPC                              | Strong service-to-service; poor browser/public API ergonomics                                       | Defer for internal only if needed later |
+| RPC-style POST actions everywhere | Easy to abuse; hides resources                                                                      | Reject as default pattern               |
 
 ### 4.2 Decision
 
@@ -131,7 +131,7 @@ GET /v1/products?category=electronics&sort=price&order=asc&page=1&pageSize=20
 Authorization: Bearer … | Cookie: (browser session via BFF/SDK credentials)
 
 POST /v1/orders
-Idempotency-Key: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+Idempotency-Key: <client-generated-uuid>
 Content-Type: application/json
 
 { "cartId": "…", "shippingAddressId": "…" }
@@ -156,30 +156,30 @@ communication but do not replace URI versions.
 
 ### 6.2 Change policy
 
-| Change type | Handling |
-| --- | --- |
-| Non-breaking (new optional field, new endpoint) | Same `/v1` |
-| Breaking (remove/rename field, semantic change) | New `/v2` |
-| Deprecation | `Deprecation` / `Sunset` headers + docs + changelog |
-| Migration period | Minimum **6 months** for external/mobile after `/v2` GA unless security-critical |
-| Sunset | Old version read-only or removed per announced date |
+| Change type                                     | Handling                                                                         |
+| ----------------------------------------------- | -------------------------------------------------------------------------------- |
+| Non-breaking (new optional field, new endpoint) | Same `/v1`                                                                       |
+| Breaking (remove/rename field, semantic change) | New `/v2`                                                                        |
+| Deprecation                                     | `Deprecation` / `Sunset` headers + docs + changelog                              |
+| Migration period                                | Minimum **6 months** for external/mobile after `/v2` GA unless security-critical |
+| Sunset                                          | Old version read-only or removed per announced date                              |
 
 Mobile apps may lag; `/v1` must remain stable until sunset policy completes.
 
 ## 7. Resource naming
 
-| Resource | Path segment | ID style |
-| --- | --- | --- |
-| Products | `products` | UUID in API (`id`); slug only in public SEO routes on web, resolved server-side |
-| Categories | `categories` | UUID |
-| Orders | `orders` | UUID |
-| Customers | `customers` | UUID (admin); `me` alias for self-service |
-| Cart | `cart` | Session/customer scoped singleton |
-| Payments | `payments` | UUID |
-| Inventory | `inventory` | SKU or UUID per domain model |
-| Promotions | `promotions` | UUID |
-| Conversations | `conversations` | UUID |
-| Messages | `messages` | Nested under conversation or flat with filter |
+| Resource      | Path segment    | ID style                                                                        |
+| ------------- | --------------- | ------------------------------------------------------------------------------- |
+| Products      | `products`      | UUID in API (`id`); slug only in public SEO routes on web, resolved server-side |
+| Categories    | `categories`    | UUID                                                                            |
+| Orders        | `orders`        | UUID                                                                            |
+| Customers     | `customers`     | UUID (admin); `me` alias for self-service                                       |
+| Cart          | `cart`          | Session/customer scoped singleton                                               |
+| Payments      | `payments`      | UUID                                                                            |
+| Inventory     | `inventory`     | SKU or UUID per domain model                                                    |
+| Promotions    | `promotions`    | UUID                                                                            |
+| Conversations | `conversations` | UUID                                                                            |
+| Messages      | `messages`      | Nested under conversation or flat with filter                                   |
 
 **Rules:**
 
@@ -190,13 +190,13 @@ Mobile apps may lag; `/v1` must remain stable until sunset policy completes.
 
 ## 8. HTTP methods
 
-| Method | Use |
-| --- | --- |
-| **GET** | Safe, idempotent reads. No body side effects. |
-| **POST** | Create resources **or** non-idempotent commands that do not map cleanly to PUT/PATCH. |
-| **PUT** | Full replace of a resource representation (rare). |
-| **PATCH** | Partial update of allowed fields. |
-| **DELETE** | Remove or soft-delete per domain rules. |
+| Method     | Use                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------- |
+| **GET**    | Safe, idempotent reads. No body side effects.                                         |
+| **POST**   | Create resources **or** non-idempotent commands that do not map cleanly to PUT/PATCH. |
+| **PUT**    | Full replace of a resource representation (rare).                                     |
+| **PATCH**  | Partial update of allowed fields.                                                     |
+| **DELETE** | Remove or soft-delete per domain rules.                                               |
 
 ### 8.1 Command-like operations
 
@@ -215,22 +215,22 @@ audit events.
 
 ## 9. Status codes
 
-| Code | When |
-| --- | --- |
-| **200** | Successful GET/PATCH/POST returning body |
-| **201** | Resource created; include `Location` when helpful |
-| **202** | Accepted for async processing (job enqueued) |
-| **204** | Success with no body |
-| **400** | Malformed request, unknown query param, bad JSON |
-| **401** | Missing/invalid authentication |
-| **403** | Authenticated but not authorized |
+| Code    | When                                                          |
+| ------- | ------------------------------------------------------------- |
+| **200** | Successful GET/PATCH/POST returning body                      |
+| **201** | Resource created; include `Location` when helpful             |
+| **202** | Accepted for async processing (job enqueued)                  |
+| **204** | Success with no body                                          |
+| **400** | Malformed request, unknown query param, bad JSON              |
+| **401** | Missing/invalid authentication                                |
+| **403** | Authenticated but not authorized                              |
 | **404** | Resource not found **or** hidden by AuthZ (avoid enumeration) |
-| **409** | Conflict (duplicate, state mismatch, concurrency) |
-| **422** | Semantically invalid input (validation failed) |
-| **429** | Rate limited |
-| **500** | Unexpected server error (generic message) |
-| **502** | Bad gateway to upstream provider |
-| **503** | Service unavailable / dependency down (readiness) |
+| **409** | Conflict (duplicate, state mismatch, concurrency)             |
+| **422** | Semantically invalid input (validation failed)                |
+| **429** | Rate limited                                                  |
+| **500** | Unexpected server error (generic message)                     |
+| **502** | Bad gateway to upstream provider                              |
+| **503** | Service unavailable / dependency down (readiness)             |
 
 Never return **200** with `{ success: false }` for HTTP-level outcomes.
 
@@ -266,12 +266,12 @@ filter (implementation deferred).
 
 ### 11.1 Layering
 
-| Layer | Responsibility |
-| --- | --- |
+| Layer                    | Responsibility                                                |
+| ------------------------ | ------------------------------------------------------------- |
 | **Frontend (web/admin)** | Zod from `@buying-bot/validation` for UX — immediate feedback |
-| **SDK** | Optional client-side parse of responses; no business rules |
-| **API boundary (Nest)** | Authoritative request validation via Zod schemas (ADR-0005) |
-| **Application/domain** | Invariants, state machines, cross-field rules |
+| **SDK**                  | Optional client-side parse of responses; no business rules    |
+| **API boundary (Nest)**  | Authoritative request validation via Zod schemas (ADR-0005)   |
+| **Application/domain**   | Invariants, state machines, cross-field rules                 |
 
 **Single source:** define request/query schemas in `@buying-bot/validation`
 (or domain-specific files exported from it). Nest pipes call `parseOrThrow`.
@@ -328,13 +328,13 @@ marked with separate tags.
 
 ### 13.2 Responsibilities
 
-| In scope | Out of scope |
-| --- | --- |
-| HTTP request construction | Business workflows |
-| Auth header/cookie attachment hooks | Prisma/database |
-| Typed responses/errors (`PlatformApiError`) | Nest internals |
-| Retries (safe/idempotent only), timeouts, abort | Worker queue logic |
-| Serialization (JSON) | Authorization decisions |
+| In scope                                        | Out of scope            |
+| ----------------------------------------------- | ----------------------- |
+| HTTP request construction                       | Business workflows      |
+| Auth header/cookie attachment hooks             | Prisma/database         |
+| Typed responses/errors (`PlatformApiError`)     | Nest internals          |
+| Retries (safe/idempotent only), timeouts, abort | Worker queue logic      |
+| Serialization (JSON)                            | Authorization decisions |
 
 Extend `PlatformSdk` with generated or hand-maintained methods per OpenAPI
 resource. Map non-2xx to `PlatformApiError` using parsed `ApiErrorBody`.
@@ -349,12 +349,12 @@ resource. Map non-2xx to `PlatformApiError` using parsed `ApiErrorBody`.
 
 ## 14. Type ownership
 
-| Layer | Owns | Must not leak |
-| --- | --- | --- |
-| **Domain** | Entities, invariants, ports | HTTP, Prisma |
-| **Database** | Prisma models, migrations | Browser, OpenAPI directly |
-| **API contract** | Request/response DTOs in types/validation | ORM shapes |
-| **UI** | View models, component props | Database types |
+| Layer            | Owns                                      | Must not leak             |
+| ---------------- | ----------------------------------------- | ------------------------- |
+| **Domain**       | Entities, invariants, ports               | HTTP, Prisma              |
+| **Database**     | Prisma models, migrations                 | Browser, OpenAPI directly |
+| **API contract** | Request/response DTOs in types/validation | ORM shapes                |
+| **UI**           | View models, component props              | Database types            |
 
 **Mapping:** domain entity → response DTO in application layer. Prisma records
 never cross the HTTP boundary.
@@ -366,12 +366,12 @@ stable across ORM refactors.
 
 ### 15.1 Strategies
 
-| Use case | Strategy |
-| --- | --- |
+| Use case                         | Strategy                                                             |
+| -------------------------------- | -------------------------------------------------------------------- |
 | Admin tables (orders, customers) | **Offset** (`page`, `pageSize`) — already in `paginationQuerySchema` |
-| Product catalog browsing | **Cursor** preferred at scale (`cursor`, `limit`) |
-| Audit logs, events | **Cursor** required |
-| Search results | **Cursor** + stable sort key |
+| Product catalog browsing         | **Cursor** preferred at scale (`cursor`, `limit`)                    |
+| Audit logs, events               | **Cursor** required                                                  |
+| Search results                   | **Cursor** + stable sort key                                         |
 
 ### 15.2 Response meta
 
@@ -453,23 +453,23 @@ Workers check Postgres before executing side effects (ADR-0006).
 
 ## 20. Concurrency
 
-| Domain | Mechanism |
-| --- | --- |
+| Domain                | Mechanism                                                   |
+| --------------------- | ----------------------------------------------------------- |
 | Inventory adjustments | Optimistic concurrency — `version` field or `If-Match` ETag |
-| Cart updates | Short-lived cart version or merge strategy |
-| Order state changes | State machine + version check → **409** on stale |
-| Refunds | Idempotency + state guard |
+| Cart updates          | Short-lived cart version or merge strategy                  |
+| Order state changes   | State machine + version check → **409** on stale            |
+| Refunds               | Idempotency + state guard                                   |
 
 Support `If-Match` / `ETag` on mutable resources where lost updates are costly.
 
 ## 21. Caching
 
-| Data class | Policy |
-| --- | --- |
+| Data class                                | Policy                                                   |
+| ----------------------------------------- | -------------------------------------------------------- |
 | **Public catalog** (products, categories) | `Cache-Control: public, max-age=…`; CDN friendly; `ETag` |
-| **Personalized** (cart, account, orders) | `private, no-store` or short private max-age |
-| **Sensitive** (payments, admin PII) | `no-store` |
-| **Webhooks/auth** | Never cache |
+| **Personalized** (cart, account, orders)  | `private, no-store` or short private max-age             |
+| **Sensitive** (payments, admin PII)       | `no-store`                                               |
+| **Webhooks/auth**                         | Never cache                                              |
 
 Application-level Redis cache (ADR-0006) for hot reads — invalidate on writes.
 CDN must not cache authenticated responses.
@@ -478,17 +478,17 @@ CDN must not cache authenticated responses.
 
 Coordinate with ADR-0006 (Redis) and ADR-0008 (auth endpoints).
 
-| Surface | Limit philosophy |
-| --- | --- |
-| Public catalog reads | Higher limits; IP-based |
-| Auth (login, OTP, reset) | Strict; fail closed |
-| Customer mutations | Per user + IP |
-| Admin | Per user; stricter on exports |
-| Search | Per IP/user; anti-scrape |
-| AI endpoints | Per user; token budget separate |
-| Checkout/payment | Low burst; fraud-aware |
-| Webhooks | Per provider signature id |
-| Service-to-service | Per service identity |
+| Surface                  | Limit philosophy                |
+| ------------------------ | ------------------------------- |
+| Public catalog reads     | Higher limits; IP-based         |
+| Auth (login, OTP, reset) | Strict; fail closed             |
+| Customer mutations       | Per user + IP                   |
+| Admin                    | Per user; stricter on exports   |
+| Search                   | Per IP/user; anti-scrape        |
+| AI endpoints             | Per user; token budget separate |
+| Checkout/payment         | Low burst; fraud-aware          |
+| Webhooks                 | Per provider signature id       |
+| Service-to-service       | Per service identity            |
 
 Return **429** with `Retry-After` when appropriate. Do not implement in this ADR.
 
@@ -527,9 +527,9 @@ Never rely on frontend filtering. List endpoints must scope queries server-side.
 
 Propagate across all communication:
 
-| Header | Purpose |
-| --- | --- |
-| `x-request-id` | Single HTTP request identifier (generated at edge/API) |
+| Header             | Purpose                                                              |
+| ------------------ | -------------------------------------------------------------------- |
+| `x-request-id`     | Single HTTP request identifier (generated at edge/API)               |
 | `x-correlation-id` | Business operation spanning services (reuse from client or generate) |
 
 Rules:
@@ -545,15 +545,15 @@ One checkout or webhook processing chain shares one correlation id.
 
 ## 26. Synchronous vs asynchronous
 
-| Synchronous (hold HTTP) | Asynchronous (prefer) |
-| --- | --- |
-| CRUD reads/writes with immediate consistency | Email/SMS/push notifications |
-| Login, cart read | AI embedding/indexing |
-| Payment **initiation** returning client action | Report generation |
-| Webhook **acknowledgement** only | Order fulfillment orchestration |
-| | Image processing |
-| | Integration sync |
-| | Heavy search reindex |
+| Synchronous (hold HTTP)                        | Asynchronous (prefer)           |
+| ---------------------------------------------- | ------------------------------- |
+| CRUD reads/writes with immediate consistency   | Email/SMS/push notifications    |
+| Login, cart read                               | AI embedding/indexing           |
+| Payment **initiation** returning client action | Report generation               |
+| Webhook **acknowledgement** only               | Order fulfillment orchestration |
+|                                                | Image processing                |
+|                                                | Integration sync                |
+|                                                | Heavy search reindex            |
 
 Long-running work: return **202** + `{ jobId }` or resource in `pending` state;
 client polls or receives SSE/push later.
@@ -586,11 +586,11 @@ time for payment-critical paths.
 
 Distinguish:
 
-| Kind | Example | Transport |
-| --- | --- | --- |
-| **Command** | `CreateOrder` | HTTP POST → application service |
-| **Domain event** | `OrderPaid` | In-process handler → enqueue side effects |
-| **Query** | `GetProduct` | HTTP GET |
+| Kind             | Example       | Transport                                 |
+| ---------------- | ------------- | ----------------------------------------- |
+| **Command**      | `CreateOrder` | HTTP POST → application service           |
+| **Domain event** | `OrderPaid`   | In-process handler → enqueue side effects |
+| **Query**        | `GetProduct`  | HTTP GET                                  |
 
 **Not** full event sourcing. Domain events trigger notifications, analytics,
 search index updates, and worker jobs.
@@ -600,12 +600,12 @@ Extract to Redis Streams or broker later if needed — not Kafka at v1.
 
 ## 29. Event bus evaluation
 
-| Option | Verdict |
-| --- | --- |
-| In-process + BullMQ | **Adopt** for v1 |
-| Redis Streams | Consider when cross-service fan-out grows |
-| Kafka / RabbitMQ | Defer — ops cost unjustified now |
-| SNS/SQS | Cloud-specific; evaluate with infrastructure ADR |
+| Option              | Verdict                                          |
+| ------------------- | ------------------------------------------------ |
+| In-process + BullMQ | **Adopt** for v1                                 |
+| Redis Streams       | Consider when cross-service fan-out grows        |
+| Kafka / RabbitMQ    | Defer — ops cost unjustified now                 |
+| SNS/SQS             | Cloud-specific; evaluate with infrastructure ADR |
 
 ## 30. Webhook architecture
 
@@ -645,25 +645,25 @@ to replay if already acknowledged — use internal retry/DLQ.
 
 ## 32. Retries
 
-| Layer | Policy |
-| --- | --- |
-| SDK/client | Idempotent GET only; no blind POST retry |
-| API → provider | Bounded retries, jitter; circuit breaker on sustained failure |
-| Worker | BullMQ retry policy; idempotent handlers |
-| Provider → webhook | They retry; we dedupe via idempotency |
+| Layer              | Policy                                                        |
+| ------------------ | ------------------------------------------------------------- |
+| SDK/client         | Idempotent GET only; no blind POST retry                      |
+| API → provider     | Bounded retries, jitter; circuit breaker on sustained failure |
+| Worker             | BullMQ retry policy; idempotent handlers                      |
+| Provider → webhook | They retry; we dedupe via idempotency                         |
 
 **Never** blindly retry payment capture/refund without idempotency keys.
 
 ## 33. Timeouts (aspirational targets)
 
-| Call | Target timeout |
-| --- | --- |
-| Frontend → API | 10–30s (mutations lower) |
-| API → PostgreSQL | Pool/query timeouts per statement class |
-| API → AI service | 60–120s streaming; shorter for non-stream |
-| API → payment provider | Provider-specific; ≤ 30s for user-facing |
-| API → external shipping | 10–20s |
-| Worker → provider | Higher; async context |
+| Call                    | Target timeout                            |
+| ----------------------- | ----------------------------------------- |
+| Frontend → API          | 10–30s (mutations lower)                  |
+| API → PostgreSQL        | Pool/query timeouts per statement class   |
+| API → AI service        | 60–120s streaming; shorter for non-stream |
+| API → payment provider  | Provider-specific; ≤ 30s for user-facing  |
+| API → external shipping | 10–20s                                    |
+| Worker → provider       | Higher; async context                     |
 
 Every outbound HTTP client must set connect + response timeouts.
 
@@ -690,11 +690,11 @@ Headers: `Content-Type: text/event-stream`, auth required, no caching.
 
 **Not required at v1.**
 
-| Potential use | Recommendation |
-| --- | --- |
-| AI chat | SSE first |
-| Order status | Polling or SSE; push notifications later |
-| Live support | SSE or third-party widget later |
+| Potential use | Recommendation                           |
+| ------------- | ---------------------------------------- |
+| AI chat       | SSE first                                |
+| Order status  | Polling or SSE; push notifications later |
+| Live support  | SSE or third-party widget later          |
 | Notifications | Mobile push / email; not WebSocket-first |
 
 Revisit WebSockets only if bidirectional low-latency needs exceed SSE limits.
@@ -790,27 +790,27 @@ Use explicit response types; include only fields clients need.
 
 ## 45. API documentation
 
-| Artifact | Owner |
-| --- | --- |
-| OpenAPI spec | `apps/api` CI artifact + repo copy |
-| Human guides | `docs/API/` |
-| Auth docs | Cross-link ADR-0008 implementation |
-| Examples | SDK snippets |
-| Changelog | Per API version in `docs/API/` |
-| Deprecation | OpenAPI + HTTP headers + release notes |
+| Artifact     | Owner                                  |
+| ------------ | -------------------------------------- |
+| OpenAPI spec | `apps/api` CI artifact + repo copy     |
+| Human guides | `docs/API/`                            |
+| Auth docs    | Cross-link ADR-0008 implementation     |
+| Examples     | SDK snippets                           |
+| Changelog    | Per API version in `docs/API/`         |
+| Deprecation  | OpenAPI + HTTP headers + release notes |
 
 Docs must stay synchronized with OpenAPI — CI contract drift check recommended.
 
 ## 46. API testing (future)
 
-| Level | Focus |
-| --- | --- |
-| Unit | Mappers, validators, idempotency logic |
-| Integration | Nest routes + Postgres test container |
-| Contract | OpenAPI vs SDK types; consumer-driven tests |
-| E2E | Checkout, admin refund, webhook flow |
-| Security | AuthZ bypass, IDOR, rate limit, CSRF |
-| Load | Search, checkout, webhook burst |
+| Level       | Focus                                       |
+| ----------- | ------------------------------------------- |
+| Unit        | Mappers, validators, idempotency logic      |
+| Integration | Nest routes + Postgres test container       |
+| Contract    | OpenAPI vs SDK types; consumer-driven tests |
+| E2E         | Checkout, admin refund, webhook flow        |
+| Security    | AuthZ bypass, IDOR, rate limit, CSRF        |
+| Load        | Search, checkout, webhook burst             |
 
 Breaking changes require explicit compatibility tests.
 
@@ -842,14 +842,14 @@ payment credentials, or full webhook secrets.
 
 ## 49. Performance targets (aspirational)
 
-| Operation | p95 target (initial) |
-| --- | --- |
-| Standard read API | < 300 ms |
-| Product search | < 500 ms |
-| Auth login | < 500 ms |
-| Checkout submit (sync portion) | < 800 ms |
-| Webhook ack | < 1 s |
-| AI first token (stream start) | < 2 s |
+| Operation                      | p95 target (initial) |
+| ------------------------------ | -------------------- |
+| Standard read API              | < 300 ms             |
+| Product search                 | < 500 ms             |
+| Auth login                     | < 500 ms             |
+| Checkout submit (sync portion) | < 800 ms             |
+| Webhook ack                    | < 1 s                |
+| AI first token (stream start)  | < 2 s                |
 
 Label as **ASPIRATIONAL** until measured in staging.
 
@@ -865,13 +865,13 @@ CDN in front of public GET catalog endpoints only.
 
 ## 51. Public vs internal API surfaces
 
-| Surface | Path pattern | Audience | Auth |
-| --- | --- | --- | --- |
-| **Public/customer API** | `/v1/...` | Web, mobile, partners | Customer session/bearer |
-| **Admin API** | `/v1/admin/...` or permission-gated resources | Admin app | Staff session + MFA |
-| **Webhook API** | `/v1/webhooks/...` | External providers | HMAC signatures |
-| **Internal service API** | `/internal/...` or private network | worker, ai-service | Service JWT / network |
-| **Health/ops** | `/health`, `/ready` | Orchestrator | Unauthenticated or internal |
+| Surface                  | Path pattern                                  | Audience              | Auth                        |
+| ------------------------ | --------------------------------------------- | --------------------- | --------------------------- |
+| **Public/customer API**  | `/v1/...`                                     | Web, mobile, partners | Customer session/bearer     |
+| **Admin API**            | `/v1/admin/...` or permission-gated resources | Admin app             | Staff session + MFA         |
+| **Webhook API**          | `/v1/webhooks/...`                            | External providers    | HMAC signatures             |
+| **Internal service API** | `/internal/...` or private network            | worker, ai-service    | Service JWT / network       |
+| **Health/ops**           | `/health`, `/ready`                           | Orchestrator          | Unauthenticated or internal |
 
 Admin routes must not be exposed on customer CDN routes. Network policies
 restrict `/internal` from public internet.
@@ -921,28 +921,28 @@ fast; AI and workers stay behind service auth.
 
 ## 53. Decision matrix
 
-| Area | Decision | Alternatives | Reason |
-| --- | --- | --- | --- |
-| API style | REST JSON | GraphQL, tRPC, gRPC public | OpenAPI, mobile, webhooks, ADR-0005/0007 |
-| API versioning | URI `/v1` | Header-only | Visible, mobile-friendly |
-| Contract | OpenAPI 3.x authoritative | Hand-written SDK only | Drift control, docs |
-| SDK | `@buying-bot/sdk` from OpenAPI | Raw fetch | Typed clients, errors |
-| Validation | Shared Zod | class-validator, duplicate schemas | ADR-0005, DRY |
-| Errors | `ApiErrorBody` envelope | Ad-hoc | Already in types |
-| Pagination | Offset admin; cursor catalog/audit | Offset only | Scale + UX |
-| Filtering | Whitelist query params | Generic query language | Security/simplicity |
-| Search | HTTP contract; FTS backend | — | ADR-0006 owns engine |
-| Caching | CDN public; no-store private | Cache-all | Privacy |
-| Idempotency | `Idempotency-Key` + Postgres | Client-only dedupe | Payments/orders |
-| Async jobs | BullMQ via API enqueue | Sync long HTTP | ADR-0006 |
-| Events | Domain events + queue | Event sourcing | Simplicity |
-| Queue | BullMQ on Redis | Kafka v1 | Ops cost |
-| Webhooks | Verify → persist → ack → async | Sync process | Provider timeouts |
-| Streaming | SSE for AI/progress | WebSocket-first | ADR-0007 |
-| Service communication | HTTP + service JWT | gRPC now | Simplicity |
-| API security | Guards + DTOs + rate limits | Frontend-only | ADR-0008 |
-| Documentation | OpenAPI + docs/API | Code comments | Consumer trust |
-| Testing | Contract + integration + security | Manual only | Regression safety |
+| Area                  | Decision                           | Alternatives                       | Reason                                   |
+| --------------------- | ---------------------------------- | ---------------------------------- | ---------------------------------------- |
+| API style             | REST JSON                          | GraphQL, tRPC, gRPC public         | OpenAPI, mobile, webhooks, ADR-0005/0007 |
+| API versioning        | URI `/v1`                          | Header-only                        | Visible, mobile-friendly                 |
+| Contract              | OpenAPI 3.x authoritative          | Hand-written SDK only              | Drift control, docs                      |
+| SDK                   | `@buying-bot/sdk` from OpenAPI     | Raw fetch                          | Typed clients, errors                    |
+| Validation            | Shared Zod                         | class-validator, duplicate schemas | ADR-0005, DRY                            |
+| Errors                | `ApiErrorBody` envelope            | Ad-hoc                             | Already in types                         |
+| Pagination            | Offset admin; cursor catalog/audit | Offset only                        | Scale + UX                               |
+| Filtering             | Whitelist query params             | Generic query language             | Security/simplicity                      |
+| Search                | HTTP contract; FTS backend         | —                                  | ADR-0006 owns engine                     |
+| Caching               | CDN public; no-store private       | Cache-all                          | Privacy                                  |
+| Idempotency           | `Idempotency-Key` + Postgres       | Client-only dedupe                 | Payments/orders                          |
+| Async jobs            | BullMQ via API enqueue             | Sync long HTTP                     | ADR-0006                                 |
+| Events                | Domain events + queue              | Event sourcing                     | Simplicity                               |
+| Queue                 | BullMQ on Redis                    | Kafka v1                           | Ops cost                                 |
+| Webhooks              | Verify → persist → ack → async     | Sync process                       | Provider timeouts                        |
+| Streaming             | SSE for AI/progress                | WebSocket-first                    | ADR-0007                                 |
+| Service communication | HTTP + service JWT                 | gRPC now                           | Simplicity                               |
+| API security          | Guards + DTOs + rate limits        | Frontend-only                      | ADR-0008                                 |
+| Documentation         | OpenAPI + docs/API                 | Code comments                      | Consumer trust                           |
+| Testing               | Contract + integration + security  | Manual only                        | Regression safety                        |
 
 ## 54. Architectural consequences
 
@@ -1015,16 +1015,16 @@ queues, SSE, or modifying `apps/*` / `packages/*` / `package.json`.
 
 ## 58. Rejected alternatives (summary)
 
-| Alternative | Why not |
-| --- | --- |
-| GraphQL primary | Webhook/payment/mobile/OpenAPI mismatch |
-| tRPC primary | No third-party/mobile contract path |
-| gRPC public API | Poor browser/integrator ergonomics |
-| WebSocket-first realtime | SSE covers AI; less ops complexity |
-| Kafka event bus v1 | Premature ops burden |
-| Sync webhook processing | Provider retries/timeouts risk |
-| JWT-only browser sessions | ADR-0008 cookie session decision |
-| Prisma models as API responses | Leakage, unstable contracts |
+| Alternative                    | Why not                                 |
+| ------------------------------ | --------------------------------------- |
+| GraphQL primary                | Webhook/payment/mobile/OpenAPI mismatch |
+| tRPC primary                   | No third-party/mobile contract path     |
+| gRPC public API                | Poor browser/integrator ergonomics      |
+| WebSocket-first realtime       | SSE covers AI; less ops complexity      |
+| Kafka event bus v1             | Premature ops burden                    |
+| Sync webhook processing        | Provider retries/timeouts risk          |
+| JWT-only browser sessions      | ADR-0008 cookie session decision        |
+| Prisma models as API responses | Leakage, unstable contracts             |
 
 ## 59. Decisions requiring human approval
 
