@@ -1,6 +1,6 @@
 # ADR-0006: Database, data storage, and persistence architecture
 
-- Status: **Proposed** (requires human review and approval)
+- Status: **Accepted**
 - Date: 2026-08-12
 - Deciders: Platform Architecture (recommendation); product owner / technical
   lead (acceptance)
@@ -785,8 +785,8 @@ Those require separate implementation milestones after this ADR is
 
 ## 40. Decision status
 
-**Proposed.**
+**Accepted.**
 
-This record is a recommendation only. It must not be treated as Accepted
-until a named decider changes status to **Accepted** in this file and
-indexes it in [DECISIONS.md](../DECISIONS.md).
+Indexed in [DECISIONS.md](../DECISIONS.md). Acceptance does **not** authorize
+implementation of Prisma/PostgreSQL/Redis/BullMQ schemas or packages; see
+out-of-scope and implementation boundary sections.

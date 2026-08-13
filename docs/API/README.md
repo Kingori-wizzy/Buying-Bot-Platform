@@ -1,21 +1,7 @@
-# API — API documentation
+# API documentation
 
-## Purpose
+Normative API design:
 
-Holds **API documentation** for externally and internally consumed platform APIs: overviews, guides, and references used by implementers and integrators.
+**[`../design/api-design.md`](../design/api-design.md)**
 
-## Scope
-
-- API catalogs and ownership
-- OpenAPI/AsyncAPI (or equivalent) references when introduced
-- Authentication, versioning, and error conventions for API consumers
-- Changelog notes for published API contracts
-- Examples and integration guides (non-code placeholders until APIs exist)
-
-## Alignment
-
-API docs must stay consistent with [`../AIDS/`](../AIDS/), [`../IDS/`](../IDS/), [`../IDDS/`](../IDDS/), and requirements in [`../SRS/`](../SRS/). Breaking contract changes require an ADR in [`../adr/`](../adr/).
-
-## Contents
-
-Documents will be added here later. Do not treat this README as API documentation itself.
+Authority: ADR-0009. OpenAPI artifacts are produced during implementation milestones — not fabricated in this baseline.
