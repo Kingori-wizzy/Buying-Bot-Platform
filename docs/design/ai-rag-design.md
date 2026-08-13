@@ -24,6 +24,13 @@ Customer → Web → API (AuthZ) → ai-service
 ModelProvider, embedding pipeline (worker), pgvector store, conversation
 persistence, prompt/version config, token budgets, rate limits, tool audit.
 
+## Status (M15–M17)
+
+- **Implemented:** Fastify ai-service chat/SSE, provider adapters, guardrails,
+  API tool gateway, pgvector knowledge ingest/retrieve via API (AI has no DB).
+- **OPEN:** richer eval harness, DB-backed prompt versions, production model
+  routing SLOs (aspirational until measured).
+
 ## Evaluation
 
 Offline fixtures for retrieval + tool correctness; production metrics for

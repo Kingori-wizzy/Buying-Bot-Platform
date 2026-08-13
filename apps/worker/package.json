@@ -14,8 +14,11 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@buying-bot/ai-core": "workspace:*",
     "@buying-bot/config": "workspace:*",
-    "@buying-bot/utils": "workspace:*"
+    "@buying-bot/database": "workspace:^",
+    "@buying-bot/utils": "workspace:*",
+    "jose": "^6.2.8"
   },
   "devDependencies": {
     "@buying-bot/typescript-config": "workspace:*",

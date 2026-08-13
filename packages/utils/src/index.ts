@@ -7,6 +7,16 @@ export {
   type LoggerOptions,
 } from './logger.js';
 export {
+  addMoney,
+  assertSameCurrency,
+  type Money,
+  money,
+  mulMoney,
+  mulRational,
+  percentOfMinor,
+  subMoney,
+} from './money.js';
+export {
   createOpsServer,
   type OpsServer,
   type OpsServerOptions,

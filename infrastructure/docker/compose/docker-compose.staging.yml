@@ -1,0 +1,255 @@
+# Staging stack — Compose-first (ADR-0019). No Kubernetes.
+# Usage (from repo root):
+#   cp .env.staging.example .env.staging   # then fill placeholders
+#   docker compose -f infrastructure/docker/compose/docker-compose.staging.yml --env-file .env.staging up -d --build
+#
+# Volumes/network are intentionally separate from local `docker-compose.yml`.
+
+name: buyingbot-staging
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    ports:
+      - '5434:5432'
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-buyingbot_staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-buyingbot_staging}
+    volumes:
+      - buyingbot_staging_pg_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    volumes:
+      - buyingbot_staging_redis_data:/data
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/base/Dockerfile.node
+      args:
+        APP_NAME: api
+        NODE_VERSION: '22'
+    restart: unless-stopped
+    env_file:
+      - ../../../.env.staging
+    environment:
+      NODE_ENV: staging
+      SERVICE_NAME: api
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-buyingbot_staging}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-buyingbot_staging}?schema=public
+      REDIS_URL: redis://redis:6379
+      COOKIE_SECURE: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  worker:
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/base/Dockerfile.node
+      args:
+        APP_NAME: worker
+        NODE_VERSION: '22'
+    restart: unless-stopped
+    env_file:
+      - ../../../.env.staging
+    environment:
+      NODE_ENV: staging
+      SERVICE_NAME: worker
+      HOST: 0.0.0.0
+      PORT: 3002
+      DATABASE_URL: postgresql://${POSTGRES_USER:-buyingbot_staging}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-buyingbot_staging}?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3002/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  ai-service:
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/base/Dockerfile.node
+      args:
+        APP_NAME: ai-service
+        NODE_VERSION: '22'
+    restart: unless-stopped
+    env_file:
+      - ../../../.env.staging
+    environment:
+      NODE_ENV: staging
+      SERVICE_NAME: ai-service
+      HOST: 0.0.0.0
+      PORT: 3003
+      API_BASE_URL: http://api:3000
+      AI_PROVIDER: ${AI_PROVIDER:-deterministic}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3003/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/apps/Dockerfile.web
+      args:
+        NODE_VERSION: '22'
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  admin:
+    build:
+      context: ../../..
+      dockerfile: infrastructure/docker/apps/Dockerfile.admin
+      args:
+        NODE_VERSION: '22'
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3004
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3004/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - '${STAGING_HTTP_PORT:-8080}:80'
+      # EXTERNAL TLS: uncomment when certs are mounted (see staging.conf TLS block)
+      # - '${STAGING_HTTPS_PORT:-8443}:443'
+    volumes:
+      - ../../nginx/staging.conf:/etc/nginx/conf.d/default.conf:ro
+      # EXTERNAL: mount TLS material when terminating HTTPS in staging
+      # - ${TLS_CERT_HOST_DIR:-./certs}:/etc/nginx/certs:ro
+    depends_on:
+      web:
+        condition: service_healthy
+      admin:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    networks:
+      - buyingbot_staging_net
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1/nginx-health']
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  buyingbot_staging_net:
+    name: buyingbot_staging_net
+    driver: bridge
+
+volumes:
+  buyingbot_staging_pg_data:
+    name: buyingbot_staging_pg_data
+  buyingbot_staging_redis_data:
+    name: buyingbot_staging_redis_data

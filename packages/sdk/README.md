@@ -2,24 +2,23 @@
 
 ## Responsibility
 
-Expose a **typed client SDK** for calling platform APIs from web, admin, workers, and future mobile clients—keeping transport and contract usage consistent.
+Typed HTTP client for Nest REST (`/v1/...`) used by `apps/web`, `apps/admin`,
+and future mobile clients.
 
-## In scope (when implemented)
+## Included
 
-- Generated or hand-maintained API clients aligned with `@buying-bot/types`
-- Auth header/session attachment helpers (using `@buying-bot/auth` contracts)
-- Request idempotency / error normalization helpers for consumers
+- `PlatformSdk`: health, auth (csrf/login/register/me/MFA), catalog, search,
+  cart, checkout, orders, admin catalog/inventory/pricing helpers
+- Cookie sessions via `credentials: 'include'`
+- CSRF double-submit (`GET /v1/auth/csrf` + `x-csrf-token`)
+- `PlatformApiError`, `formatMoneyMinor`, `firstOfferPrice`
 
 ## Out of scope
 
-- Server route handlers (belong in `apps/api`)
-- UI rendering (see `@buying-bot/ui`)
-- Direct database access (see `@buying-bot/database`)
-
-## Consumers (intended)
-
-`apps/web`, `apps/admin`, `apps/worker`, future `apps/mobile`
+- Server route handlers (`apps/api`)
+- UI rendering (`@buying-bot/ui`)
+- Database access
 
 ## Status
 
-Minimal `PlatformSdk` with health client and typed errors. Product endpoints deferred.
+Hand-maintained methods aligned to current Nest controllers (OpenAPI codegen later).

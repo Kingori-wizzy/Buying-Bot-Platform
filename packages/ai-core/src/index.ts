@@ -1,59 +1,71 @@
 /**
- * Provider-agnostic AI ports. High-risk actions must require explicit authorization.
- * Never place secrets inside prompts.
+ * Provider-agnostic AI ports and adapters (ADR-0015).
+ * AI never connects to PostgreSQL/Redis; commerce facts come from tools only.
  */
 
-export type AiRole = 'system' | 'user' | 'assistant' | 'tool';
-
-export interface AiMessage {
-  readonly role: AiRole;
-  readonly content: string;
-}
-
-export interface AiCompletionRequest {
-  readonly model: string;
-  readonly messages: readonly AiMessage[];
-  readonly temperature?: number;
-  readonly maxTokens?: number;
-}
-
-export interface AiCompletionResponse {
-  readonly id: string;
-  readonly content: string;
-  readonly model: string;
-  readonly usage?: {
-    readonly promptTokens: number;
-    readonly completionTokens: number;
-    readonly totalTokens: number;
-  };
-}
-
-export interface EmbeddingRequest {
-  readonly model: string;
-  readonly input: string;
-}
-
-export interface EmbeddingResponse {
-  readonly model: string;
-  readonly embedding: readonly number[];
-}
-
-/**
- * Model provider port — swap OpenAI/Anthropic/etc. via adapters.
- */
-export interface ModelProvider {
-  complete(request: AiCompletionRequest): Promise<AiCompletionResponse>;
-  embed(request: EmbeddingRequest): Promise<EmbeddingResponse>;
-}
-
-/**
- * Guardrail: tools that mutate commerce state require elevated approval.
- */
-export type ToolRiskLevel = 'read' | 'write' | 'payment' | 'admin';
-
-export interface AiToolDefinition {
-  readonly name: string;
-  readonly description: string;
-  readonly riskLevel: ToolRiskLevel;
-  readonly requiresHumanApproval: boolean;
-}
+export {
+  assertNoInventedCommerceFacts,
+  COMMERCE_TOOL_DEFINITIONS,
+  DefaultAgentRuntime,
+} from './agent/runtime.js';
+export {
+  type ChunkOptions,
+  chunkText,
+  contentHash,
+  type TextChunk,
+} from './chunking/chunk-text.js';
+export {
+  DefaultGuardrails,
+  scrubSecrets,
+} from './guardrails/default-guardrails.js';
+export type {
+  AgentRuntime,
+  AgentRuntimeOptions,
+  AgentTurnRequest,
+  AgentTurnResult,
+  EmbeddingProvider,
+  FailoverRouter,
+  GuardrailInput,
+  GuardrailOutput,
+  GuardrailPort,
+  GuardrailResult,
+  ModelProvider,
+  PromptTemplateRegistry,
+  ProviderRegistry,
+  ToolExecutorContext,
+  ToolExecutorPort,
+} from './ports.js';
+export {
+  COMMERCE_ASSISTANT_V1,
+  defaultPrompts,
+  InMemoryPromptRegistry,
+} from './prompts/registry.js';
+export { AnthropicModelProvider } from './providers/anthropic.js';
+export {
+  deterministicEmbedding,
+  DeterministicModelProvider,
+} from './providers/deterministic.js';
+export { GeminiModelProvider } from './providers/gemini.js';
+export { OllamaModelProvider } from './providers/ollama.js';
+export { OpenAiModelProvider } from './providers/openai.js';
+export {
+  createProviderFromEnv,
+  InMemoryProviderRegistry,
+  type ProviderEnv,
+  ProviderFailoverRouter,
+} from './providers/registry.js';
+export type {
+  AiCompletionRequest,
+  AiCompletionResponse,
+  AiMessage,
+  AiRole,
+  AiToolDefinition,
+  Citation,
+  EmbeddingRequest,
+  EmbeddingResponse,
+  PromptTemplate,
+  StreamChunk,
+  ToolCall,
+  ToolCallSchema,
+  ToolRiskLevel,
+} from './types.js';

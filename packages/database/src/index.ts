@@ -1,28 +1,41 @@
 /**
- * Database ports for future Prisma/PostgreSQL adapters.
+ * Database ports and Prisma PostgreSQL adapter for identity persistence.
  * Cache (Redis) is never the system of record for critical business data.
+ *
+ * Service-to-service auth uses signed JWTs (no ServiceIdentity table in M5).
  */
 
-export interface DatabaseHealth {
-  readonly ok: boolean;
-  readonly latencyMs?: number;
-  readonly message?: string;
-}
-
-export interface UnitOfWork {
-  commit(): Promise<void>;
-  rollback(): Promise<void>;
-}
-
-export interface DatabaseClient {
-  healthCheck(): Promise<DatabaseHealth>;
-  withTransaction<T>(work: (uow: UnitOfWork) => Promise<T>): Promise<T>;
-  disconnect(): Promise<void>;
-}
-
-/**
- * Marker interface for repositories. Concrete repos belong near domain modules.
- */
-export interface Repository<TEntity, TId extends string = string> {
-  findById(id: TId): Promise<TEntity | null>;
-}
+export { hashOpaqueToken, normalizeEmail, sha256Hex } from './crypto-utils.js';
+export {
+  confirmPaymentForOrder,
+  expireHeldReservations,
+  type OutboxHandler,
+  publishPendingOutbox,
+} from './jobs/commerce-jobs.js';
+export {
+  type EmailSender,
+  type NotificationEmail,
+  processNotificationIntents,
+} from './jobs/notifications.js';
+export { requeueFailedOutbox } from './jobs/outbox-recovery.js';
+export type {
+  DatabaseClient,
+  DatabaseHealth,
+  Repository,
+  UnitOfWork,
+} from './ports.js';
+export {
+  createPrismaClient,
+  disconnectPrisma,
+  type PrismaClient,
+  PrismaDatabaseClient,
+} from './prisma-client.js';
+export {
+  DEFAULT_LOCATION_CODE,
+  DEFAULT_ORG_SLUG,
+  PERMISSION_CATALOG,
+  ROLE_CATALOG,
+  seedCommerceDefaults,
+  seedIdentityCatalog,
+} from './seed.js';
+export { seedStagingCatalog, STAGING_PRODUCT_SLUG } from './seed-staging.js';

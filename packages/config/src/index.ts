@@ -65,13 +65,185 @@ export type BaseServiceEnv = z.infer<typeof baseServiceEnvObjectSchema> & {
   LOG_LEVEL?: LogLevel;
 };
 
-export const apiEnvSchema = baseServiceEnvObjectSchema
-  .extend({
-    SERVICE_NAME: z.string().trim().min(1).default('api'),
-    PORT: z.coerce.number().int().min(0).max(65535).default(3000),
-    CORS_ORIGIN: z.string().trim().min(1).default('http://localhost:3001'),
+const booleanFromEnv = z
+  .union([z.boolean(), z.string()])
+  .optional()
+  .transform((value): boolean | undefined => {
+    if (value === undefined) {
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+      return true;
+    }
+    if (['0', 'false', 'no', 'off'].includes(normalized)) {
+      return false;
+    }
+    return undefined;
+  });
+
+export const apiEnvObjectSchema = baseServiceEnvObjectSchema.extend({
+  SERVICE_NAME: z.string().trim().min(1).default('api'),
+  PORT: z.coerce.number().int().min(0).max(65535).default(3000),
+  CORS_ORIGIN: z.string().trim().min(1).default('http://localhost:3001'),
+  DATABASE_URL: z.string().trim().min(1).optional(),
+  REDIS_URL: z.string().trim().min(1).optional(),
+  SESSION_SECRET: z.string().trim().min(1).optional(),
+  SERVICE_JWT_SECRET: z.string().trim().min(1).optional(),
+  COOKIE_SECURE: booleanFromEnv,
+  CUSTOMER_SESSION_COOKIE: z.string().trim().min(1).default('bb_cust_session'),
+  ADMIN_SESSION_COOKIE: z.string().trim().min(1).default('bb_admin_session'),
+  CSRF_COOKIE: z.string().trim().min(1).default('bb_csrf'),
+  CUSTOMER_SESSION_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 7),
+  ADMIN_SESSION_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 8),
+  CUSTOMER_SESSION_ABSOLUTE_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24 * 30),
+  ADMIN_SESSION_ABSOLUTE_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24),
+  STEP_UP_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 15),
+  DEFAULT_CURRENCY: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{3}$/)
+    .default('KES'),
+  GUEST_CART_COOKIE: z.string().trim().min(1).default('bb_guest_cart'),
+  CART_RESERVATION_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 15),
+  TAX_REQUIRED: booleanFromEnv,
+  TAX_DEFAULT_RATE_BPS: z.coerce.number().int().min(0).max(100_000).optional(),
+  TAX_POLICY_CODE: z.string().trim().min(1).default('DEFAULT'),
+  SHIPPING_DEFAULT_CODE: z.string().trim().min(1).default('FLAT'),
+  PAYMENTS_ENABLED: booleanFromEnv,
+  MPESA_CONSUMER_KEY: z.string().trim().min(1).optional(),
+  MPESA_CONSUMER_SECRET: z.string().trim().min(1).optional(),
+  MPESA_SHORTCODE: z.string().trim().min(1).optional(),
+  MPESA_PASSKEY: z.string().trim().min(1).optional(),
+  MPESA_CALLBACK_URL: z.string().trim().url().optional(),
+  MPESA_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
+  MPESA_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+  WEBHOOK_REPLAY_WINDOW_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(300),
+  AI_SERVICE_BASE_URL: z.string().trim().url().optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().url().optional(),
+  PRODUCT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+});
+
+export const apiEnvSchema = apiEnvObjectSchema
+  .superRefine(productionGuards)
+  .superRefine((value, ctx) => {
+    const requiresSecrets =
+      value.NODE_ENV === 'production' || value.NODE_ENV === 'staging';
+
+    if (requiresSecrets) {
+      if (!value.DATABASE_URL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['DATABASE_URL'],
+          message: 'DATABASE_URL is required in staging/production',
+        });
+      }
+      if (!value.SESSION_SECRET || value.SESSION_SECRET.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SESSION_SECRET'],
+          message:
+            'SESSION_SECRET must be at least 32 characters in staging/production',
+        });
+      }
+      if (!value.SERVICE_JWT_SECRET || value.SERVICE_JWT_SECRET.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SERVICE_JWT_SECRET'],
+          message:
+            'SERVICE_JWT_SECRET must be at least 32 characters in staging/production',
+        });
+      }
+      if (value.COOKIE_SECURE !== true) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['COOKIE_SECURE'],
+          message: 'COOKIE_SECURE must be true in staging/production',
+        });
+      }
+    }
+
+    const paymentsEnabled = value.PAYMENTS_ENABLED === true;
+    if (paymentsEnabled && requiresSecrets) {
+      for (const key of [
+        'MPESA_CONSUMER_KEY',
+        'MPESA_CONSUMER_SECRET',
+        'MPESA_SHORTCODE',
+        'MPESA_PASSKEY',
+        'MPESA_CALLBACK_URL',
+        'MPESA_WEBHOOK_SECRET',
+      ] as const) {
+        if (!value[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} is required when PAYMENTS_ENABLED in staging/production`,
+          });
+        }
+      }
+    }
   })
-  .superRefine(productionGuards);
+  .transform((value) => {
+    const isTest = value.NODE_ENV === 'test';
+    const sessionSecret =
+      value.SESSION_SECRET ??
+      (isTest
+        ? 'test-session-secret-at-least-32-chars!!'
+        : value.NODE_ENV === 'development'
+          ? 'dev-session-secret-at-least-32-chars!!'
+          : undefined);
+    const serviceJwtSecret =
+      value.SERVICE_JWT_SECRET ??
+      (isTest
+        ? 'test-service-jwt-secret-at-least-32!!'
+        : value.NODE_ENV === 'development'
+          ? 'dev-service-jwt-secret-at-least-32!!'
+          : undefined);
+
+    return {
+      ...value,
+      SESSION_SECRET: sessionSecret ?? 'dev-session-secret-at-least-32-chars!!',
+      SERVICE_JWT_SECRET:
+        serviceJwtSecret ?? 'dev-service-jwt-secret-at-least-32!!',
+      COOKIE_SECURE:
+        value.COOKIE_SECURE ??
+        (value.NODE_ENV === 'production' || value.NODE_ENV === 'staging'),
+      TAX_REQUIRED: value.TAX_REQUIRED ?? false,
+      PAYMENTS_ENABLED: value.PAYMENTS_ENABLED ?? false,
+    };
+  });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;
 
@@ -79,8 +251,61 @@ export const workerEnvSchema = baseServiceEnvObjectSchema
   .extend({
     SERVICE_NAME: z.string().trim().min(1).default('worker'),
     PORT: z.coerce.number().int().min(0).max(65535).default(3002),
+    DATABASE_URL: z.string().trim().min(1).optional(),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
+    RESERVATION_EXPIRE_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30_000),
+    PAYMENT_RECONCILE_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60_000),
+    NOTIFICATION_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5_000),
+    KNOWLEDGE_INGEST_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(10_000),
+    AI_SERVICE_BASE_URL: z.string().trim().url().optional(),
+    SERVICE_JWT_SECRET: z.string().trim().min(1).optional(),
+    AI_PROVIDER: z
+      .enum(['deterministic', 'openai', 'anthropic', 'gemini', 'ollama'])
+      .default('deterministic'),
+    MPESA_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
+    MPESA_CONSUMER_KEY: z.string().trim().min(1).optional(),
+    MPESA_CONSUMER_SECRET: z.string().trim().min(1).optional(),
+    MPESA_SHORTCODE: z.string().trim().min(1).optional(),
+    MPESA_PASSKEY: z.string().trim().min(1).optional(),
+    MPESA_CALLBACK_URL: z.string().trim().url().optional(),
+    MPESA_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().url().optional(),
+    SMTP_URL: z.string().trim().min(1).optional(),
+    WHATSAPP_ACCESS_TOKEN: z.string().trim().min(1).optional(),
+    WHATSAPP_PHONE_NUMBER_ID: z.string().trim().min(1).optional(),
   })
-  .superRefine(productionGuards);
+  .superRefine(productionGuards)
+  .transform((value) => {
+    const isTest = value.NODE_ENV === 'test';
+    const serviceJwtSecret =
+      value.SERVICE_JWT_SECRET ??
+      (isTest
+        ? 'test-service-jwt-secret-at-least-32!!'
+        : value.NODE_ENV === 'development'
+          ? 'dev-service-jwt-secret-at-least-32!!'
+          : undefined);
+    return {
+      ...value,
+      SERVICE_JWT_SECRET:
+        serviceJwtSecret ?? 'dev-service-jwt-secret-at-least-32!!',
+    };
+  });
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>;
 
@@ -88,8 +313,69 @@ export const aiServiceEnvSchema = baseServiceEnvObjectSchema
   .extend({
     SERVICE_NAME: z.string().trim().min(1).default('ai-service'),
     PORT: z.coerce.number().int().min(0).max(65535).default(3003),
+    AI_PROVIDER: z
+      .enum(['deterministic', 'openai', 'anthropic', 'gemini', 'ollama'])
+      .optional(),
+    OPENAI_API_KEY: z.string().trim().min(1).optional(),
+    ANTHROPIC_API_KEY: z.string().trim().min(1).optional(),
+    GEMINI_API_KEY: z.string().trim().min(1).optional(),
+    OLLAMA_BASE_URL: z.string().trim().url().optional(),
+    SERVICE_JWT_SECRET: z.string().trim().min(1).optional(),
+    API_BASE_URL: z.string().trim().url().optional(),
+    REDIS_URL: z.string().trim().min(1).optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().url().optional(),
+    AI_DEFAULT_MODEL: z.string().trim().min(1).default('deterministic-v1'),
+    AI_EMBEDDING_MODEL: z
+      .string()
+      .trim()
+      .min(1)
+      .default('deterministic-embed-v1'),
+    AI_EMBEDDING_DIMS: z.coerce.number().int().positive().default(1536),
   })
-  .superRefine(productionGuards);
+  .superRefine(productionGuards)
+  .superRefine((value, ctx) => {
+    const requiresSecrets =
+      value.NODE_ENV === 'production' || value.NODE_ENV === 'staging';
+    if (requiresSecrets) {
+      if (!value.SERVICE_JWT_SECRET || value.SERVICE_JWT_SECRET.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['SERVICE_JWT_SECRET'],
+          message:
+            'SERVICE_JWT_SECRET must be at least 32 characters in staging/production',
+        });
+      }
+      if (!value.API_BASE_URL) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['API_BASE_URL'],
+          message: 'API_BASE_URL is required in staging/production',
+        });
+      }
+    }
+  })
+  .transform((value) => {
+    const isTest = value.NODE_ENV === 'test';
+    const provider =
+      value.AI_PROVIDER ??
+      (isTest || value.NODE_ENV === 'development'
+        ? 'deterministic'
+        : undefined);
+    const serviceJwtSecret =
+      value.SERVICE_JWT_SECRET ??
+      (isTest
+        ? 'test-service-jwt-secret-at-least-32!!'
+        : value.NODE_ENV === 'development'
+          ? 'dev-service-jwt-secret-at-least-32!!'
+          : undefined);
+    return {
+      ...value,
+      AI_PROVIDER: provider ?? 'deterministic',
+      SERVICE_JWT_SECRET:
+        serviceJwtSecret ?? 'dev-service-jwt-secret-at-least-32!!',
+      API_BASE_URL: value.API_BASE_URL ?? 'http://127.0.0.1:3000',
+    };
+  });
 
 export type AiServiceEnv = z.infer<typeof aiServiceEnvSchema>;
 
@@ -147,4 +433,14 @@ export function assertSafeCorsOrigin(
       'CORS_ORIGIN: wildcard or empty origin is forbidden in production',
     ]);
   }
+}
+
+/**
+ * Parse comma-separated CORS origin allowlist.
+ */
+export function parseCorsOrigins(corsOrigin: string): readonly string[] {
+  return corsOrigin
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
 }

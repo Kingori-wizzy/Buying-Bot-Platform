@@ -1,7 +1,35 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: buyingbot
+      POSTGRES_PASSWORD: buyingbot
+      POSTGRES_DB: buyingbot
+    volumes:
+      - buyingbot_pg_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U buyingbot -d buyingbot']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    command: ['redis-server', '--save', '', '--appendonly', 'no']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: infrastructure/docker/base/Dockerfile.node
       args:
         APP_NAME: api
@@ -14,6 +42,15 @@ services:
       PORT: 3000
       LOG_LEVEL: info
       CORS_ORIGIN: http://localhost:3001
+      DATABASE_URL: postgresql://buyingbot:buyingbot@postgres:5432/buyingbot?schema=public
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: replace-me-with-a-long-random-secret-in-real-deployments
+      COOKIE_SECURE: 'true'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -25,11 +62,11 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
   worker:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: infrastructure/docker/base/Dockerfile.node
       args:
         APP_NAME: worker
@@ -44,7 +81,7 @@ services:
 
   ai-service:
     build:
-      context: ../..
+      context: ../../..
       dockerfile: infrastructure/docker/base/Dockerfile.node
       args:
         APP_NAME: ai-service
@@ -56,3 +93,6 @@ services:
       HOST: 0.0.0.0
       PORT: 3003
       LOG_LEVEL: info
+
+volumes:
+  buyingbot_pg_data:

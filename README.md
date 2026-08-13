@@ -36,8 +36,11 @@ This repository contains the **engineering foundation** and **application shells
 
 ## Prerequisites
 
-- Node.js `22` (see `.nvmrc`)
-- [pnpm](https://pnpm.io/) `9+` (Corepack recommended: `corepack enable`)
+- Node.js **22** (see `.nvmrc` — do not use Node 20)
+- [pnpm](https://pnpm.io/) **9.15.9** (Corepack: `corepack enable && corepack prepare pnpm@9.15.9 --activate`)
+
+Developer guide: [`docs/developer/getting-started.md`](docs/developer/getting-started.md)  
+Architecture baseline: [`docs/DOCUMENTATION_BASELINE.md`](docs/DOCUMENTATION_BASELINE.md)
 
 ## Commands
 
@@ -45,6 +48,7 @@ From the repository root:
 
 ```bash
 pnpm install          # Install workspace dependencies + Husky hooks
+pnpm run check:node   # Enforce Node 22 major
 pnpm build            # turbo run build
 pnpm dev              # turbo run dev
 pnpm lint             # ESLint (max-warnings=0)
@@ -54,11 +58,17 @@ pnpm format:check     # Prettier check
 pnpm typecheck        # turbo run typecheck
 pnpm test             # turbo run test
 pnpm audit:deps       # pnpm audit --audit-level=high
-pnpm verify           # format + lint + typecheck + test + build + audit
+pnpm verify           # node check + format + lint + typecheck + test + build + audit
 pnpm clean            # turbo run clean
 ```
 
 Copy `.env.example` to `.env` for local Node service configuration.
+
+Local Postgres + Redis:
+
+```bash
+docker compose -f infrastructure/docker/compose/docker-compose.yml up -d postgres redis
+```
 
 Production readiness checklist: [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION_READINESS.md).
 

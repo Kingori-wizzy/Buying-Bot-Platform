@@ -14,6 +14,13 @@ out/
 .env
 .env.*
 !.env.example
+!.env.staging.example
+
+# Release artifacts (generated; keep example + gitkeep)
+artifacts/*
+!artifacts/.gitkeep
+!artifacts/BUILD_METADATA.example.json
+backups/
 
 # Logs and debug
 logs/

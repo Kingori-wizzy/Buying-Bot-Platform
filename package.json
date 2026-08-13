@@ -1,6 +1,6 @@
 {
   "name": "buying-bot-platform",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.2",
   "private": true,
   "description": "Buying Bot Platform — AI-powered omnichannel commerce monorepo",
   "packageManager": "pnpm@9.15.9",
@@ -11,6 +11,7 @@
   "prettier": "@buying-bot/prettier-config",
   "scripts": {
     "prepare": "husky",
+    "check:node": "node ./scripts/check-node.mjs",
     "build": "turbo run build",
     "dev": "turbo run dev",
     "lint": "pnpm run build --filter=\"./packages/*\" && eslint . --max-warnings=0",
@@ -21,8 +22,17 @@
     "test": "turbo run test",
     "clean": "turbo run clean",
     "audit:deps": "pnpm audit --audit-level=high",
-    "verify": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run audit:deps",
-    "commitlint": "commitlint --edit"
+    "verify": "pnpm run check:node && pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run audit:deps",
+    "commitlint": "commitlint --edit",
+    "smoke": "node ./scripts/smoke/staging-smoke.mjs",
+    "integrity": "node ./scripts/integrity/check-data-integrity.mjs",
+    "security:gate": "node ./scripts/security/security-gate.mjs",
+    "test:e2e": "playwright test -c ./e2e/playwright.config.ts",
+    "migrate:deploy": "pnpm --filter @buying-bot/database exec prisma migrate deploy",
+    "staging:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/staging/up.ps1",
+    "staging:up:sh": "bash ./scripts/staging/up.sh",
+    "release:metadata": "node ./scripts/release/generate-build-metadata.mjs",
+    "preflight": "pnpm run verify && pnpm run security:gate && pnpm run integrity"
   },
   "devDependencies": {
     "@buying-bot/eslint-config": "workspace:*",
@@ -30,11 +40,19 @@
     "@buying-bot/typescript-config": "workspace:*",
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
+    "@playwright/test": "^1.54.2",
     "eslint": "^9.32.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.1.2",
     "prettier": "^3.6.2",
     "turbo": "^2.5.4",
     "typescript": "^5.8.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "effect": ">=3.20.0",
+      "sharp": ">=0.35.0",
+      "postcss": ">=8.5.18"
+    }
   }
 }

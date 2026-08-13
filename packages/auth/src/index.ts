@@ -1,12 +1,16 @@
 import type { Permission, Role } from '@buying-bot/types';
 
 /**
- * Principal authenticated to the platform. Implementation deferred.
+ * Principal authenticated to the platform.
  */
 export interface AuthPrincipal {
   readonly subjectId: string;
   readonly roles: readonly string[];
   readonly permissions: readonly Permission[];
+  readonly realm?: 'customer' | 'admin' | 'service';
+  readonly sessionId?: string;
+  readonly mfaSatisfied?: boolean;
+  readonly steppedUp?: boolean;
 }
 
 /**
@@ -45,3 +49,11 @@ export function flattenRolePermissions(roles: readonly Role[]): Permission[] {
   }
   return [...map.values()];
 }
+
+export {
+  assertSameSubject,
+  DefaultAuthorizer,
+  parsePermissionKey,
+  permissionKey,
+  PLATFORM_PERMISSIONS,
+} from './permissions.js';

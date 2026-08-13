@@ -1,25 +1,57 @@
 # `@buying-bot/web`
 
-Customer Website application shell.
+Customer storefront — Next.js App Router (M13 / ADR-0007).
 
 ## Responsibility
 
-Shopper-facing storefront and buying journeys for the omnichannel platform.
+Shopper-facing catalog, search, cart, checkout, auth, and order status against
+`apps/api` via `@buying-bot/sdk`. Prices and payment status are **API-authored
+only**.
 
-## TypeScript
+## Run locally
 
-Extends `@buying-bot/typescript-config` (`base` + `paths`) with DOM libraries and Bundler module resolution. Build emits to `dist/`.
+```bash
+# API on :3000 first
+pnpm --filter @buying-bot/api dev
+
+# Storefront on :3001
+pnpm --filter @buying-bot/web dev
+```
+
+Env (see root `.env.example`):
+
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+CORS already allows `http://localhost:3001`.
+
+## Routes
+
+| Path                 | Purpose                         |
+| -------------------- | ------------------------------- |
+| `/`                  | Home                            |
+| `/products`          | Product list (PLP)              |
+| `/products/[slug]`   | Product detail (PDP + metadata) |
+| `/search`            | Search                          |
+| `/cart`              | Cart (cookie credentials)       |
+| `/checkout`          | Checkout initiate               |
+| `/orders/[id]`       | Order status poll               |
+| `/login` `/register` | Customer auth                   |
 
 ## Scripts
 
-| Script           | Purpose                      |
-| ---------------- | ---------------------------- |
-| `pnpm build`     | Compile TypeScript → `dist/` |
-| `pnpm typecheck` | Typecheck only               |
-| `pnpm dev`       | Watch compile                |
-| `pnpm test`      | Placeholder (future-ready)   |
-| `pnpm clean`     | Remove `dist/`               |
+| Script           | Purpose               |
+| ---------------- | --------------------- |
+| `pnpm dev`       | `next dev -p 3001`    |
+| `pnpm build`     | `next build`          |
+| `pnpm start`     | `next start -p 3001`  |
+| `pnpm typecheck` | `tsc --noEmit`        |
+| `pnpm test`      | Vitest helpers        |
+| `pnpm clean`     | Remove `.next` / dist |
 
-## Status
+## Notes
 
-Scaffold only — no UI framework or product features yet.
+- Prefer direct Nest calls with `credentials: 'include'` (no Express BFF).
+- CSRF: SDK fetches `/v1/auth/csrf` and sends `x-csrf-token` on mutations.
+- AI chat is **out of scope** (M15+).

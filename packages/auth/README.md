@@ -2,24 +2,23 @@
 
 ## Responsibility
 
-Provide **shared authentication and authorization building blocks**—session/token contracts, guard helpers, and role/permission types—used consistently across channels.
+Provide **shared authentication and authorization building blocks**—principal
+contracts, permission helpers, and authorizer ports—used consistently across
+channels.
 
-## In scope (when implemented)
+## In scope
 
-- Auth-related types and interfaces
-- Shared middleware/guard utilities for API and apps
-- Permission/role vocabulary shared by admin and API
+- `AuthPrincipal`, `Authenticator`, `Authorizer`
+- `hasPermission`, `flattenRolePermissions`, `DefaultAuthorizer`
+- Permission catalog helpers and ownership `assertSameSubject`
+- Opaque token helpers (`createOpaqueToken`, `hashToken`)
 
 ## Out of scope
 
-- Full identity-provider product code owned by a single app without reuse
-- Secret storage of keys/certificates in the package
-- UI login pages (compose with `@buying-bot/ui` inside apps)
-
-## Consumers (intended)
-
-`apps/api`, `apps/admin`, `apps/web`, `apps/worker` (as applicable)
+- Nest guards / cookies / Prisma (live in `apps/api`)
+- Secret material storage
+- UI login pages
 
 ## Status
 
-Contracts implemented (`Authenticator`, `Authorizer`, permission helpers). No IdP/session adapter yet.
+Contracts + pure helpers implemented. Nest adapters live in `apps/api` (M4–M5).

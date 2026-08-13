@@ -4,22 +4,37 @@
 
 Centralize **persistence abstractions and shared data-access utilities** so services do not each invent incompatible database clients or migration patterns.
 
-## In scope (when implemented)
+## In scope
 
-- Shared client/factory patterns for approved data stores
-- Common transaction helpers and repository base utilities
-- Migration tooling conventions shared by backend services
+- `DatabaseClient` / `UnitOfWork` / health ports
+- Prisma PostgreSQL adapter (`PrismaDatabaseClient`, `createPrismaClient`)
+- Identity schema migrations under `prisma/migrations`
+- Idempotent RBAC seed (`seedIdentityCatalog`)
 
 ## Out of scope
 
-- Business repositories that encode product workflows (prefer app modules or domain packages)
-- Schema documentation volumes (see `docs/Database/`)
-- Direct UI or browser usage
+- Business repositories that encode product workflows (prefer app modules)
+- Exporting Prisma models as the public domain API
+- Redis as system of record
 
-## Consumers (intended)
+## Scripts
+
+| Script                 | Purpose                         |
+| ---------------------- | ------------------------------- |
+| `pnpm prisma:generate` | Generate Prisma Client          |
+| `pnpm prisma:migrate`  | `prisma migrate deploy`         |
+| `pnpm build`           | Compile TypeScript → `dist/`    |
+| `pnpm test`            | Unit + optional DB health tests |
+
+## Service identity note (M5)
+
+Service-to-service authentication uses short-lived HS256 JWTs
+(`SERVICE_JWT_SECRET`). No `ServiceIdentity` table is required for M5.
+
+## Consumers
 
 `apps/api`, `apps/worker`, optionally `apps/ai-service`
 
 ## Status
 
-Ports implemented (`DatabaseClient`, health, transactions). No Prisma/PostgreSQL adapter yet.
+Prisma identity schema + adapter implemented (M3).

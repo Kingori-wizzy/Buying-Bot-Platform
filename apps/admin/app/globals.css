@@ -1,0 +1,138 @@
+:root {
+  --bb-bg: #101418;
+  --bb-fg: #e8eef4;
+  --bb-muted: #9aa7b5;
+  --bb-accent: #3d8b6e;
+  --bb-accent-fg: #07130e;
+  --bb-border: #2a333c;
+  --bb-danger: #e07070;
+  --bb-surface: #171d23;
+  --bb-font: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: var(--bb-font);
+  color: var(--bb-fg);
+  background:
+    radial-gradient(ellipse at top right, #1a2a24 0%, transparent 40%),
+    linear-gradient(180deg, #101418 0%, #0c1014 100%);
+}
+
+a {
+  color: var(--bb-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+@media (max-width: 800px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.sidebar {
+  border-right: 1px solid var(--bb-border);
+  padding: 1.25rem 1rem;
+  background: color-mix(in srgb, var(--bb-surface) 90%, transparent);
+}
+
+.sidebar .brand {
+  display: block;
+  font-weight: 700;
+  color: var(--bb-fg);
+  margin-bottom: 1.25rem;
+  text-decoration: none;
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.content {
+  padding: 1.5rem 1.25rem 3rem;
+  max-width: 1100px;
+}
+
+.btn {
+  display: inline-block;
+  border: 1px solid var(--bb-accent);
+  background: var(--bb-accent);
+  color: var(--bb-accent-fg);
+  padding: 0.5rem 0.9rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--bb-accent);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--bb-border);
+  border-radius: 0.3rem;
+  background: #0f1419;
+  color: var(--bb-fg);
+}
+
+.error {
+  color: var(--bb-danger);
+}
+
+.muted {
+  color: var(--bb-muted);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bb-surface);
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--bb-border);
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+}
+
+.panel {
+  background: var(--bb-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 0.4rem;
+  padding: 1rem;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}

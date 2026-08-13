@@ -1,0 +1,157 @@
+:root {
+  --bb-bg: #f7f5f1;
+  --bb-fg: #1a1f24;
+  --bb-muted: #5c6570;
+  --bb-accent: #1f6b4a;
+  --bb-accent-fg: #f7f5f1;
+  --bb-border: #d5d0c8;
+  --bb-danger: #9b2c2c;
+  --bb-surface: #ffffff;
+  --bb-font: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  font-family: var(--bb-font);
+  color: var(--bb-fg);
+  background:
+    radial-gradient(ellipse at top left, #e8efe9 0%, transparent 45%),
+    linear-gradient(180deg, #f7f5f1 0%, #efece6 100%);
+}
+
+a {
+  color: var(--bb-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--bb-border);
+  background: color-mix(in srgb, var(--bb-surface) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.brand {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--bb-fg);
+  text-decoration: none;
+}
+
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  font-size: 0.95rem;
+}
+
+.card-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0;
+}
+
+.product-card {
+  background: var(--bb-surface);
+  border: 1px solid var(--bb-border);
+  border-radius: 0.4rem;
+  padding: 1rem;
+}
+
+.product-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.muted {
+  color: var(--bb-muted);
+}
+
+.price {
+  font-weight: 600;
+}
+
+.btn {
+  display: inline-block;
+  border: 1px solid var(--bb-accent);
+  background: var(--bb-accent);
+  color: var(--bb-accent-fg);
+  padding: 0.55rem 1rem;
+  border-radius: 0.3rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn:hover {
+  filter: brightness(1.05);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--bb-accent);
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--bb-border);
+  border-radius: 0.3rem;
+  background: var(--bb-surface);
+}
+
+.error {
+  color: var(--bb-danger);
+  margin: 0.75rem 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bb-surface);
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--bb-border);
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}

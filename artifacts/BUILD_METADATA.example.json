@@ -1,0 +1,11 @@
+{
+  "generatedAt": "2026-08-13T00:00:00.000Z",
+  "version": "0.1.0-rc.1",
+  "gitSha": "REPLACE_WITH_git_rev_parse_HEAD",
+  "gitBranch": "main",
+  "gitDescribe": "v0.1.0-rc.1",
+  "nodeVersion": "v22.x.x",
+  "platform": "linux",
+  "arch": "x64",
+  "note": "Example only — generate via pnpm run release:metadata"
+}

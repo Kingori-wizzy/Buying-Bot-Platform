@@ -1,6 +1,6 @@
 /**
- * Framework-agnostic UI tokens until a frontend framework ADR is accepted.
- * Do not introduce React/Vue components here before that ADR.
+ * Shared design tokens for web/admin (ADR-0007).
+ * Light primitives may be added later; keep business composites in apps.
  */
 
 export interface DesignTokens {

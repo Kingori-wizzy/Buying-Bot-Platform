@@ -19,6 +19,47 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: buyingbot
+          POSTGRES_PASSWORD: buyingbot
+          POSTGRES_DB: buyingbot
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U buyingbot -d buyingbot"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://buyingbot:buyingbot@127.0.0.1:5432/buyingbot?schema=public
+      DATABASE_URL_TEST: postgresql://buyingbot:buyingbot@127.0.0.1:5432/buyingbot?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      API_BASE_URL: http://127.0.0.1:3000
+      SMOKE_REQUIRE: '1'
+      NODE_ENV: test
+      SESSION_SECRET: ci-session-secret-at-least-32-characters
+      SERVICE_JWT_SECRET: ci-service-jwt-secret-at-least-32-chars
+      COOKIE_SECURE: 'false'
+      CORS_ORIGIN: http://127.0.0.1:3001
+      SERVICE_NAME: api
+      HOST: 0.0.0.0
+      PORT: '3000'
+      PAYMENTS_ENABLED: 'false'
+      AI_PROVIDER: deterministic
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,11 +81,36 @@ jobs:
         run: pnpm install --frozen-lockfile
         env:
           HUSKY: '0'
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
       - name: Secret scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create domain schemas
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS identity;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS audit;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS catalog;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS inventory;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS promotions;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS cart;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS orders;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS payments;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS integrations;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS ai;'
+          psql "$DATABASE_URL" -c 'CREATE SCHEMA IF NOT EXISTS notifications;'
+          psql "$DATABASE_URL" -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+          psql "$DATABASE_URL" -c 'CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+          psql "$DATABASE_URL" -c 'CREATE EXTENSION IF NOT EXISTS unaccent;'
+
+      - name: Prisma generate + migrate
+        run: |
+          pnpm --filter @buying-bot/database exec prisma generate
+          pnpm --filter @buying-bot/database exec prisma migrate deploy
 
       - name: Format check
         run: pnpm run format:check
@@ -61,5 +127,75 @@ jobs:
       - name: Test
         run: pnpm run test
 
+      - name: Data integrity
+        run: pnpm run integrity
+
+      - name: Boot API for smoke
+        run: |
+          pnpm --filter @buying-bot/api exec node dist/index.js &
+          echo $! > /tmp/api.pid
+          for i in $(seq 1 60); do
+            if curl -sf "$API_BASE_URL/health/live" >/dev/null; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to become ready"
+          exit 1
+
+      - name: API smoke
+        run: pnpm run smoke
+
+      - name: Playwright API e2e (no browser)
+        run: pnpm exec playwright test -c ./e2e/playwright.config.ts --project=smoke
+        env:
+          WEB_BASE_URL: ''
+
+      - name: Stop API
+        if: always()
+        run: |
+          if [[ -f /tmp/api.pid ]]; then kill "$(cat /tmp/api.pid)" || true; fi
+
       - name: Dependency audit
         run: pnpm audit --audit-level=high
+
+  docker-build:
+    name: Docker build (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: quality
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: api
+            dockerfile: infrastructure/docker/base/Dockerfile.node
+            build_args: APP_NAME=api
+          - app: web
+            dockerfile: infrastructure/docker/apps/Dockerfile.web
+            build_args: |
+              NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080
+              DOCKER_BUILD=1
+          - app: admin
+            dockerfile: infrastructure/docker/apps/Dockerfile.admin
+            build_args: |
+              NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080
+              DOCKER_BUILD=1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          tags: buying-bot-${{ matrix.app }}:ci
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

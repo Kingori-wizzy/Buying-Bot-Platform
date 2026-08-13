@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 import { bootstrap } from './app.js';
 
 export { bootstrap } from './app.js';

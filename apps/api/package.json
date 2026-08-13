@@ -14,8 +14,26 @@
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
+    "@buying-bot/ai-core": "workspace:^",
+    "@buying-bot/auth": "workspace:^",
     "@buying-bot/config": "workspace:*",
-    "@buying-bot/utils": "workspace:*"
+    "@buying-bot/database": "workspace:^",
+    "@buying-bot/types": "workspace:^",
+    "@buying-bot/utils": "workspace:*",
+    "@buying-bot/validation": "workspace:^",
+    "@fastify/cookie": "^11",
+    "@fastify/compress": "^8",
+    "@fastify/helmet": "^13",
+    "@nestjs/common": "^11",
+    "@nestjs/core": "^11",
+    "@nestjs/platform-fastify": "^11",
+    "@node-rs/argon2": "^2.0.2",
+    "fastify": "^5",
+    "ioredis": "^6.0.0",
+    "jose": "^6.2.8",
+    "otpauth": "^9.5.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
     "@buying-bot/typescript-config": "workspace:*",

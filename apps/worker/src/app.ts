@@ -1,4 +1,12 @@
 import { loadEnv, resolveLogLevel, workerEnvSchema } from '@buying-bot/config';
+import {
+  createPrismaClient,
+  expireHeldReservations,
+  type PrismaClient,
+  processNotificationIntents,
+  publishPendingOutbox,
+  requeueFailedOutbox,
+} from '@buying-bot/database';
 import type { OpsServer } from '@buying-bot/utils';
 import {
   createLogger,
@@ -7,14 +15,65 @@ import {
   processHealthCheck,
 } from '@buying-bot/utils';
 
+import { processKnowledgeIngest } from './knowledge-ingest.js';
+import { InMemoryMetrics } from './metrics.js';
+
 export interface WorkerRuntime {
   readonly stop: () => Promise<void>;
   readonly address: OpsServer['address'];
 }
 
+export type PaymentInitiateHandler = (payload: {
+  orderId: string;
+  paymentId: string;
+  attemptId: string;
+  msisdnE164: string;
+  amountMinor: number;
+  currency: string;
+}) => Promise<void>;
+
 /**
- * Background worker application shell.
- * Queue consumers are deferred; ops endpoints and graceful shutdown are ready.
+ * Process outbox payment.initiate messages (provider HTTP after DB commit).
+ */
+export async function processOutboxOnce(
+  prisma: PrismaClient,
+  onPaymentInitiate?: PaymentInitiateHandler,
+  onKnowledgeIngest?: (payload: {
+    documentId: string;
+    content: string;
+  }) => Promise<void>,
+): Promise<number> {
+  return publishPendingOutbox(prisma, async (type, payload) => {
+    if (type === 'payment.initiate' && onPaymentInitiate) {
+      await onPaymentInitiate(
+        payload as {
+          orderId: string;
+          paymentId: string;
+          attemptId: string;
+          msisdnE164: string;
+          amountMinor: number;
+          currency: string;
+        },
+      );
+      return;
+    }
+    if (type === 'knowledge.ingest' && onKnowledgeIngest) {
+      await onKnowledgeIngest(
+        payload as { documentId: string; content: string },
+      );
+      return;
+    }
+  });
+}
+
+export async function expireReservationsOnce(
+  prisma: PrismaClient,
+): Promise<number> {
+  return expireHeldReservations(prisma);
+}
+
+/**
+ * Background worker: outbox, reservations, notifications, knowledge ingest.
  */
 export async function bootstrap(
   envSource: NodeJS.ProcessEnv = process.env,
@@ -25,6 +84,98 @@ export async function bootstrap(
     environment: env.NODE_ENV,
     level: resolveLogLevel(env),
   });
+  const metrics = new InMemoryMetrics();
+
+  let prisma: PrismaClient | undefined;
+  const timers: NodeJS.Timeout[] = [];
+
+  if (env.DATABASE_URL) {
+    const database = createPrismaClient(env.DATABASE_URL);
+    prisma = database;
+    const knowledgeHandler = async (payload: {
+      documentId: string;
+      content: string;
+    }): Promise<void> => {
+      await processKnowledgeIngest({
+        prisma: database,
+        documentId: payload.documentId,
+        content: payload.content,
+        aiServiceBaseUrl: env.AI_SERVICE_BASE_URL,
+        serviceJwtSecret: env.SERVICE_JWT_SECRET,
+        aiProvider: env.AI_PROVIDER,
+      });
+      metrics.inc('worker_knowledge_ingest_total');
+    };
+
+    timers.push(
+      setInterval(() => {
+        if (!prisma) {
+          return;
+        }
+        void processOutboxOnce(prisma, undefined, knowledgeHandler).catch(
+          (error: unknown) => {
+            logger.warn('Outbox tick failed', {
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          },
+        );
+      }, env.OUTBOX_POLL_INTERVAL_MS),
+    );
+    timers.push(
+      setInterval(() => {
+        if (!prisma) {
+          return;
+        }
+        void expireReservationsOnce(prisma).catch((error: unknown) => {
+          logger.warn('Reservation expiry tick failed', {
+            error: error instanceof Error ? error.message : 'unknown',
+          });
+        });
+      }, env.RESERVATION_EXPIRE_INTERVAL_MS),
+    );
+    timers.push(
+      setInterval(() => {
+        if (!prisma) {
+          return;
+        }
+        void processNotificationIntents(prisma, (message) => {
+          logger.info('notification email (console)', {
+            recipient: message.recipient.replace(/(.{2}).+(@.+)/, '$1***$2'),
+            subject: message.subject,
+          });
+          return Promise.resolve({
+            provider: 'console-email',
+            reference: `console-${String(Date.now())}`,
+          });
+        })
+          .then((n) => {
+            if (n > 0) {
+              metrics.inc('worker_notifications_sent_total', {}, n);
+            }
+          })
+          .catch((error: unknown) => {
+            logger.warn('Notification tick failed', {
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          });
+      }, env.NOTIFICATION_POLL_INTERVAL_MS),
+    );
+    timers.push(
+      setInterval(
+        () => {
+          if (!prisma) {
+            return;
+          }
+          void requeueFailedOutbox(prisma, 50).catch((error: unknown) => {
+            logger.warn('Outbox requeue tick failed', {
+              error: error instanceof Error ? error.message : 'unknown',
+            });
+          });
+        },
+        Math.max(env.OUTBOX_POLL_INTERVAL_MS * 6, 30_000),
+      ),
+    );
+  }
 
   const ops = createOpsServer({
     service: env.SERVICE_NAME,
@@ -34,20 +185,35 @@ export async function bootstrap(
     logger,
     exposeStackTraces: env.NODE_ENV !== 'production',
     getReadiness: () => [processHealthCheck()],
+    getMetricsText: () => metrics.toPrometheus(),
   });
 
   installGracefulShutdown({
     logger,
     onShutdown: async () => {
+      for (const timer of timers) {
+        clearInterval(timer);
+      }
+      if (prisma) {
+        await prisma.$disconnect();
+      }
       await ops.stop();
     },
   });
 
   await ops.start();
-  logger.info('Worker bootstrap complete');
+  logger.info('Worker bootstrap complete', {
+    databaseConfigured: Boolean(env.DATABASE_URL),
+  });
 
   return {
     stop: async () => {
+      for (const timer of timers) {
+        clearInterval(timer);
+      }
+      if (prisma) {
+        await prisma.$disconnect();
+      }
       await ops.stop();
     },
     address: () => ops.address(),

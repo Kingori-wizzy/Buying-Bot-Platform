@@ -26,6 +26,8 @@ export interface OpsServerOptions {
   readonly logger: Logger;
   readonly getReadiness?: ReadinessChecker;
   readonly exposeStackTraces?: boolean;
+  /** Optional Prometheus text exposition for /metrics */
+  readonly getMetricsText?: () => string;
 }
 
 export interface OpsServer {
@@ -163,6 +165,19 @@ export function createOpsServer(options: OpsServerOptions): OpsServer {
             checks,
           );
           sendJson(res, 200, { ...report, requestId });
+          finish(200);
+          return;
+        }
+
+        if (path === '/metrics' && options.getMetricsText) {
+          const body = options.getMetricsText();
+          res.statusCode = 200;
+          res.setHeader(
+            'content-type',
+            'text/plain; version=0.0.4; charset=utf-8',
+          );
+          res.setHeader('cache-control', 'no-store');
+          res.end(body);
           finish(200);
           return;
         }
