@@ -14,6 +14,7 @@ export default function CartPage() {
   const [cart, setCart] = useState<CartView | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
@@ -24,6 +25,8 @@ export default function CartPage() {
       setError(
         err instanceof PlatformApiError ? err.message : 'Cart load failed',
       );
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -60,31 +63,45 @@ export default function CartPage() {
   const subtotal = cart ? cartSubtotalMinor(cart.lines) : 0;
 
   return (
-    <section className="stack">
-      <h1>Cart</h1>
-      {error ? <p className="error">{error}</p> : null}
-      {!cart ? <p className="muted">Loading…</p> : null}
-      {cart?.lines.length === 0 ? (
-        <p className="muted">Your cart is empty.</p>
-      ) : null}
-      {cart && cart.lines.length > 0 ? (
-        <>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Qty</th>
-                <th>Unit</th>
-                <th>Line</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {cart.lines.map((line) => (
-                <tr key={line.id}>
-                  <td>{line.productName}</td>
-                  <td>
+    <main className="page" id="main">
+      <section className="stack">
+        <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>Cart</h1>
+        <p className="muted" style={{ margin: 0 }}>
+          Line totals come from the cart API (server-priced). Checkout may
+          re-resolve promotions and tax.
+        </p>
+        {error ? (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {loading ? <div className="skeleton" style={{ height: 120 }} /> : null}
+        {!loading && cart?.lines.length === 0 ? (
+          <div className="empty-state">
+            <p>Your cart is empty.</p>
+            <Link className="btn" href="/products">
+              Continue shopping
+            </Link>
+          </div>
+        ) : null}
+        {cart && cart.lines.length > 0 ? (
+          <div className="panel stack">
+            {cart.lines.map((line) => (
+              <div className="cart-line" key={line.id}>
+                <div className="cart-thumb" aria-hidden />
+                <div>
+                  <strong>{line.productName}</strong>
+                  <p className="muted" style={{ margin: '0.25rem 0 0' }}>
+                    {formatMoneyMinor(line.unitPriceMinor, line.currency)} each
+                  </p>
+                </div>
+                <div className="line-actions stack" style={{ gap: '0.45rem' }}>
+                  <div className="qty-controls">
+                    <label className="sr-only" htmlFor={`qty-${line.id}`}>
+                      Quantity for {line.productName}
+                    </label>
                     <input
+                      id={`qty-${line.id}`}
                       type="number"
                       min={1}
                       max={100}
@@ -96,39 +113,40 @@ export default function CartPage() {
                           void updateQty(line.id, qty);
                         }
                       }}
-                      style={{ width: '4rem' }}
                     />
-                  </td>
-                  <td>
-                    {formatMoneyMinor(line.unitPriceMinor, line.currency)}
-                  </td>
-                  <td>
-                    {formatMoneyMinor(line.lineTotalMinor, line.currency)}
-                  </td>
-                  <td>
-                    <button
-                      className="btn btn-secondary"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        void remove(line.id);
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="price">
-            Subtotal (API): {formatMoneyMinor(subtotal, cart.currency)}
-          </p>
-          <Link className="btn" href="/checkout">
-            Checkout
-          </Link>
-        </>
-      ) : null}
-    </section>
+                    <span className="price">
+                      {formatMoneyMinor(line.lineTotalMinor, line.currency)}
+                    </span>
+                  </div>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      void remove(line.id);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+            <div className="section-head">
+              <div>
+                <p className="muted" style={{ margin: 0 }}>
+                  Cart subtotal (from API line totals)
+                </p>
+                <p className="price" style={{ fontSize: '1.35rem', margin: 0 }}>
+                  {formatMoneyMinor(subtotal, cart.currency)}
+                </p>
+              </div>
+              <Link className="btn" href="/checkout">
+                Proceed to checkout
+              </Link>
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </main>
   );
 }

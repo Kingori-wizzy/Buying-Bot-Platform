@@ -125,11 +125,47 @@ export default function InventoryPage() {
       ) : null}
 
       {canRead ? (
-        <div className="panel">
-          <h2>Balances</h2>
-          <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem' }}>
-            {JSON.stringify(rows, null, 2)}
-          </pre>
+        <div className="panel stack">
+          <h2 style={{ margin: 0 }}>Balances</h2>
+          {rows.length === 0 ? (
+            <p className="muted">No inventory rows returned.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Location</th>
+                    <th>On hand</th>
+                    <th>Reserved</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => {
+                    const item = row as {
+                      skuId?: string;
+                      locationId?: string;
+                      onHand?: number;
+                      reserved?: number;
+                      id?: string;
+                    };
+                    return (
+                      <tr
+                        key={
+                          item.id ?? `${item.skuId ?? 'row'}-${String(index)}`
+                        }
+                      >
+                        <td>{item.skuId ?? '—'}</td>
+                        <td>{item.locationId ?? '—'}</td>
+                        <td>{item.onHand ?? '—'}</td>
+                        <td>{item.reserved ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       ) : null}
     </section>

@@ -23,6 +23,7 @@ export default function RegisterPage() {
       await sdk.register({ email, password });
       await sdk.login({ email, password, realm: 'customer' });
       router.push('/products');
+      router.refresh();
     } catch (err) {
       setError(
         err instanceof PlatformApiError ? err.message : 'Registration failed',
@@ -33,48 +34,57 @@ export default function RegisterPage() {
   }
 
   return (
-    <section className="stack">
-      <h1>Register</h1>
-      <form
-        onSubmit={(e) => {
-          void onSubmit(e);
-        }}
-      >
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-            }}
-            required
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="password">Password (min 10)</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-            }}
-            minLength={10}
-            required
-          />
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Creating…' : 'Create account'}
-        </button>
-      </form>
-      <p className="muted">
-        Already registered? <Link href="/login">Login</Link>
-      </p>
-    </section>
+    <main className="page" id="main">
+      <section className="stack" style={{ maxWidth: 480 }}>
+        <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>
+          Create account
+        </h1>
+        <form
+          className="panel"
+          onSubmit={(e) => {
+            void onSubmit(e);
+          }}
+        >
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password (min 10)</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
+              minLength={10}
+              required
+            />
+          </div>
+          {error ? (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? 'Creating…' : 'Create account'}
+          </button>
+        </form>
+        <p className="muted">
+          Already registered? <Link href="/login">Log in</Link>
+        </p>
+      </section>
+    </main>
   );
 }

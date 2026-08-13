@@ -27,6 +27,7 @@ export default function LoginPage() {
         // merge is best-effort after login
       }
       router.push('/products');
+      router.refresh();
     } catch (err) {
       setError(err instanceof PlatformApiError ? err.message : 'Login failed');
     } finally {
@@ -35,47 +36,57 @@ export default function LoginPage() {
   }
 
   return (
-    <section className="stack">
-      <h1>Login</h1>
-      <form
-        onSubmit={(e) => {
-          void onSubmit(e);
-        }}
-      >
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-            }}
-            required
-          />
-        </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-            }}
-            required
-          />
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
-      <p className="muted">
-        No account? <Link href="/register">Register</Link>
-      </p>
-    </section>
+    <main className="page" id="main">
+      <section className="stack" style={{ maxWidth: 480 }}>
+        <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>Log in</h1>
+        <p className="muted" style={{ margin: 0 }}>
+          Customer realm session via httpOnly cookies.
+        </p>
+        <form
+          className="panel"
+          onSubmit={(e) => {
+            void onSubmit(e);
+          }}
+        >
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
+              required
+            />
+          </div>
+          {error ? (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+        <p className="muted">
+          No account? <Link href="/register">Register</Link>
+        </p>
+      </section>
+    </main>
   );
 }

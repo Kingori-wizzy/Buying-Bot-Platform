@@ -101,7 +101,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <Link href="/">Dashboard</Link>
               {value.can('catalog', 'read') ||
               value.can('catalog', 'create') ? (
-                <Link href="/catalog">Catalog</Link>
+                <Link href="/catalog">Products</Link>
               ) : null}
               {value.can('inventory', 'read') ||
               value.can('inventory', 'update') ? (
@@ -113,6 +113,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
               {value.can('catalog', 'create') ? (
                 <Link href="/promotions">Promotions</Link>
               ) : null}
+              <a href="http://localhost:3001/assistant" rel="noreferrer">
+                AI (storefront)
+              </a>
               <button
                 className="btn btn-secondary"
                 type="button"
@@ -120,7 +123,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   void logout();
                 }}
               >
-                Logout
+                Log out
               </button>
             </nav>
           </aside>
