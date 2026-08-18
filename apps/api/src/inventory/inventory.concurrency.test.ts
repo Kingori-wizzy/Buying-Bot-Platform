@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   createPrismaClient,
+  expireHeldReservations,
   type PrismaDatabaseClient,
   seedCommerceDefaults,
   seedIdentityCatalog,
@@ -31,7 +32,7 @@ describe.skipIf(!databaseUrl)('inventory concurrency', () => {
       data: {
         name: `Inv Product ${randomUUID()}`,
         slug: `inv-${randomUUID()}`,
-        status: 'ACTIVE',
+        status: 'DRAFT',
         variants: {
           create: {
             name: 'Default',
@@ -112,5 +113,33 @@ describe.skipIf(!databaseUrl)('inventory concurrency', () => {
     });
     expect(first).toMatchObject({ idempotent: false });
     expect(second).toMatchObject({ idempotent: true });
+  });
+
+  it('expiry releases reserved quantity without changing on_hand', async () => {
+    const before = await prisma.inventoryBalance.findUniqueOrThrow({
+      where: { skuId_locationId: { skuId, locationId } },
+    });
+    const qty = 1;
+    if (before.onHand - before.reserved < qty) {
+      return;
+    }
+    await service.reserve({
+      skuId,
+      locationId,
+      quantity: qty,
+      expiresAt: new Date(Date.now() - 1000),
+      idempotencyKey: `exp-${randomUUID()}`,
+    });
+    const held = await prisma.inventoryBalance.findUniqueOrThrow({
+      where: { skuId_locationId: { skuId, locationId } },
+    });
+    expect(held.reserved).toBeGreaterThan(before.reserved);
+    const expired = await expireHeldReservations(prisma);
+    expect(expired).toBeGreaterThanOrEqual(1);
+    const after = await prisma.inventoryBalance.findUniqueOrThrow({
+      where: { skuId_locationId: { skuId, locationId } },
+    });
+    expect(after.onHand).toBe(held.onHand);
+    expect(after.reserved).toBe(held.reserved - qty);
   });
 });

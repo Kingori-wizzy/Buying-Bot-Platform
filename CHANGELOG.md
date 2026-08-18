@@ -7,13 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0-rc.3] — 2026-08-18
+
 ### Added
 
-- **M24:** Production readiness report, RTM verification, security audit,
-  compliance readiness, performance/reliability validation notes, expanded
-  runbooks, restore-drill evidence path.
-- **M25:** Production architecture, launch checklist, EXTERNAL prerequisites,
-  final implementation report; documentation baseline pointers updated.
+- Worker `payment.initiate` outbox handler with sandbox STK simulation.
+- Playwright API purchase flow through sandbox webhook → PAID.
+- Web assistant SSE client (`POST /v1/ai/chat/stream`) with cancel/retry UX.
+- Admin `GET /v1/admin/orders/:id` and live admin orders list.
+- `.env.production.example` (placeholders only).
+
+### Fixed
+
+- Public catalog serializes only active offers (consistent with PDP).
+- Staging seed demotes leftover ACTIVE integration-test products to DRAFT.
+- Product cards no longer imply purchasability without an active offer.
+- Customer order GET/cancel IDOR when `userId` is missing from the request.
+- Late M-Pesa confirmation after reservation expiry → `RECONCILIATION_HOLD`.
+- Product GET by slug no longer 500s (Prisma UUID OR-clause).
+- `deepmerge-ts` pnpm override to `^8.0.1` (Prisma `@prisma/config` transitive).
+
+### Changed
+
+- Root / VERSION bumped to `0.1.0-rc.3`.
 
 ## [0.1.0-rc.2] — 2026-08-13
 

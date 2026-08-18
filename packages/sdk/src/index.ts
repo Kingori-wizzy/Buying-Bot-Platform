@@ -130,6 +130,16 @@ export interface AiChatResponse {
   };
 }
 
+export type AiStreamEvent =
+  | { readonly type: 'status'; readonly text: string }
+  | { readonly type: 'delta'; readonly text: string }
+  | {
+      readonly type: 'done';
+      readonly citations?: unknown;
+      readonly usage?: unknown;
+    }
+  | { readonly type: 'error'; readonly message: string };
+
 export interface CheckoutBody {
   readonly msisdnE164: string;
   readonly couponCode?: string;
@@ -342,6 +352,47 @@ export class PlatformSdk {
     return (await response.json()) as AiChatResponse;
   }
 
+  async *chatStream(
+    message: string,
+    options: { readonly signal?: AbortSignal } = {},
+  ): AsyncGenerator<AiStreamEvent> {
+    const response = await this.request('/v1/ai/chat/stream', {
+      method: 'POST',
+      json: { message },
+      csrf: true,
+      stream: true,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
+    if (!response.body) {
+      return;
+    }
+    for await (const event of parseSseJsonStream(
+      response.body,
+      options.signal,
+    )) {
+      const type = event.type;
+      if (type === 'delta' && typeof event.text === 'string') {
+        yield { type: 'delta', text: event.text };
+      } else if (type === 'status' && typeof event.text === 'string') {
+        yield { type: 'status', text: event.text };
+      } else if (type === 'done') {
+        yield {
+          type: 'done',
+          ...(event.citations !== undefined
+            ? { citations: event.citations }
+            : {}),
+          ...(event.usage !== undefined ? { usage: event.usage } : {}),
+        };
+      } else if (type === 'error') {
+        yield {
+          type: 'error',
+          message:
+            typeof event.message === 'string' ? event.message : 'stream failed',
+        };
+      }
+    }
+  }
+
   async getCart(): Promise<CartView> {
     const response = await this.request('/v1/cart');
     return (await response.json()) as CartView;
@@ -411,6 +462,29 @@ export class PlatformSdk {
 
   async getOrder(id: string): Promise<unknown> {
     const response = await this.request(`/v1/orders/${encodeURIComponent(id)}`);
+    return response.json();
+  }
+
+  async adminListOrders(
+    query: {
+      page?: number;
+      pageSize?: number;
+      status?: string;
+    } = {},
+  ): Promise<unknown> {
+    const qs = toQuery({
+      page: query.page,
+      pageSize: query.pageSize,
+      status: query.status,
+    });
+    const response = await this.request(`/v1/admin/orders${qs}`);
+    return response.json();
+  }
+
+  async adminGetOrder(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/orders/${encodeURIComponent(id)}`,
+    );
     return response.json();
   }
 
@@ -510,10 +584,14 @@ export class PlatformSdk {
     init: RequestInit & {
       json?: unknown;
       csrf?: boolean;
+      stream?: boolean;
     } = {},
   ): Promise<Response> {
     const headers = new Headers(init.headers);
-    headers.set('accept', 'application/json');
+    headers.set(
+      'accept',
+      init.stream ? 'text/event-stream' : 'application/json',
+    );
     if (init.json !== undefined) {
       headers.set('content-type', 'application/json');
     }
@@ -528,7 +606,7 @@ export class PlatformSdk {
       headers.set('x-csrf-token', csrf);
     }
 
-    const { json, csrf: _csrf, ...rest } = init;
+    const { json, csrf: _csrf, stream: _stream, ...rest } = init;
     const body =
       json !== undefined
         ? JSON.stringify(json)
@@ -566,6 +644,50 @@ export class PlatformSdk {
     }
 
     return response;
+  }
+}
+
+/** Parse SSE `data:` JSON lines from an HTTP stream. */
+export async function* parseSseJsonStream(
+  body: ReadableStream<Uint8Array>,
+  signal?: AbortSignal,
+): AsyncGenerator<Record<string, unknown>> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    for (;;) {
+      if (signal?.aborted) {
+        await reader.cancel();
+        break;
+      }
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop() ?? '';
+      for (const part of parts) {
+        for (const line of part.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) {
+            continue;
+          }
+          const json = trimmed.slice(5).trim();
+          if (!json || json === '[DONE]') {
+            continue;
+          }
+          try {
+            yield JSON.parse(json) as Record<string, unknown>;
+          } catch {
+            // ignore malformed SSE frames
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
   }
 }
 

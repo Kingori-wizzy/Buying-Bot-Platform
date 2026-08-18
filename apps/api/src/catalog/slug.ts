@@ -15,3 +15,10 @@ export function slugWithSuffix(input: string, suffix: string): string {
   const cleanSuffix = suffix.replace(/[^a-z0-9-]/gi, '').toLowerCase();
   return `${base}-${cleanSuffix}`;
 }
+
+/** True when `value` is a UUID (used to avoid Prisma UUID parse errors on slugs). */
+export function looksLikeUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+    value,
+  );
+}

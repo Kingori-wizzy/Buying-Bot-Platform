@@ -92,11 +92,12 @@ export default async function ProductDetailPage({ params }: Props) {
             <p className="price" style={{ fontSize: '1.45rem', margin: 0 }}>
               {price
                 ? formatMoneyMinor(price.listPriceMinor, price.currency)
-                : 'Price unavailable'}
+                : 'Not currently purchasable'}
             </p>
             <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-              Price shown from the active Offer returned by the API. Checkout
-              re-resolves totals server-side.
+              {price
+                ? 'Price shown from the active Offer returned by the API. Checkout re-resolves totals server-side.'
+                : 'This product has no active offer. Add to Cart is unavailable until merchandising publishes a price.'}
             </p>
 
             {offers.length > 1 ? (
@@ -132,7 +133,10 @@ export default async function ProductDetailPage({ params }: Props) {
                 </Link>
               </div>
             ) : (
-              <p className="muted">No active offer for this product.</p>
+              <p className="muted">
+                Not currently purchasable — no active offer or inventory
+                listing.
+              </p>
             )}
           </div>
         </div>

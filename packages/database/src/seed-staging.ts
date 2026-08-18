@@ -96,5 +96,17 @@ export async function seedStagingCatalog(
     update: { onHand: 100 },
   });
 
+  await prisma.product.updateMany({
+    where: {
+      status: 'ACTIVE',
+      OR: [
+        { name: { startsWith: 'Inv Product ' } },
+        { name: { startsWith: 'Pay Product ' } },
+        { name: { startsWith: 'Cart Product ' } },
+      ],
+    },
+    data: { status: 'DRAFT' },
+  });
+
   return { productId: product.id, skuId: sku.id, offerId: offer.id };
 }

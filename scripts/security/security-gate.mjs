@@ -56,6 +56,7 @@ const requiredDocs = [
   'docs/Deployment/runbooks/DEPLOYMENT_RUNBOOK.md',
   'docs/Deployment/runbooks/ROLLBACK_RUNBOOK.md',
   '.env.staging.example',
+  '.env.production.example',
   'infrastructure/docker/compose/docker-compose.staging.yml',
 ];
 for (const doc of requiredDocs) {

@@ -25,7 +25,10 @@ import type {
   UpdateProductBody,
 } from './catalog.schemas.js';
 import { type ProductCache, productCacheKey } from './product-cache.js';
-import { slugify, slugWithSuffix } from './slug.js';
+import { slugify, slugWithSuffix, looksLikeUuid } from './slug.js';
+
+/** Public catalog only exposes active, non-deleted offers (matches getProduct). */
+const ACTIVE_OFFER_WHERE = { active: true, deletedAt: null } as const;
 
 @Injectable()
 export class CatalogService {
@@ -77,7 +80,11 @@ export class CatalogService {
         include: {
           brand: true,
           primaryCategory: true,
-          variants: { include: { sku: { include: { offers: true } } } },
+          variants: {
+            include: {
+              sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
+            },
+          },
         },
       }),
     ]);
@@ -98,7 +105,9 @@ export class CatalogService {
       where: {
         deletedAt: null,
         status: 'ACTIVE',
-        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+        ...(looksLikeUuid(idOrSlug)
+          ? { OR: [{ id: idOrSlug }, { slug: idOrSlug }] }
+          : { slug: idOrSlug }),
       },
       include: {
         brand: true,
@@ -107,7 +116,7 @@ export class CatalogService {
         variants: {
           include: {
             sku: {
-              include: { offers: { where: { active: true, deletedAt: null } } },
+              include: { offers: { where: ACTIVE_OFFER_WHERE } },
             },
             media: { include: { mediaAsset: true } },
           },
@@ -221,7 +230,11 @@ export class CatalogService {
       where: { id: { in: ids } },
       include: {
         brand: true,
-        variants: { include: { sku: { include: { offers: true } } } },
+        variants: {
+          include: {
+            sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
+          },
+        },
       },
     });
     const byId = new Map(products.map((p) => [p.id, p]));

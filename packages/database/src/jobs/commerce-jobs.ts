@@ -148,7 +148,7 @@ export async function confirmPaymentForOrder(
     if (!order) {
       throw new Error('Order not found');
     }
-    if (order.status === 'PAID') {
+    if (order.status === 'PAID' || order.status === 'RECONCILIATION_HOLD') {
       return { alreadyProcessed: true };
     }
     if (order.status !== 'PENDING_PAYMENT') {
@@ -205,6 +205,7 @@ export async function confirmPaymentForOrder(
       data: { status: 'CONFIRMED' },
     });
 
+    let nextStatus: 'PAID' | 'RECONCILIATION_HOLD' = 'PAID';
     if (order.reservationId) {
       const reservation = await tx.reservation.findUnique({
         where: { id: order.reservationId },
@@ -247,12 +248,16 @@ export async function confirmPaymentForOrder(
           where: { id: reservation.id },
           data: { status: 'COMMITTED' },
         });
+      } else if (reservation?.status === 'COMMITTED') {
+        nextStatus = 'PAID';
+      } else {
+        nextStatus = 'RECONCILIATION_HOLD';
       }
     }
 
     await tx.order.update({
       where: { id: order.id },
-      data: { status: 'PAID' },
+      data: { status: nextStatus },
     });
 
     return { alreadyProcessed: false };

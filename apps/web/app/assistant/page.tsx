@@ -45,12 +45,25 @@ export default function AssistantPage() {
     },
   ]);
   const [busy, setBusy] = useState(false);
+  const [connectionState, setConnectionState] = useState<
+    'idle' | 'connecting' | 'streaming' | 'error'
+  >('idle');
   const [toolState, setToolState] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+  const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [turns, busy]);
+  }, [turns, busy, draft, toolState]);
+
+  function stopStream(): void {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setBusy(false);
+    setToolState(null);
+    setConnectionState('idle');
+  }
 
   async function onSubmit(e: { preventDefault(): void }): Promise<void> {
     e.preventDefault();
@@ -61,7 +74,9 @@ export default function AssistantPage() {
     setTurns((prev) => [...prev, userTurn]);
     setMessage('');
     setBusy(true);
-    setToolState('Consulting assistant tools…');
+    setDraft('');
+    setConnectionState('connecting');
+    setToolState('Connecting to assistant…');
 
     const sdk = createBrowserSdk();
     let products: ProductSummary[] = [];
@@ -73,12 +88,36 @@ export default function AssistantPage() {
       products = [];
     }
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let streamed = '';
+    let sawDelta = false;
+
     try {
-      setToolState('Waiting for assistant reply…');
-      const body = await sdk.chat(text);
+      setConnectionState('streaming');
+      setToolState('Waiting for stream…');
+      for await (const event of sdk.chatStream(text, {
+        signal: controller.signal,
+      })) {
+        if (event.type === 'status') {
+          setToolState(event.text);
+        } else if (event.type === 'delta') {
+          sawDelta = true;
+          streamed += event.text;
+          setDraft(streamed);
+          setToolState(null);
+        } else if (event.type === 'error') {
+          throw new Error(event.message);
+        } else {
+          break;
+        }
+      }
+
       const content =
-        body.result.content ??
-        'I could not produce a text reply, but catalog matches below are from the API.';
+        streamed.trim() ||
+        (sawDelta
+          ? streamed
+          : 'I could not produce a text reply, but catalog matches below are from the API.');
       setTurns((prev) => [
         ...prev,
         {
@@ -88,8 +127,23 @@ export default function AssistantPage() {
           products,
         },
       ]);
+      setConnectionState('idle');
     } catch (err) {
-      if (err instanceof PlatformApiError && err.status === 503) {
+      if (controller.signal.aborted) {
+        if (streamed.trim()) {
+          setTurns((prev) => [
+            ...prev,
+            {
+              id: newId(),
+              role: 'assistant',
+              content: streamed,
+              products,
+            },
+          ]);
+        }
+        setConnectionState('idle');
+      } else if (err instanceof PlatformApiError && err.status === 503) {
+        setConnectionState('error');
         setTurns((prev) => [
           ...prev,
           {
@@ -102,6 +156,7 @@ export default function AssistantPage() {
           },
         ]);
       } else if (err instanceof PlatformApiError && err.status === 401) {
+        setConnectionState('error');
         setTurns((prev) => [
           ...prev,
           {
@@ -111,6 +166,7 @@ export default function AssistantPage() {
           },
         ]);
       } else {
+        setConnectionState('error');
         setTurns((prev) => [
           ...prev,
           {
@@ -125,8 +181,10 @@ export default function AssistantPage() {
         ]);
       }
     } finally {
+      abortRef.current = null;
       setBusy(false);
       setToolState(null);
+      setDraft('');
     }
   }
 
@@ -138,10 +196,20 @@ export default function AssistantPage() {
             AI shopping assistant
           </h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Product cards use live catalog/search APIs. Prices and availability
-            are never invented in the browser.
+            Responses stream from the API. Product cards use live catalog
+            search. Prices and availability are never invented in the browser.
           </p>
         </div>
+
+        <p className="muted" aria-live="polite" style={{ margin: 0 }}>
+          {connectionState === 'connecting'
+            ? 'Connecting…'
+            : connectionState === 'streaming'
+              ? 'Streaming reply…'
+              : connectionState === 'error'
+                ? 'Assistant connection failed — catalog shopping still works.'
+                : 'Ready'}
+        </p>
 
         <div className="chat-thread" aria-live="polite">
           {turns.map((turn) => (
@@ -183,7 +251,7 @@ export default function AssistantPage() {
                                 price.listPriceMinor,
                                 price.currency,
                               )
-                            : 'Price on request'}
+                            : 'Not currently purchasable'}
                         </p>
                         <p
                           className="muted"
@@ -211,8 +279,13 @@ export default function AssistantPage() {
           ))}
           {busy ? (
             <div className="bubble assistant">
-              {toolState ?? 'Thinking…'}
-              <div className="skeleton" style={{ height: 12, marginTop: 8 }} />
+              {draft.length > 0 ? draft : (toolState ?? 'Thinking…')}
+              {!draft ? (
+                <div
+                  className="skeleton"
+                  style={{ height: 12, marginTop: 8 }}
+                />
+              ) : null}
             </div>
           ) : null}
           <div ref={bottomRef} />
@@ -264,6 +337,15 @@ export default function AssistantPage() {
             >
               {busy ? 'Working…' : 'Send'}
             </button>
+            {busy ? (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={stopStream}
+              >
+                Stop
+              </button>
+            ) : null}
             <Link className="btn btn-secondary" href="/products">
               Browse catalog
             </Link>

@@ -14,23 +14,25 @@ Do not invent credentials, DNS, SSL, vendor contracts, or legal approvals.
 | Backup/restore scripts + local restore drill        | VERIFIED |
 | GHCR build workflow (no auto prod deploy)           | VERIFIED |
 | AI degradation without AI process                   | VERIFIED |
+| `deepmerge-ts` audit override (`^8.0.1`)            | VERIFIED |
+| Sandbox webhook → PAID (not live M-Pesa)            | VERIFIED |
 
 ## EXTERNAL — REQUIRES ACCOUNT / RESOURCE
 
-| Item                          | Config / location             | Verification             |
-| ----------------------------- | ----------------------------- | ------------------------ |
-| Staging/production host       | Compose on VM                 | `DEPLOYMENT_RUNBOOK`     |
-| DNS A/AAAA records            | Edge DNS                      | HTTPS resolves           |
-| TLS certificates              | nginx / LB                    | Browser padlock          |
-| Secrets manager               | Inject `.env.production`      | Boot without git secrets |
-| GHCR pull on host             | `docker login ghcr.io`        | Image pull               |
-| M-Pesa Daraja keys + callback | `MPESA_*`, `PAYMENTS_ENABLED` | Sandbox STK then live    |
-| SMTP / SMS / WhatsApp         | Notification adapters         | Test intent delivery     |
-| AI vendor keys / Ollama host  | `OPENAI_API_KEY` etc.         | Non-deterministic chat   |
-| Object storage                | Media/backups                 | Upload + restore         |
-| Managed Postgres PITR         | Cloud PG                      | Point-in-time restore    |
-| OTel collector + Alertmanager | Monitoring stack              | Alerts fire              |
-| WAF / CDN                     | Edge                          | OPTIONAL                 |
+| Item                          | Config / location             | Verification                 |
+| ----------------------------- | ----------------------------- | ---------------------------- |
+| Staging smoke sample product  | `seed-staging-cli.js`         | Run before E2E/demo checkout |
+| DNS A/AAAA records            | Edge DNS                      | HTTPS resolves               |
+| TLS certificates              | nginx / LB                    | Browser padlock              |
+| Secrets manager               | Inject `.env.production`      | Boot without git secrets     |
+| GHCR pull on host             | `docker login ghcr.io`        | Image pull                   |
+| M-Pesa Daraja keys + callback | `MPESA_*`, `PAYMENTS_ENABLED` | Sandbox STK then live        |
+| SMTP / SMS / WhatsApp         | Notification adapters         | Test intent delivery         |
+| AI vendor keys / Ollama host  | `OPENAI_API_KEY` etc.         | Non-deterministic chat       |
+| Object storage                | Media/backups                 | Upload + restore             |
+| Managed Postgres PITR         | Cloud PG                      | Point-in-time restore        |
+| OTel collector + Alertmanager | Monitoring stack              | Alerts fire                  |
+| WAF / CDN                     | Edge                          | OPTIONAL                     |
 
 ## BUSINESS — REQUIRES HUMAN DECISION
 

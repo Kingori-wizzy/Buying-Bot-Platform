@@ -62,7 +62,37 @@ function pass(label) {
 
 function fail(label, detail) {
   console.error(`FAIL ${label}: ${detail}`);
-  return false;
+  return 1;
+}
+
+function findOfferId(products) {
+  if (!Array.isArray(products)) return null;
+  for (const product of products) {
+    for (const variant of product?.variants ?? []) {
+      const offer = variant?.sku?.offers?.[0];
+      if (offer?.id) return offer.id;
+    }
+  }
+  return null;
+}
+
+async function resolvePurchasableOfferId() {
+  const staging = await request('/v1/products/staging-smoke-sample');
+  if (
+    staging.status === 200 &&
+    typeof staging.body === 'object' &&
+    staging.body
+  ) {
+    const fromStaging = findOfferId([staging.body]);
+    if (fromStaging) return fromStaging;
+  }
+  const catalog = await request('/v1/products?pageSize=50');
+  if (catalog.status !== 200) return null;
+  const items =
+    typeof catalog.body === 'object' && catalog.body && 'items' in catalog.body
+      ? catalog.body.items
+      : [];
+  return findOfferId(items);
 }
 
 async function main() {
@@ -83,7 +113,7 @@ async function main() {
     pass('health/ready');
   }
 
-  const catalog = await request('/v1/products?pageSize=5');
+  const catalog = await request('/v1/products?pageSize=50');
   if (catalog.status !== 200) {
     failures += fail('catalog list', String(catalog.status));
   } else {
@@ -165,15 +195,7 @@ async function main() {
     pass('session me');
   }
 
-  const products =
-    typeof catalog.body === 'object' && catalog.body && 'items' in catalog.body
-      ? catalog.body.items
-      : [];
-  const first = products[0];
-  let offerId = null;
-  if (first?.variants?.[0]?.sku?.offers?.[0]?.id) {
-    offerId = first.variants[0].sku.offers[0].id;
-  }
+  const offerId = await resolvePurchasableOfferId();
 
   if (!offerId) {
     failures += fail('add to cart', 'no offer id in catalog sample');
@@ -198,17 +220,140 @@ async function main() {
   const cart = await request('/v1/cart', {
     headers: { cookie: jar.header(), 'x-csrf-token': loginToken },
   });
+  let cartLines = [];
   if (cart.status !== 200) {
     failures += fail('get cart', String(cart.status));
   } else {
-    const lines =
+    cartLines =
       typeof cart.body === 'object' && cart.body && 'lines' in cart.body
         ? cart.body.lines
         : [];
-    if (!Array.isArray(lines) || lines.length === 0) {
+    if (!Array.isArray(cartLines) || cartLines.length === 0) {
       failures += fail('cart lines', 'empty after add');
     } else {
-      pass(`cart has ${lines.length} line(s)`);
+      pass(`cart has ${cartLines.length} line(s)`);
+    }
+  }
+
+  const lineId =
+    Array.isArray(cartLines) && cartLines[0] && typeof cartLines[0] === 'object'
+      ? cartLines[0].id
+      : null;
+  if (lineId) {
+    const updated = await request(
+      `/v1/cart/items/${encodeURIComponent(lineId)}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'content-type': 'application/json',
+          'x-csrf-token': loginToken,
+          cookie: jar.header(),
+        },
+        body: JSON.stringify({ quantity: 1 }),
+      },
+    );
+    jar.apply(updated.response);
+    if (![200, 201].includes(updated.status)) {
+      failures += fail('cart update', String(updated.status));
+    } else {
+      pass('cart update quantity');
+    }
+  }
+
+  if (offerId) {
+    const checkout = await request('/v1/checkout', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-csrf-token': loginToken,
+        cookie: jar.header(),
+        'idempotency-key': `journey-${String(Date.now())}`,
+      },
+      body: JSON.stringify({
+        msisdnE164: '+254712345678',
+        shippingMethodCode: 'FLAT',
+      }),
+    });
+    jar.apply(checkout.response);
+    if (![200, 201].includes(checkout.status)) {
+      failures += fail('checkout', String(checkout.status));
+    } else {
+      const body =
+        typeof checkout.body === 'object' && checkout.body ? checkout.body : {};
+      const orderId = body.orderId ?? body.id;
+      if (!orderId) {
+        failures += fail('checkout', 'missing order id');
+      } else if (body.status !== 'PENDING_PAYMENT') {
+        failures += fail('checkout status', String(body.status));
+      } else if (typeof body.payableMinor !== 'number') {
+        failures += fail('checkout totals', 'missing payableMinor');
+      } else {
+        pass(
+          `checkout order ${String(orderId).slice(0, 8)}… (${body.payableMinor} minor)`,
+        );
+
+        const webhookPayload = {
+          eventId: `journey-${String(Date.now())}`,
+          orderId,
+          providerTxnId: `sandbox_${String(Date.now())}`,
+          amountMinor: body.payableMinor,
+          currency: body.currency ?? 'KES',
+          Body: {
+            stkCallback: {
+              ResultCode: 0,
+              CheckoutRequestID: `ws_journey_${String(Date.now())}`,
+              CallbackMetadata: {
+                Item: [
+                  { Name: 'Amount', Value: body.payableMinor / 100 },
+                  {
+                    Name: 'MpesaReceiptNumber',
+                    Value: `SANDBOX${String(Date.now())}`,
+                  },
+                ],
+              },
+            },
+          },
+        };
+        const webhook = await request('/v1/webhooks/payments/mpesa', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            cookie: jar.header(),
+          },
+          body: JSON.stringify(webhookPayload),
+        });
+        if (![200, 201, 202].includes(webhook.status)) {
+          failures += fail('sandbox webhook', String(webhook.status));
+        } else {
+          pass('sandbox webhook accepted (not live M-Pesa)');
+          let paid = false;
+          for (let i = 0; i < 8; i += 1) {
+            await new Promise((r) => setTimeout(r, 250));
+            const paidOrder = await request(
+              `/v1/orders/${encodeURIComponent(String(orderId))}`,
+              { headers: { cookie: jar.header() } },
+            );
+            const status =
+              typeof paidOrder.body === 'object' &&
+              paidOrder.body &&
+              'status' in paidOrder.body
+                ? paidOrder.body.status
+                : null;
+            if (status === 'PAID') {
+              paid = true;
+              break;
+            }
+          }
+          if (paid) {
+            pass('order PAID after sandbox webhook');
+          } else {
+            failures += fail(
+              'order PAID',
+              'order did not become PAID after sandbox webhook (worker apply may still be in flight)',
+            );
+          }
+        }
+      }
     }
   }
 

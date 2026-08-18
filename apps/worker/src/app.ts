@@ -17,6 +17,10 @@ import {
 
 import { processKnowledgeIngest } from './knowledge-ingest.js';
 import { InMemoryMetrics } from './metrics.js';
+import {
+  initiatePaymentFromOutbox,
+  type PaymentInitiatePayload,
+} from './payment-initiate.js';
 
 export interface WorkerRuntime {
   readonly stop: () => Promise<void>;
@@ -107,12 +111,26 @@ export async function bootstrap(
       metrics.inc('worker_knowledge_ingest_total');
     };
 
+    const paymentHandler = async (
+      payload: PaymentInitiatePayload,
+    ): Promise<void> => {
+      await initiatePaymentFromOutbox(database, payload, {
+        consumerKey: env.MPESA_CONSUMER_KEY,
+        consumerSecret: env.MPESA_CONSUMER_SECRET,
+        shortcode: env.MPESA_SHORTCODE,
+        passkey: env.MPESA_PASSKEY,
+        callbackUrl: env.MPESA_CALLBACK_URL,
+        env: env.MPESA_ENV,
+      });
+      metrics.inc('worker_payment_initiate_total');
+    };
+
     timers.push(
       setInterval(() => {
         if (!prisma) {
           return;
         }
-        void processOutboxOnce(prisma, undefined, knowledgeHandler).catch(
+        void processOutboxOnce(prisma, paymentHandler, knowledgeHandler).catch(
           (error: unknown) => {
             logger.warn('Outbox tick failed', {
               error: error instanceof Error ? error.message : 'unknown',

@@ -318,11 +318,13 @@ export class CheckoutService {
         message: 'Order not found',
       });
     }
-    if (order.userId && userId && order.userId !== userId) {
-      throw new ForbiddenException({
-        code: 'FORBIDDEN',
-        message: 'Not your order',
-      });
+    if (order.userId) {
+      if (!userId || order.userId !== userId) {
+        throw new ForbiddenException({
+          code: 'FORBIDDEN',
+          message: 'Not your order',
+        });
+      }
     }
     return order;
   }
@@ -372,6 +374,24 @@ export class CheckoutService {
     return { items, page: query.page, pageSize: query.pageSize, total };
   }
 
+  async adminGetOrder(orderId: string): Promise<unknown> {
+    const order = await this.prisma().order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        financialSnapshot: true,
+        payments: { include: { attempts: true } },
+      },
+    });
+    if (!order) {
+      throw new NotFoundException({
+        code: 'ORDER_NOT_FOUND',
+        message: 'Order not found',
+      });
+    }
+    return order;
+  }
+
   async cancelBeforePay(orderId: string, userId?: string): Promise<unknown> {
     const prisma = this.prisma();
     const order = await prisma.order.findUnique({ where: { id: orderId } });
@@ -381,11 +401,13 @@ export class CheckoutService {
         message: 'Order not found',
       });
     }
-    if (order.userId && userId && order.userId !== userId) {
-      throw new ForbiddenException({
-        code: 'FORBIDDEN',
-        message: 'Not your order',
-      });
+    if (order.userId) {
+      if (!userId || order.userId !== userId) {
+        throw new ForbiddenException({
+          code: 'FORBIDDEN',
+          message: 'Not your order',
+        });
+      }
     }
     if (order.status !== 'PENDING_PAYMENT') {
       throw new ConflictException({

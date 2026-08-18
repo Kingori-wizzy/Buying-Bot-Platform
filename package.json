@@ -1,6 +1,6 @@
 {
   "name": "buying-bot-platform",
-  "version": "0.1.0-rc.2",
+  "version": "0.1.0-rc.3",
   "private": true,
   "description": "Buying Bot Platform — AI-powered omnichannel commerce monorepo",
   "packageManager": "pnpm@9.15.9",
@@ -52,7 +52,8 @@
     "overrides": {
       "effect": ">=3.20.0",
       "sharp": ">=0.35.0",
-      "postcss": ">=8.5.18"
+      "postcss": ">=8.5.18",
+      "deepmerge-ts": "^8.0.1"
     }
   }
 }

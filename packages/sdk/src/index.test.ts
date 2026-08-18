@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   firstOfferPrice,
   formatMoneyMinor,
+  parseSseJsonStream,
   PlatformApiError,
   PlatformSdk,
 } from './index.js';
@@ -109,5 +110,24 @@ describe('@buying-bot/sdk', () => {
       listPriceMinor: 500,
       currency: 'KES',
     });
+  });
+
+  it('parses SSE JSON data frames', async () => {
+    const payload = [
+      'data: {"type":"status","text":"tools"}\n\n',
+      'data: {"type":"delta","text":"Hello"}\n\n',
+      'data: {"type":"done"}\n\n',
+    ].join('');
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(payload));
+        controller.close();
+      },
+    });
+    const events: Record<string, unknown>[] = [];
+    for await (const event of parseSseJsonStream(stream)) {
+      events.push(event);
+    }
+    expect(events.map((e) => e.type)).toEqual(['status', 'delta', 'done']);
   });
 });

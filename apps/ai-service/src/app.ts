@@ -283,6 +283,9 @@ function registerChatRoutes(deps: {
       'cache-control': 'no-cache, no-transform',
       connection: 'keep-alive',
     });
+    reply.raw.write(
+      `data: ${JSON.stringify({ type: 'status', text: 'Running shopping tools…' })}\n\n`,
+    );
 
     try {
       const result = await runChat(deps, body, subject, request);

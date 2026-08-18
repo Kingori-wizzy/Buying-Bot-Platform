@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createProductCache, productCacheKey } from './product-cache.js';
+import { looksLikeUuid } from './slug.js';
 
 describe('product cache', () => {
   it('returns cache hits from memory backend', async () => {
@@ -21,5 +22,12 @@ describe('product cache', () => {
     const key = productCacheKey('x');
     await cache.set(key, 'v', 30);
     expect(await cache.get(key)).toBe('v');
+  });
+});
+
+describe('looksLikeUuid', () => {
+  it('accepts canonical UUIDs and rejects slugs', () => {
+    expect(looksLikeUuid('10f0766e-f478-4192-af5d-95a1cac1dbb4')).toBe(true);
+    expect(looksLikeUuid('staging-smoke-sample')).toBe(false);
   });
 });

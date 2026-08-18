@@ -11,6 +11,7 @@ interface OrderView {
   readonly status: string;
   readonly currency?: string;
   readonly financialSnapshot?: {
+    readonly payableMinor?: number;
     readonly grandTotalMinor?: number;
     readonly currency?: string;
   } | null;
@@ -26,7 +27,7 @@ export default function AdminOrderDetailPage() {
   useEffect(() => {
     void (async () => {
       try {
-        const next = (await createBrowserSdk().getOrder(
+        const next = (await createBrowserSdk().adminGetOrder(
           params.id,
         )) as OrderView;
         setOrder(next);
@@ -38,7 +39,9 @@ export default function AdminOrderDetailPage() {
     })();
   }, [params.id]);
 
-  const total = order?.financialSnapshot?.grandTotalMinor;
+  const total =
+    order?.financialSnapshot?.payableMinor ??
+    order?.financialSnapshot?.grandTotalMinor;
   const currency =
     order?.financialSnapshot?.currency ?? order?.currency ?? 'KES';
 

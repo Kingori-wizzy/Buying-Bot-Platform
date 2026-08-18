@@ -38,7 +38,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         <p className="price" style={{ margin: 0 }}>
           {price
             ? formatMoneyMinor(price.listPriceMinor, price.currency)
-            : 'Price on request'}
+            : 'Not currently purchasable'}
         </p>
         <div className="product-card-actions">
           {price ? <AddToCartButton offerId={price.offerId} compact /> : null}

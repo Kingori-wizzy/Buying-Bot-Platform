@@ -1,25 +1,25 @@
-# Release notes — 0.1.0-rc.2
+# Release notes — 0.1.0-rc.3
 
-**Date:** 2026-08-13  
-**Version:** `0.1.0-rc.2`  
+**Date:** 2026-08-18  
+**Version:** `0.1.0-rc.3`  
 **Classification:** **CONDITIONALLY PRODUCTION READY**
 
 ## Why this RC
 
-Closes locally actionable gaps after M25: stronger smoke/integrity/security gates,
-AI graceful degradation (503), production env template, ops launch sequence, gap matrix.
+Closes remaining locally actionable production gaps after rc.2: payment outbox
+worker, sandbox webhook → PAID journey, AI SSE storefront client, catalog offer
+serialization, IDOR on customer orders, late-payment reconciliation hold, and
+the Prisma transitive `deepmerge-ts` audit override.
 
 ## Verification (this RC)
 
-| Command                                      | Result                             |
-| -------------------------------------------- | ---------------------------------- |
-| `pnpm run verify`                            | PASS                               |
-| `pnpm run security:gate`                     | PASS                               |
-| `pnpm run integrity`                         | PASS                               |
-| `SMOKE_REQUIRE=1 pnpm run smoke` (local API) | PASS (AI 503 when ai-service down) |
+See `docs/project/FINAL_PRODUCTION_VERIFICATION_REPORT.md`.
 
 ## Still EXTERNAL (not claimed PASS)
 
-See `docs/project/EXTERNAL_PREREQUISITES.md` and `docs/project/GAP_MATRIX_STAGING_PRODUCTION.md`.
+Live M-Pesa, DNS/TLS, notification vendors, pen-test, legal ToS, staging SLO
+measurement. Sandbox webhook success is **not** live Daraja verification.
 
-Do **not** set `PAYMENTS_ENABLED=true` in production until live M-Pesa + TLS + secrets manager + legal gates are complete.
+Do **not** set `PAYMENTS_ENABLED=true` until live M-Pesa + TLS + secrets manager
+
+- legal gates are complete.

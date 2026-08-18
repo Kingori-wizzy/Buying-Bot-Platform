@@ -8,12 +8,12 @@
 
 ## Prerequisites
 
-| Requirement | Version / Notes |
-|-------------|-----------------|
-| Node.js | 22.x (`nvm use 22`) |
-| pnpm | 9.15.9 (Corepack) |
-| Docker Desktop | For Postgres + Redis |
-| `.env` | Copy from `.env.example` — **never commit** |
+| Requirement    | Version / Notes                             |
+| -------------- | ------------------------------------------- |
+| Node.js        | 22.x (`nvm use 22`)                         |
+| pnpm           | 9.15.9 (Corepack)                           |
+| Docker Desktop | For Postgres + Redis                        |
+| `.env`         | Copy from `.env.example` — **never commit** |
 
 ---
 
@@ -116,22 +116,22 @@ node ./scripts/dev/journey-validation.mjs
 
 ## URLs
 
-| Surface | URL |
-|---------|-----|
-| Storefront homepage | http://localhost:3001 |
-| Product catalog | http://localhost:3001/products |
-| Search | http://localhost:3001/search |
-| AI assistant | http://localhost:3001/assistant |
-| Cart | http://localhost:3001/cart |
-| Checkout | http://localhost:3001/checkout |
-| Register | http://localhost:3001/register |
-| Login | http://localhost:3001/login |
-| Orders | http://localhost:3001/orders |
-| Admin dashboard | http://localhost:3004 |
-| Admin catalog | http://localhost:3004/catalog |
-| Admin inventory | http://localhost:3004/inventory |
-| API health | http://localhost:3000/health/ready |
-| API metrics | http://localhost:3000/metrics |
+| Surface             | URL                                |
+| ------------------- | ---------------------------------- |
+| Storefront homepage | http://localhost:3001              |
+| Product catalog     | http://localhost:3001/products     |
+| Search              | http://localhost:3001/search       |
+| AI assistant        | http://localhost:3001/assistant    |
+| Cart                | http://localhost:3001/cart         |
+| Checkout            | http://localhost:3001/checkout     |
+| Register            | http://localhost:3001/register     |
+| Login               | http://localhost:3001/login        |
+| Orders              | http://localhost:3001/orders       |
+| Admin dashboard     | http://localhost:3004              |
+| Admin catalog       | http://localhost:3004/catalog      |
+| Admin inventory     | http://localhost:3004/inventory    |
+| API health          | http://localhost:3000/health/ready |
+| API metrics         | http://localhost:3000/metrics      |
 
 ---
 
@@ -139,10 +139,10 @@ node ./scripts/dev/journey-validation.mjs
 
 **No pre-seeded demo accounts exist.** Create accounts at runtime:
 
-| Role | How to create |
-|------|---------------|
-| Customer | Register at http://localhost:3001/register (any `@example.com` + password ≥8 chars) |
-| Admin | Register via API, then assign `ADMIN` role in DB (integration test pattern) — **no UI self-service admin signup** |
+| Role     | How to create                                                                                                     |
+| -------- | ----------------------------------------------------------------------------------------------------------------- |
+| Customer | Register at http://localhost:3001/register (any `@example.com` + password ≥8 chars)                               |
+| Admin    | Register via API, then assign `ADMIN` role in DB (integration test pattern) — **no UI self-service admin signup** |
 
 Example customer registration via API (for scripts):
 
@@ -173,7 +173,7 @@ Admin requires MFA when configured — use admin login at http://localhost:3004/
 ### DEMO 2 — AI Assistant → Recommendation → Add to Cart
 
 1. Open http://localhost:3001/assistant
-2. Click a suggested prompt or type: *"I need a laptop under KES 100,000"*
+2. Click a suggested prompt or type: _"I need a laptop under KES 100,000"_
 3. Observe tool-state indicator while waiting
 4. Assistant reply + product cards hydrated from catalog search API
 5. Click **Add** on a product card
@@ -254,31 +254,31 @@ Admin requires MFA when configured — use admin login at http://localhost:3004/
 
 From `.env.example` — minimum for demo:
 
-| Variable | Example | Purpose |
-|----------|---------|---------|
-| `DATABASE_URL` | `postgresql://buyingbot:buyingbot@127.0.0.1:5433/buyingbot?schema=public` | Postgres |
-| `REDIS_URL` | `redis://127.0.0.1:6379` | Rate limiting |
-| `SESSION_SECRET` | dev-only string | Session cookies |
-| `SERVICE_JWT_SECRET` | dev-only string | API ↔ AI service auth |
-| `CORS_ORIGIN` | `http://localhost:3001,http://localhost:3004` | Browser origins |
-| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3000` | Storefront API |
-| `AI_PROVIDER` | `deterministic` | Local AI without vendor keys |
-| `AI_SERVICE_BASE_URL` | `http://127.0.0.1:3003` | API → AI proxy |
-| `PAYMENTS_ENABLED` | `false` | Disable live payments locally |
+| Variable                   | Example                                                                   | Purpose                       |
+| -------------------------- | ------------------------------------------------------------------------- | ----------------------------- |
+| `DATABASE_URL`             | `postgresql://buyingbot:buyingbot@127.0.0.1:5433/buyingbot?schema=public` | Postgres                      |
+| `REDIS_URL`                | `redis://127.0.0.1:6379`                                                  | Rate limiting                 |
+| `SESSION_SECRET`           | dev-only string                                                           | Session cookies               |
+| `SERVICE_JWT_SECRET`       | dev-only string                                                           | API ↔ AI service auth         |
+| `CORS_ORIGIN`              | `http://localhost:3001,http://localhost:3004`                             | Browser origins               |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3000`                                                   | Storefront API                |
+| `AI_PROVIDER`              | `deterministic`                                                           | Local AI without vendor keys  |
+| `AI_SERVICE_BASE_URL`      | `http://127.0.0.1:3003`                                                   | API → AI proxy                |
+| `PAYMENTS_ENABLED`         | `false`                                                                   | Disable live payments locally |
 
 ---
 
 ## Known External Blockers
 
-| Blocker | Impact on demo |
-|---------|----------------|
-| M-Pesa Daraja sandbox credentials | No live STK Push |
-| OpenAI/Anthropic API keys | Use `AI_PROVIDER=deterministic` instead |
-| Production DNS/TLS | Localhost only |
-| Admin demo account seed | Must create + assign role manually |
-| Category browse API | No category nav in UI |
-| Product images / CDN | Gradient placeholders only |
+| Blocker                           | Impact on demo                          |
+| --------------------------------- | --------------------------------------- |
+| M-Pesa Daraja sandbox credentials | No live STK Push                        |
+| OpenAI/Anthropic API keys         | Use `AI_PROVIDER=deterministic` instead |
+| Production DNS/TLS                | Localhost only                          |
+| Admin demo account seed           | Must create + assign role manually      |
+| Category browse API               | No category nav in UI                   |
+| Product images / CDN              | Gradient placeholders only              |
 
 ---
 
-*Demo guide for release candidate 0.1.0-rc.2.*
+_Demo guide for release candidate 0.1.0-rc.2._

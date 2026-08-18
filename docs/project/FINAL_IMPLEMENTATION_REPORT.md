@@ -1,8 +1,10 @@
 # Final implementation report (M0–M25 + post-M25 hardening)
 
-**Date:** 2026-08-13  
-**Release candidate:** `0.1.0-rc.2`  
+**Date:** 2026-08-18  
+**Release candidate:** `0.1.0-rc.3`  
 **Recommendation:** **CONDITIONALLY PRODUCTION READY**
+
+> **rc.3 gap-closure:** Worker payment outbox; sandbox webhook → PAID journey; AI SSE storefront; catalog slug UUID fix; IDOR on customer orders; late-payment HOLD; `deepmerge-ts` override. See [FINAL_PRODUCTION_VERIFICATION_REPORT.md](./FINAL_PRODUCTION_VERIFICATION_REPORT.md).
 
 ## 1. Executive summary
 

@@ -1,5 +1,12 @@
 import { z } from '@buying-bot/validation';
-import { Controller, Get, Inject, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 
 import {
   CsrfGuard,
@@ -48,5 +55,11 @@ export class OrdersAdminController {
     },
   ): Promise<unknown> {
     return this.checkout.adminListOrders(query);
+  }
+
+  @Get(':id')
+  @RequirePermissions('orders:read')
+  get(@Param('id') id: string): Promise<unknown> {
+    return this.checkout.adminGetOrder(id);
   }
 }

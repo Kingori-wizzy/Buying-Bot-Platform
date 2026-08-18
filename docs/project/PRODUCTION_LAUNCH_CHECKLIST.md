@@ -5,11 +5,15 @@
 
 ## Technical
 
-- [x] `pnpm run verify` green
+- [x] `pnpm run verify` green (except transitive `audit:deps` — Prisma upstream)
 - [x] `pnpm run security:gate` green
 - [x] Migrations deploy path (`migrate:deploy`)
 - [x] Integrity script (expanded)
 - [x] API smoke script (expanded; AI 503 degradation)
+- [x] Journey validation through checkout (`scripts/dev/journey-validation.mjs`)
+- [x] Playwright API + browser page load (`e2e/customer-purchase-flow.spec.ts`)
+- [x] Sandbox webhook → PAID (not live M-Pesa)
+- [x] `pnpm audit --audit-level=high` clean (`deepmerge-ts` override)
 - [x] Staging compose + nginx
 - [x] Dockerfiles for api/web/admin
 - [x] Security regressions (CORS/CSRF)

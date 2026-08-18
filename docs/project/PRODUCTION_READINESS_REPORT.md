@@ -1,10 +1,12 @@
 # Production readiness report
 
-**Date:** 2026-08-13  
+**Date:** 2026-08-18  
 **Scope:** Buying Bot Platform engineering (Compose-first, ADR-0019)  
-**Release:** `0.1.0-rc.2`  
+**Release:** `0.1.0-rc.3`  
 **Authority:** Code + CI + local compose evidence — no invented EXTERNAL vendor verification  
 **Classification:** **CONDITIONALLY PRODUCTION READY**
+
+> **2026-08-18 rc.3:** See [FINAL_PRODUCTION_VERIFICATION_REPORT.md](./FINAL_PRODUCTION_VERIFICATION_REPORT.md). `pnpm audit --audit-level=high` is clean after `deepmerge-ts@8.0.1` override. Local journey verified through sandbox webhook **PAID**.
 
 ## Scorecard
 
