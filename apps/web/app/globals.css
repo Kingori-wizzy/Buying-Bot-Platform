@@ -124,7 +124,7 @@ textarea:focus-visible {
 }
 
 .nav a,
-.nav button.linkish {
+.nav .linkish {
   color: var(--bb-fg);
   text-decoration: none;
   background: none;
@@ -135,9 +135,14 @@ textarea:focus-visible {
 }
 
 .nav a:hover,
-.nav button.linkish:hover {
+.nav .linkish:hover {
   color: var(--bb-accent);
   text-decoration: none;
+}
+
+.nav a[aria-current='page'] {
+  color: var(--bb-accent);
+  font-weight: 600;
 }
 
 .nav-toggle {
@@ -332,6 +337,37 @@ main.page.bleed > .page-inner {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--bb-accent) 45%, var(--bb-border));
   text-decoration: none;
+}
+
+.product-card-body {
+  display: grid;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.product-card-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.product-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.product-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .product-card .thumb {
@@ -556,6 +592,7 @@ main.page.bleed > .page-inner {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  flex-wrap: wrap;
 }
 
 .qty-controls input {
@@ -565,6 +602,58 @@ main.page.bleed > .page-inner {
   padding: 0.35rem;
   border: 1px solid var(--bb-border);
   border-radius: 0.35rem;
+}
+
+.qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--bb-border);
+  border-radius: 0.35rem;
+  background: var(--bb-surface);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.qty-btn:hover:not(:disabled) {
+  border-color: var(--bb-accent);
+  color: var(--bb-accent);
+}
+
+.qty-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.chat-suggestions {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.suggestions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.suggestion-pill {
+  background: color-mix(in srgb, var(--bb-accent) 10%, var(--bb-surface));
+  border: 1px solid color-mix(in srgb, var(--bb-accent) 30%, var(--bb-border));
+  color: var(--bb-accent);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.suggestion-pill:hover {
+  background: color-mix(in srgb, var(--bb-accent) 18%, var(--bb-surface));
 }
 
 .chat-shell {
@@ -631,6 +720,22 @@ main.page.bleed > .page-inner {
   border: 1px dashed var(--bb-border);
   border-radius: var(--bb-radius);
   background: color-mix(in srgb, var(--bb-surface) 80%, transparent);
+}
+
+.plp-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.plp-sort-select {
+  font: inherit;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--bb-border);
+  border-radius: 999px;
+  background: var(--bb-surface);
+  cursor: pointer;
 }
 
 .pager {

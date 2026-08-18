@@ -83,14 +83,25 @@ textarea:focus-visible {
 }
 
 .sidebar nav a {
-  color: var(--bb-fg);
+  color: var(--bb-muted);
   padding: 0.45rem 0.55rem;
   border-radius: 0.4rem;
   text-decoration: none;
+  font-size: 0.95rem;
+  transition:
+    background 150ms,
+    color 150ms;
 }
 
 .sidebar nav a:hover {
   background: color-mix(in srgb, var(--bb-accent) 12%, transparent);
+  color: var(--bb-fg);
+}
+
+.sidebar nav a[aria-current='page'] {
+  background: color-mix(in srgb, var(--bb-accent) 15%, transparent);
+  color: var(--bb-accent);
+  font-weight: 600;
 }
 
 .content {
@@ -190,6 +201,65 @@ textarea:focus-visible {
   font-family: var(--bb-display);
   letter-spacing: -0.03em;
   margin-top: 0.35rem;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: color-mix(in srgb, var(--bb-accent) 20%, transparent);
+  color: var(--bb-accent);
+}
+
+.price {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  border: 1px dashed var(--bb-border);
+  border-radius: var(--bb-radius);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.alert {
+  border-radius: var(--bb-radius);
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--bb-border);
+  background: var(--bb-surface);
+}
+
+.alert-success {
+  border-color: color-mix(in srgb, var(--bb-success) 40%, var(--bb-border));
+  background: color-mix(in srgb, var(--bb-success) 10%, var(--bb-surface));
+}
+
+.alert-warning {
+  border-color: color-mix(in srgb, var(--bb-warning) 40%, var(--bb-border));
+  background: color-mix(in srgb, var(--bb-warning) 10%, var(--bb-surface));
 }
 
 .section-head {

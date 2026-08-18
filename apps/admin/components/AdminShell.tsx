@@ -89,6 +89,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const showNav = pathname !== '/login' && me?.realm === 'admin';
 
+  function isActive(href: string): boolean {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
+  }
+
   return (
     <AdminSessionContext.Provider value={value}>
       <div className="shell">
@@ -98,20 +103,42 @@ export function AdminShell({ children }: { children: ReactNode }) {
               Buying Bot Admin
             </Link>
             <nav aria-label="Admin">
-              <Link href="/">Dashboard</Link>
+              <Link href="/" aria-current={isActive('/') ? 'page' : undefined}>
+                Dashboard
+              </Link>
               {value.can('catalog', 'read') ||
               value.can('catalog', 'create') ? (
-                <Link href="/catalog">Products</Link>
+                <Link
+                  href="/catalog"
+                  aria-current={isActive('/catalog') ? 'page' : undefined}
+                >
+                  Products
+                </Link>
               ) : null}
               {value.can('inventory', 'read') ||
               value.can('inventory', 'update') ? (
-                <Link href="/inventory">Inventory</Link>
+                <Link
+                  href="/inventory"
+                  aria-current={isActive('/inventory') ? 'page' : undefined}
+                >
+                  Inventory
+                </Link>
               ) : null}
               {value.can('orders', 'read') ? (
-                <Link href="/orders">Orders</Link>
+                <Link
+                  href="/orders"
+                  aria-current={isActive('/orders') ? 'page' : undefined}
+                >
+                  Orders
+                </Link>
               ) : null}
               {value.can('catalog', 'create') ? (
-                <Link href="/promotions">Promotions</Link>
+                <Link
+                  href="/promotions"
+                  aria-current={isActive('/promotions') ? 'page' : undefined}
+                >
+                  Promotions
+                </Link>
               ) : null}
               <a href="http://localhost:3001/assistant" rel="noreferrer">
                 AI (storefront)

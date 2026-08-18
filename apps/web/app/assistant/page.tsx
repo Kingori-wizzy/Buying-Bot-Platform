@@ -27,16 +27,21 @@ function newId(): string {
   return `turn-${String(Date.now())}`;
 }
 
+const SUGGESTED_PROMPTS = [
+  'Laptops under KES 80,000 with at least 16 GB RAM',
+  'Best smartphones for photography under KES 50,000',
+  'Compare available tablets for students',
+  'What gaming accessories do you stock?',
+];
+
 export default function AssistantPage() {
-  const [message, setMessage] = useState(
-    'I need a laptop for software development under KES 100,000 with at least 16GB RAM.',
-  );
+  const [message, setMessage] = useState('');
   const [turns, setTurns] = useState<ChatTurn[]>([
     {
       id: 'welcome',
       role: 'assistant',
       content:
-        'Ask for products, budgets, or comparisons. I use authorized tools for prices and stock — I will never invent them. Matching catalog cards below replies are hydrated from the product API.',
+        'Hi! I can help you find products that match your needs and budget. I use live catalog data for prices and availability — I never invent them.\n\nTry one of the suggestions below, or type your own question.',
     },
   ]);
   const [busy, setBusy] = useState(false);
@@ -213,6 +218,28 @@ export default function AssistantPage() {
           <div ref={bottomRef} />
         </div>
 
+        {turns.length === 1 && !busy ? (
+          <div className="chat-suggestions" aria-label="Suggested prompts">
+            <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
+              Try asking:
+            </p>
+            <div className="suggestions-row">
+              {SUGGESTED_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  className="suggestion-pill"
+                  onClick={() => {
+                    setMessage(prompt);
+                  }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <form
           className="panel stack"
           onSubmit={(e) => {
@@ -227,7 +254,7 @@ export default function AssistantPage() {
               setMessage(e.target.value);
             }}
             rows={3}
-            required
+            placeholder="e.g. I need a laptop for development under KES 100,000…"
           />
           <div className="cta-row">
             <button

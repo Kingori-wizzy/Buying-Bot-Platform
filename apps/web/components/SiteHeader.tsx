@@ -7,6 +7,11 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { createBrowserSdk } from '@/lib/api';
 
+function isActive(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/';
+  return pathname.startsWith(href);
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -80,16 +85,41 @@ export function SiteHeader() {
           className={open ? 'nav open' : 'nav'}
           aria-label="Primary"
         >
-          <Link href="/products">Products</Link>
-          <Link href="/search">Search</Link>
-          <Link href="/assistant">AI assistant</Link>
-          <Link href="/cart">
+          <Link
+            href="/products"
+            aria-current={isActive(pathname, '/products') ? 'page' : undefined}
+          >
+            Products
+          </Link>
+          <Link
+            href="/search"
+            aria-current={isActive(pathname, '/search') ? 'page' : undefined}
+          >
+            Search
+          </Link>
+          <Link
+            href="/assistant"
+            aria-current={isActive(pathname, '/assistant') ? 'page' : undefined}
+          >
+            AI assistant
+          </Link>
+          <Link
+            href="/cart"
+            aria-current={isActive(pathname, '/cart') ? 'page' : undefined}
+          >
             Cart
-            {cartCount > 0 ? <span className="badge"> {cartCount}</span> : null}
+            {cartCount > 0 ? <span className="badge">{cartCount}</span> : null}
           </Link>
           {me ? (
             <>
-              <Link href="/orders">Orders</Link>
+              <Link
+                href="/orders"
+                aria-current={
+                  isActive(pathname, '/orders') ? 'page' : undefined
+                }
+              >
+                Orders
+              </Link>
               <button
                 className="linkish"
                 type="button"
@@ -100,8 +130,20 @@ export function SiteHeader() {
             </>
           ) : (
             <>
-              <Link href="/login">Log in</Link>
-              <Link href="/register">Register</Link>
+              <Link
+                href="/login"
+                aria-current={isActive(pathname, '/login') ? 'page' : undefined}
+              >
+                Log in
+              </Link>
+              <Link
+                href="/register"
+                aria-current={
+                  isActive(pathname, '/register') ? 'page' : undefined
+                }
+              >
+                Register
+              </Link>
             </>
           )}
         </nav>

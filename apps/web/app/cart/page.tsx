@@ -100,6 +100,17 @@ export default function CartPage() {
                     <label className="sr-only" htmlFor={`qty-${line.id}`}>
                       Quantity for {line.productName}
                     </label>
+                    <button
+                      className="qty-btn"
+                      type="button"
+                      aria-label="Decrease quantity"
+                      disabled={busy || line.quantity <= 1}
+                      onClick={() => {
+                        void updateQty(line.id, line.quantity - 1);
+                      }}
+                    >
+                      −
+                    </button>
                     <input
                       id={`qty-${line.id}`}
                       type="number"
@@ -114,6 +125,17 @@ export default function CartPage() {
                         }
                       }}
                     />
+                    <button
+                      className="qty-btn"
+                      type="button"
+                      aria-label="Increase quantity"
+                      disabled={busy || line.quantity >= 100}
+                      onClick={() => {
+                        void updateQty(line.id, line.quantity + 1);
+                      }}
+                    >
+                      +
+                    </button>
                     <span className="price">
                       {formatMoneyMinor(line.lineTotalMinor, line.currency)}
                     </span>
@@ -122,6 +144,7 @@ export default function CartPage() {
                     className="btn btn-secondary"
                     type="button"
                     disabled={busy}
+                    style={{ fontSize: '0.85rem', padding: '0.35rem 0.75rem' }}
                     onClick={() => {
                       void remove(line.id);
                     }}
