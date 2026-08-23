@@ -15,6 +15,8 @@ import {
 
 import type { ApiEnv } from '../config/env.js';
 import { APP_ENV, DATABASE_CLIENT, PRODUCT_CACHE } from '../config/tokens.js';
+import { LocalFilesystemStorage } from '../media/local-filesystem.storage.js';
+import { validateUpload } from '../security/upload-validation.js';
 import type {
   CreateBrandBody,
   CreateCategoryBody,
@@ -22,13 +24,36 @@ import type {
   CreateOfferBody,
   CreateProductBody,
   ProductListQuery,
+  UpdateOfferBody,
   UpdateProductBody,
+  UploadMediaBody,
 } from './catalog.schemas.js';
+import { parseCatalogCsv } from './catalog-csv.js';
+import { pickPrimaryImage } from './catalog-provenance.js';
 import { type ProductCache, productCacheKey } from './product-cache.js';
-import { slugify, slugWithSuffix, looksLikeUuid } from './slug.js';
+import { looksLikeUuid,slugify, slugWithSuffix } from './slug.js';
 
 /** Public catalog only exposes active, non-deleted offers (matches getProduct). */
 const ACTIVE_OFFER_WHERE = { active: true, deletedAt: null } as const;
+
+type CatalogPrisma = PrismaClient & {
+  catalogImport: {
+    create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }>;
+    update: (args: {
+      where: { id: string };
+      data: Record<string, unknown>;
+    }) => Promise<unknown>;
+    findMany: (args: Record<string, unknown>) => Promise<unknown[]>;
+    findUnique: (args: Record<string, unknown>) => Promise<unknown>;
+  };
+  catalogImportRow: {
+    create: (args: { data: Record<string, unknown> }) => Promise<unknown>;
+  };
+};
+
+function asCatalogPrisma(prisma: PrismaClient): CatalogPrisma {
+  return prisma as CatalogPrisma;
+}
 
 @Injectable()
 export class CatalogService {
@@ -69,6 +94,27 @@ export class CatalogService {
             ],
           }
         : {}),
+      ...(query.priceMinMinor !== undefined || query.priceMaxMinor !== undefined
+        ? {
+            variants: {
+              some: {
+                sku: {
+                  offers: {
+                    some: {
+                      ...ACTIVE_OFFER_WHERE,
+                      ...(query.priceMinMinor !== undefined
+                        ? { listPriceMinor: { gte: query.priceMinMinor } }
+                        : {}),
+                      ...(query.priceMaxMinor !== undefined
+                        ? { listPriceMinor: { lte: query.priceMaxMinor } }
+                        : {}),
+                    },
+                  },
+                },
+              },
+            },
+          }
+        : {}),
     };
     const [total, items] = await Promise.all([
       prisma.product.count({ where }),
@@ -80,6 +126,7 @@ export class CatalogService {
         include: {
           brand: true,
           primaryCategory: true,
+          media: { include: { mediaAsset: true } },
           variants: {
             include: {
               sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
@@ -88,7 +135,12 @@ export class CatalogService {
         },
       }),
     ]);
-    return { items, page: query.page, pageSize: query.pageSize, total };
+    return {
+      items: await this.enrichPublicProducts(items),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
   async getProduct(idOrSlug: string): Promise<unknown> {
@@ -129,23 +181,24 @@ export class CatalogService {
         message: 'Product not found',
       });
     }
+    const enriched = await this.enrichPublicProduct(product);
     if (this.cache) {
       const ttl = this.env?.PRODUCT_CACHE_TTL_SECONDS ?? 60;
-      await this.cache.set(cacheKey, JSON.stringify(product), ttl);
+      await this.cache.set(cacheKey, JSON.stringify(enriched), ttl);
       if (product.slug !== idOrSlug) {
         await this.cache.set(
           productCacheKey(product.slug),
-          JSON.stringify(product),
+          JSON.stringify(enriched),
           ttl,
         );
       }
       await this.cache.set(
         productCacheKey(product.id),
-        JSON.stringify(product),
+        JSON.stringify(enriched),
         ttl,
       );
     }
-    return product;
+    return enriched;
   }
 
   async invalidateProductCache(id: string, slug?: string): Promise<void> {
@@ -230,6 +283,7 @@ export class CatalogService {
       where: { id: { in: ids } },
       include: {
         brand: true,
+        media: { include: { mediaAsset: true } },
         variants: {
           include: {
             sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
@@ -238,8 +292,25 @@ export class CatalogService {
       },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
+    let ordered = ids.map((id) => byId.get(id)).filter(Boolean) as typeof products;
+
+    if (query.priceMinMinor !== undefined || query.priceMaxMinor !== undefined) {
+      ordered = ordered.filter((product) => {
+        const prices = product.variants.flatMap((v) => v.sku?.offers ?? []);
+        return prices.some((offer) => {
+          if (query.priceMinMinor !== undefined && offer.listPriceMinor < query.priceMinMinor) {
+            return false;
+          }
+          if (query.priceMaxMinor !== undefined && offer.listPriceMinor > query.priceMaxMinor) {
+            return false;
+          }
+          return true;
+        });
+      });
+    }
+
     return {
-      items: ids.map((id) => byId.get(id)).filter(Boolean),
+      items: await this.enrichPublicProducts(ordered),
       page: query.page,
       pageSize: query.pageSize,
     };
@@ -280,12 +351,33 @@ export class CatalogService {
 
   async createProduct(body: CreateProductBody): Promise<unknown> {
     const prisma = this.prisma();
+    if (body.status === 'ACTIVE') {
+      if (body.listPriceMinor === undefined) {
+        throw new BadRequestException({
+          code: 'PUBLISH_VALIDATION_FAILED',
+          message: 'ACTIVE products require listPriceMinor at create time',
+        });
+      }
+    }
     const slug = await this.ensureUniqueSlug(
       'product',
       body.slug ?? slugify(body.name),
     );
     const internalSku =
       body.internalSku ?? `SKU-${randomBytes(4).toString('hex').toUpperCase()}`;
+    const currency = body.currency ?? this.env?.DEFAULT_CURRENCY ?? 'KES';
+    const org = await prisma.organization.findUnique({
+      where: { slug: DEFAULT_ORG_SLUG },
+    });
+    if (!org) {
+      throw new BadRequestException({
+        code: 'ORG_MISSING',
+        message: 'Default organization missing',
+      });
+    }
+    const location = await prisma.location.findFirst({
+      where: { code: 'DEFAULT' },
+    });
 
     const product = await prisma.$transaction(async (tx) => {
       const created = await tx.product.create({
@@ -295,6 +387,9 @@ export class CatalogService {
           shortDescription: body.shortDescription ?? null,
           description: body.description ?? null,
           status: body.status ?? 'DRAFT',
+          ...( {
+            contentOrigin: body.contentOrigin ?? 'ADMIN',
+          } as Record<string, unknown>),
           brandId: body.brandId ?? null,
           primaryCategoryId: body.primaryCategoryId ?? null,
           seoTitle: body.seoTitle ?? null,
@@ -307,12 +402,33 @@ export class CatalogService {
           name: body.variantName ?? 'Default',
         },
       });
-      await tx.sku.create({
+      const sku = await tx.sku.create({
         data: {
           variantId: variant.id,
           internalSku,
         },
       });
+      if (body.listPriceMinor !== undefined) {
+        await tx.offer.create({
+          data: {
+            organizationId: org.id,
+            skuId: sku.id,
+            listPriceMinor: body.listPriceMinor,
+            currency,
+            active: true,
+          },
+        });
+      }
+      if (location && body.initialStock !== undefined) {
+        await tx.inventoryBalance.create({
+          data: {
+            skuId: sku.id,
+            locationId: location.id,
+            onHand: body.initialStock,
+            reserved: 0,
+          },
+        });
+      }
       await tx.productSearchDocument.upsert({
         where: { productId: created.id },
         create: {
@@ -321,6 +437,7 @@ export class CatalogService {
             created.name,
             created.shortDescription,
             created.description,
+            internalSku,
           ]
             .filter(Boolean)
             .join(' '),
@@ -330,6 +447,7 @@ export class CatalogService {
             created.name,
             created.shortDescription,
             created.description,
+            internalSku,
           ]
             .filter(Boolean)
             .join(' '),
@@ -352,6 +470,9 @@ export class CatalogService {
         message: 'Product not found',
       });
     }
+    if (body.status === 'ACTIVE') {
+      await this.assertProductPublishable(id);
+    }
     let slug = existing.slug;
     if (body.slug && body.slug !== existing.slug) {
       slug = await this.ensureUniqueSlug('product', body.slug, id);
@@ -372,6 +493,9 @@ export class CatalogService {
             ? { description: body.description }
             : {}),
           ...(body.status !== undefined ? { status: body.status } : {}),
+          ...(body.contentOrigin !== undefined
+            ? ({ contentOrigin: body.contentOrigin } as Record<string, unknown>)
+            : {}),
           ...(body.brandId !== undefined ? { brandId: body.brandId } : {}),
           ...(body.primaryCategoryId !== undefined
             ? { primaryCategoryId: body.primaryCategoryId }
@@ -410,6 +534,51 @@ export class CatalogService {
       await this.invalidateProductCache(id, slug);
     }
     return this.adminGetProduct(id);
+  }
+
+  async publishProduct(id: string): Promise<unknown> {
+    await this.assertProductPublishable(id);
+    return this.updateProduct(id, { status: 'ACTIVE' });
+  }
+
+  private async assertProductPublishable(productId: string): Promise<void> {
+    const product = await this.prisma().product.findFirst({
+      where: { id: productId, deletedAt: null },
+      include: {
+        variants: {
+          include: {
+            sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
+          },
+        },
+      },
+    });
+    if (!product) {
+      throw new NotFoundException({
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Product not found',
+      });
+    }
+    const errors: string[] = [];
+    if (!product.name.trim()) {
+      errors.push('name is required');
+    }
+    const sku = product.variants[0]?.sku;
+    if (!sku) {
+      errors.push('SKU is required');
+    }
+    const offer = sku?.offers[0];
+    if (!offer) {
+      errors.push('an active offer with price is required');
+    } else if (offer.listPriceMinor < 0) {
+      errors.push('offer price is invalid');
+    }
+    if (errors.length > 0) {
+      throw new BadRequestException({
+        code: 'PUBLISH_VALIDATION_FAILED',
+        message: `Cannot publish product: ${errors.join('; ')}`,
+        details: errors,
+      });
+    }
   }
 
   async adminGetProduct(id: string): Promise<unknown> {
@@ -510,6 +679,18 @@ export class CatalogService {
   }
 
   async createMedia(body: CreateMediaBody): Promise<unknown> {
+    validateUpload(
+      { mimeType: body.mimeType, size: 1 },
+      {
+        allowedMimeTypes: [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+        ],
+        maxBytes: 10 * 1024 * 1024,
+      },
+    );
     const prisma = this.prisma();
     return prisma.$transaction(async (tx) => {
       const asset = await tx.mediaAsset.create({
@@ -517,19 +698,118 @@ export class CatalogService {
           objectKey: body.objectKey,
           mimeType: body.mimeType,
           status: body.status ?? 'READY',
+          externalUrl: body.externalUrl ?? null,
+          attribution: body.attribution ?? null,
         },
       });
       if (body.productId) {
         await tx.productMedia.create({
-          data: { productId: body.productId, mediaAssetId: asset.id },
+          data: {
+            productId: body.productId,
+            mediaAssetId: asset.id,
+            sortOrder: body.sortOrder ?? 0,
+          },
         });
       }
       if (body.variantId) {
         await tx.variantMedia.create({
-          data: { variantId: body.variantId, mediaAssetId: asset.id },
+          data: {
+            variantId: body.variantId,
+            mediaAssetId: asset.id,
+            sortOrder: body.sortOrder ?? 0,
+          },
         });
       }
       return asset;
+    });
+  }
+
+  /**
+   * Store binary image bytes via local filesystem adapter (dev) or future cloud port.
+   * Sets externalUrl to the public media URL so storefront can display it.
+   */
+  async uploadMediaBinary(body: UploadMediaBody): Promise<unknown> {
+    const bytes = Buffer.from(body.dataBase64, 'base64');
+    if (bytes.length === 0) {
+      throw new BadRequestException({
+        code: 'EMPTY_UPLOAD',
+        message: 'Upload payload is empty',
+      });
+    }
+    const maxBytes = this.env?.MEDIA_MAX_BYTES ?? 5 * 1024 * 1024;
+    validateUpload(
+      { mimeType: body.mimeType, size: bytes.length },
+      {
+        allowedMimeTypes: [
+          'image/jpeg',
+          'image/png',
+          'image/webp',
+          'image/gif',
+        ],
+        maxBytes,
+      },
+    );
+
+    const root =
+      this.env?.MEDIA_LOCAL_ROOT ??
+      `${process.cwd()}${process.cwd().includes('\\') ? '\\' : '/'}.data/media`;
+    const publicBase =
+      this.env?.MEDIA_PUBLIC_BASE_URL ??
+      `${this.env?.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3000'}/v1/media/files`;
+    const storage = new LocalFilesystemStorage(root, publicBase);
+    const stored = await storage.put({
+      bytes,
+      mimeType: body.mimeType,
+      ...(body.fileName ? { originalName: body.fileName } : {}),
+    });
+
+    return this.createMedia({
+      objectKey: stored.objectKey,
+      mimeType: body.mimeType,
+      status: 'READY',
+      ...(stored.publicUrl ? { externalUrl: stored.publicUrl } : {}),
+      ...(body.productId ? { productId: body.productId } : {}),
+      ...(body.variantId ? { variantId: body.variantId } : {}),
+      ...(body.sortOrder !== undefined ? { sortOrder: body.sortOrder } : {}),
+      ...(body.attribution
+        ? { attribution: body.attribution }
+        : body.altText
+          ? { attribution: body.altText }
+          : { attribution: 'Administrator-uploaded product image' }),
+    });
+  }
+
+  getMediaStorageRoot(): string {
+    return (
+      this.env?.MEDIA_LOCAL_ROOT ??
+      `${process.cwd()}${process.cwd().includes('\\') ? '\\' : '/'}.data/media`
+    );
+  }
+
+  async updateOffer(id: string, body: UpdateOfferBody): Promise<unknown> {
+    const prisma = this.prisma();
+    const existing = await prisma.offer.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        code: 'OFFER_NOT_FOUND',
+        message: 'Offer not found',
+      });
+    }
+    return prisma.offer.update({
+      where: { id },
+      data: {
+        ...(body.listPriceMinor !== undefined
+          ? { listPriceMinor: body.listPriceMinor }
+          : {}),
+        ...(body.currency !== undefined ? { currency: body.currency } : {}),
+        ...(body.active !== undefined ? { active: body.active } : {}),
+        ...(body.taxInclusive !== undefined
+          ? { taxInclusive: body.taxInclusive }
+          : {}),
+        ...(body.taxClass !== undefined ? { taxClass: body.taxClass } : {}),
+      },
     });
   }
 
@@ -574,5 +854,419 @@ export class CatalogService {
       code: 'SLUG_COLLISION',
       message: 'Unable to allocate unique slug',
     });
+  }
+
+  async compareProducts(productIds: readonly string[]): Promise<unknown> {
+    const prisma = this.prisma();
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: [...productIds] },
+        deletedAt: null,
+        status: 'ACTIVE',
+      },
+      include: {
+        brand: true,
+        media: { include: { mediaAsset: true } },
+        variants: {
+          include: {
+            sku: {
+              include: {
+                offers: { where: ACTIVE_OFFER_WHERE },
+                inventoryBalances: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    return productIds.map((id) => {
+      const product = products.find((p) => p.id === id);
+      if (!product) {
+        return { productId: id, found: false };
+      }
+      const sku = product.variants[0]?.sku;
+      const offer = sku?.offers[0];
+      const media = product.media[0]?.mediaAsset;
+      const available = (sku?.inventoryBalances ?? []).reduce(
+        (sum, row) => sum + row.onHand - row.reserved,
+        0,
+      );
+      return {
+        productId: id,
+        found: true,
+        name: product.name,
+        brand: product.brand?.name ?? null,
+        offerId: offer?.id ?? null,
+        listPriceMinor: offer?.listPriceMinor ?? null,
+        currency: offer?.currency ?? null,
+        imageUrl: media?.externalUrl ?? null,
+        imageAttribution: media?.attribution ?? null,
+        availableUnits: available,
+        contentOrigin:
+          (product as { contentOrigin?: string }).contentOrigin ?? 'ADMIN',
+        provenance: null,
+      };
+    });
+  }
+
+  async getPriceHistory(productId: string, _limit = 20): Promise<unknown> {
+    const prisma = this.prisma();
+    const product = await prisma.product.findFirst({
+      where: { id: productId, deletedAt: null },
+      include: {
+        variants: {
+          include: {
+            sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
+          },
+        },
+      },
+    });
+    if (!product) {
+      throw new NotFoundException({
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Product not found',
+      });
+    }
+    const offer = product.variants[0]?.sku?.offers[0];
+    return {
+      productId,
+      offerId: offer?.id ?? null,
+      currency: offer?.currency ?? null,
+      currentPriceMinor: offer?.listPriceMinor ?? null,
+      lowestObservedMinor: offer?.listPriceMinor ?? null,
+      highestObservedMinor: offer?.listPriceMinor ?? null,
+      observations: offer
+        ? [
+            {
+              amountMinor: offer.listPriceMinor,
+              currency: offer.currency,
+              observedAt: offer.updatedAt.toISOString(),
+              source: 'admin_offer',
+            },
+          ]
+        : [],
+      authoritative: true,
+      note: 'Price history is based on the current administrator-managed offer. External marketplace price observations are deferred.',
+    };
+  }
+
+  async getAvailability(productId: string): Promise<unknown> {
+    const prisma = this.prisma();
+    const product = await prisma.product.findFirst({
+      where: { id: productId, deletedAt: null },
+      include: {
+        variants: {
+          include: {
+            sku: {
+              include: {
+                offers: { where: ACTIVE_OFFER_WHERE },
+                inventoryBalances: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!product) {
+      throw new NotFoundException({
+        code: 'PRODUCT_NOT_FOUND',
+        message: 'Product not found',
+      });
+    }
+    const sku = product.variants[0]?.sku;
+    const offer = sku?.offers[0];
+    const available = (sku?.inventoryBalances ?? []).reduce(
+      (sum, row) => sum + row.onHand - row.reserved,
+      0,
+    );
+    return {
+      productId,
+      offerId: offer?.id ?? null,
+      skuId: sku?.id ?? null,
+      availableUnits: available,
+      availabilityStatus: available > 0 ? 'IN_STOCK' : 'OUT_OF_STOCK',
+      balances: (sku?.inventoryBalances ?? []).map((row) => ({
+        locationId: row.locationId,
+        onHand: row.onHand,
+        reserved: row.reserved,
+        available: row.onHand - row.reserved,
+      })),
+      contentOrigin:
+        (product as { contentOrigin?: string }).contentOrigin ?? 'ADMIN',
+      authoritative: true,
+    };
+  }
+
+  async submitCatalogImport(input: {
+    filename: string;
+    csvText: string;
+    dryRun: boolean;
+    actingSubject?: string;
+  }): Promise<unknown> {
+    const prisma = asCatalogPrisma(this.prisma());
+    const parsed = parseCatalogCsv(input.csvText);
+    const importRow = await prisma.catalogImport.create({
+      data: {
+        filename: input.filename,
+        status: input.dryRun ? 'DRY_RUN' : 'PENDING',
+        dryRun: input.dryRun,
+        actingSubject: input.actingSubject ?? null,
+        rowsTotal: parsed.rows.length + parsed.errors.length,
+        rowsRejected: parsed.errors.length,
+        errorReportJson: parsed.errors,
+      },
+    });
+
+    if (input.dryRun) {
+      await prisma.catalogImport.update({
+        where: { id: importRow.id },
+        data: {
+          status: 'DRY_RUN',
+          completedAt: new Date(),
+          rowsCreated: 0,
+          rowsUpdated: 0,
+          errorReportJson: [
+            ...parsed.errors,
+            ...parsed.rows.map((r) => ({
+              rowNumber: r.rowNumber,
+              preview: r.name,
+              ok: true,
+            })),
+          ],
+        },
+      });
+      return this.getCatalogImport(importRow.id);
+    }
+
+    await this.prisma().outboxMessage.create({
+      data: {
+        type: 'catalog.import',
+        payloadJson: {
+          importId: importRow.id,
+          rows: parsed.rows.map((row) => ({ ...row })),
+          parseErrors: parsed.errors.map((err) => ({ ...err })),
+        },
+      },
+    });
+    return this.getCatalogImport(importRow.id);
+  }
+
+  async processCatalogImport(
+    importId: string,
+    rows: {
+      rowNumber: number;
+      name: string;
+      slug?: string;
+      shortDescription?: string;
+      description?: string;
+      brand?: string;
+      category?: string;
+      internalSku?: string;
+      listPriceMinor?: number;
+      currency?: string;
+      initialStock?: number;
+      status?: 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+    }[],
+    parseErrors: { rowNumber: number; error: string }[] = [],
+  ): Promise<void> {
+    const prisma = this.prisma();
+    const catalog = asCatalogPrisma(prisma);
+    await catalog.catalogImport.update({
+      where: { id: importId },
+      data: { status: 'RUNNING', startedAt: new Date() },
+    });
+
+    let created = 0;
+    let updated = 0;
+    let rejected = parseErrors.length;
+    const errors = [...parseErrors];
+
+    for (const row of rows) {
+      try {
+        let brandId: string | null = null;
+        if (row.brand) {
+          const brandSlug = slugify(row.brand);
+          const brand = await prisma.brand.upsert({
+            where: { slug: brandSlug },
+            create: { name: row.brand, slug: brandSlug },
+            update: { name: row.brand },
+          });
+          brandId = brand.id;
+        }
+        let categoryId: string | null = null;
+        if (row.category) {
+          const categorySlug = slugify(row.category);
+          const category = await prisma.category.upsert({
+            where: { slug: categorySlug },
+            create: {
+              name: row.category,
+              slug: categorySlug,
+              active: true,
+            },
+            update: { name: row.category },
+          });
+          categoryId = category.id;
+        }
+        const existingSku = row.internalSku
+          ? await prisma.sku.findFirst({
+              where: { internalSku: row.internalSku, deletedAt: null },
+              include: { variant: true },
+            })
+          : null;
+
+        if (existingSku?.variant.productId) {
+          await this.updateProduct(existingSku.variant.productId, {
+            name: row.name,
+            ...(row.shortDescription
+              ? { shortDescription: row.shortDescription }
+              : {}),
+            ...(row.description ? { description: row.description } : {}),
+            ...(brandId ? { brandId } : {}),
+            ...(categoryId ? { primaryCategoryId: categoryId } : {}),
+            status: row.status === 'ACTIVE' ? 'DRAFT' : (row.status ?? 'DRAFT'),
+            contentOrigin: 'IMPORT',
+          });
+          if (row.listPriceMinor !== undefined) {
+            const offer = await prisma.offer.findFirst({
+              where: { skuId: existingSku.id, deletedAt: null },
+            });
+            if (offer) {
+              await this.updateOffer(offer.id, {
+                listPriceMinor: row.listPriceMinor,
+                ...(row.currency ? { currency: row.currency } : {}),
+              });
+            } else {
+              await this.createOffer({
+                skuId: existingSku.id,
+                listPriceMinor: row.listPriceMinor,
+                ...(row.currency ? { currency: row.currency } : {}),
+              });
+            }
+          }
+          updated += 1;
+          await catalog.catalogImportRow.create({
+            data: {
+              importId,
+              rowNumber: row.rowNumber,
+              payloadJson: row,
+              ok: true,
+              productId: existingSku.variant.productId,
+            },
+          });
+        } else {
+          const createdProduct = (await this.createProduct({
+            name: row.name,
+            ...(row.slug ? { slug: row.slug } : {}),
+            ...(row.shortDescription
+              ? { shortDescription: row.shortDescription }
+              : {}),
+            ...(row.description ? { description: row.description } : {}),
+            ...(row.internalSku ? { internalSku: row.internalSku } : {}),
+            ...(row.listPriceMinor !== undefined
+              ? { listPriceMinor: row.listPriceMinor }
+              : {}),
+            ...(row.currency ? { currency: row.currency } : {}),
+            ...(row.initialStock !== undefined
+              ? { initialStock: row.initialStock }
+              : {}),
+            ...(brandId ? { brandId } : {}),
+            ...(categoryId ? { primaryCategoryId: categoryId } : {}),
+            status: 'DRAFT',
+            contentOrigin: 'IMPORT',
+          })) as { id: string };
+          created += 1;
+          await catalog.catalogImportRow.create({
+            data: {
+              importId,
+              rowNumber: row.rowNumber,
+              payloadJson: row,
+              ok: true,
+              productId: createdProduct.id,
+            },
+          });
+        }
+      } catch (error) {
+        rejected += 1;
+        const message =
+          error instanceof Error ? error.message : 'import row failed';
+        errors.push({ rowNumber: row.rowNumber, error: message });
+        await catalog.catalogImportRow.create({
+          data: {
+            importId,
+            rowNumber: row.rowNumber,
+            payloadJson: row,
+            ok: false,
+            error: message,
+          },
+        });
+      }
+    }
+
+    await catalog.catalogImport.update({
+      where: { id: importId },
+      data: {
+        status:
+          rejected > 0 && created + updated > 0
+            ? 'PARTIAL'
+            : rejected > 0
+              ? 'FAILED'
+              : 'SUCCESS',
+        rowsCreated: created,
+        rowsUpdated: updated,
+        rowsRejected: rejected,
+        errorReportJson: errors,
+        completedAt: new Date(),
+      },
+    });
+  }
+
+  async listCatalogImports(limit = 50): Promise<unknown> {
+    return asCatalogPrisma(this.prisma()).catalogImport.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async getCatalogImport(id: string): Promise<unknown> {
+    const row = await asCatalogPrisma(this.prisma()).catalogImport.findUnique({
+      where: { id },
+      include: { rows: { orderBy: { rowNumber: 'asc' }, take: 200 } },
+    });
+    if (!row) {
+      throw new NotFoundException({
+        code: 'IMPORT_NOT_FOUND',
+        message: 'Catalog import not found',
+      });
+    }
+    return row;
+  }
+
+  private enrichPublicProducts(
+    products: readonly ({ id: string } & Record<string, unknown>)[],
+  ): Promise<unknown[]> {
+    if (products.length === 0) {
+      return Promise.resolve([]);
+    }
+    return Promise.resolve(
+      products.map((product) => {
+        const image = pickPrimaryImage(
+          product as Parameters<typeof pickPrimaryImage>[0],
+        );
+        return {
+          ...product,
+          primaryImageUrl: image.url,
+          primaryImageAttribution: image.attribution,
+          // Marketplace provenance is deferred — admin catalog is source of truth
+          provenance: null,
+        };
+      }),
+    );
+  }
+
+  private async enrichPublicProduct(
+    product: { id: string } & Record<string, unknown>,
+  ): Promise<unknown> {
+    const [enriched] = await this.enrichPublicProducts([product]);
+    return enriched;
   }
 }

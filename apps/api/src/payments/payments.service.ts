@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 import {
   confirmPaymentForOrder,
@@ -14,13 +14,16 @@ import {
 
 import type { ApiEnv } from '../config/env.js';
 import { APP_ENV, DATABASE_CLIENT } from '../config/tokens.js';
+import { EscrowAdapter } from './escrow.adapter.js';
 import { MpesaAdapter } from './mpesa.adapter.js';
 import type { PaymentProvider } from './payment-provider.port.js';
 
 @Injectable()
 export class PaymentsService {
   private readonly provider: PaymentProvider;
+  private readonly escrow: EscrowAdapter;
   private readonly webhookReplayWindowSeconds: number;
+  readonly providerName: string;
 
   constructor(
     @Inject(DATABASE_CLIENT)
@@ -28,27 +31,50 @@ export class PaymentsService {
     @Optional() @Inject(APP_ENV) private readonly env?: ApiEnv,
   ) {
     this.webhookReplayWindowSeconds = env?.WEBHOOK_REPLAY_WINDOW_SECONDS ?? 300;
-    this.provider = new MpesaAdapter({
-      consumerKey: env?.MPESA_CONSUMER_KEY,
-      consumerSecret: env?.MPESA_CONSUMER_SECRET,
-      shortcode: env?.MPESA_SHORTCODE,
-      passkey: env?.MPESA_PASSKEY,
-      callbackUrl: env?.MPESA_CALLBACK_URL,
-      env: env?.MPESA_ENV ?? 'sandbox',
+    const providerName = env?.PAYMENT_PROVIDER ?? 'escrow';
+    this.providerName = providerName;
+
+    this.escrow = new EscrowAdapter({
+      apiKey: env?.ESCROW_API_KEY,
+      apiSecret: env?.ESCROW_API_SECRET,
+      baseUrl: env?.ESCROW_BASE_URL,
+      webhookSecret: env?.ESCROW_WEBHOOK_SECRET,
+      allowTestDouble:
+        env?.NODE_ENV === 'test' || env?.ESCROW_ALLOW_TEST_DOUBLE === true,
     });
+
+    if (providerName === 'mpesa') {
+      this.provider = new MpesaAdapter({
+        consumerKey: env?.MPESA_CONSUMER_KEY,
+        consumerSecret: env?.MPESA_CONSUMER_SECRET,
+        shortcode: env?.MPESA_SHORTCODE,
+        passkey: env?.MPESA_PASSKEY,
+        callbackUrl: env?.MPESA_CALLBACK_URL,
+        env: env?.MPESA_ENV ?? 'sandbox',
+        enabled: env?.MPESA_ENABLED === true,
+      });
+    } else {
+      this.provider = this.escrow;
+    }
   }
 
   getProvider(): PaymentProvider {
     return this.provider;
   }
 
+  isProviderConfigured(): boolean {
+    return this.provider.configured;
+  }
+
   async initiateFromOutbox(payload: {
     readonly orderId: string;
     readonly paymentId: string;
     readonly attemptId: string;
-    readonly msisdnE164: string;
     readonly amountMinor: number;
     readonly currency: string;
+    readonly msisdnE164?: string | undefined;
+    readonly customerSubjectId?: string | undefined;
+    readonly returnUrl?: string | undefined;
   }): Promise<void> {
     if (!this.database) {
       throw new Error('DATABASE_REQUIRED');
@@ -68,13 +94,39 @@ export class PaymentsService {
     const result = await this.provider.initiate({
       amountMinor: payload.amountMinor,
       currency: payload.currency,
-      msisdnE164: payload.msisdnE164,
+      orderId: payload.orderId,
       accountReference: payload.orderId.slice(0, 12),
       description: 'Buying Bot order',
-      ...(this.env?.MPESA_CALLBACK_URL !== undefined
-        ? { callbackUrl: this.env.MPESA_CALLBACK_URL }
+      ...(payload.msisdnE164 ? { msisdnE164: payload.msisdnE164 } : {}),
+      ...(payload.customerSubjectId
+        ? { customerSubjectId: payload.customerSubjectId }
+        : {}),
+      ...(payload.returnUrl ? { returnUrl: payload.returnUrl } : {}),
+      ...(this.env?.ESCROW_BASE_URL
+        ? {
+            callbackUrl: `${this.env.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3000'}/v1/webhooks/payments/escrow`,
+          }
         : {}),
     });
+
+    if (result.status === 'not_configured' || result.status === 'failed') {
+      await prisma.$transaction(async (tx) => {
+        await tx.paymentAttempt.update({
+          where: { id: payload.attemptId },
+          data: {
+            status: 'FAILED',
+            failureReason:
+              result.failureReason ?? result.status ?? 'PROVIDER_FAILED',
+            providerReference: result.providerReference,
+          },
+        });
+        await tx.payment.update({
+          where: { id: payload.paymentId },
+          data: { status: 'FAILED' },
+        });
+      });
+      return;
+    }
 
     await prisma.$transaction(async (tx) => {
       await tx.paymentAttempt.update({
@@ -93,64 +145,14 @@ export class PaymentsService {
     });
   }
 
-  verifyMpesaSignature(
-    rawBody: string,
-    signatureHeader: string | undefined,
-    timestampHeader: string | undefined,
-  ): boolean {
-    const secret = this.env?.MPESA_WEBHOOK_SECRET;
-    if (!secret) {
-      // Sandbox without secret: accept only in non-production
-      return (
-        this.env?.NODE_ENV !== 'production' && this.env?.NODE_ENV !== 'staging'
-      );
-    }
-    if (!signatureHeader || !timestampHeader) {
-      return false;
-    }
-    const ts = Number(timestampHeader);
-    if (!Number.isFinite(ts)) {
-      return false;
-    }
-    const windowSec = this.webhookReplayWindowSeconds;
-    if (Math.abs(Date.now() / 1000 - ts) > windowSec) {
-      return false;
-    }
-    const expected = createHmac('sha256', secret)
-      .update(`${timestampHeader}.${rawBody}`)
-      .digest('hex');
-    const provided = signatureHeader.replace(/^sha256=/i, '');
-    try {
-      return timingSafeEqual(
-        Buffer.from(expected, 'utf8'),
-        Buffer.from(provided, 'utf8'),
-      );
-    } catch {
-      return false;
-    }
-  }
-
-  async handleMpesaWebhook(input: {
+  async handleEscrowWebhook(input: {
     readonly rawBody: string;
     readonly signature?: string | undefined;
     readonly timestamp?: string | undefined;
     readonly payload: {
       readonly eventId?: string | undefined;
-      readonly Body?:
-        | {
-            readonly stkCallback?: {
-              readonly CheckoutRequestID?: string | undefined;
-              readonly MerchantRequestID?: string | undefined;
-              readonly ResultCode?: number | undefined;
-              readonly CallbackMetadata?:
-                | {
-                    readonly Item?:
-                      { Name: string; Value: string | number }[] | undefined;
-                  }
-                | undefined;
-            };
-          }
-        | undefined;
+      readonly id?: string | undefined;
+      readonly status?: string | undefined;
       readonly orderId?: string | undefined;
       readonly providerTxnId?: string | undefined;
       readonly amountMinor?: number | undefined;
@@ -163,24 +165,23 @@ export class PaymentsService {
         message: 'Database is not configured',
       });
     }
-    const prisma = this.database.prisma;
-    const valid = this.verifyMpesaSignature(
+    const valid = this.escrow.verifyWebhookSignature(
       input.rawBody,
       input.signature,
       input.timestamp,
+      this.webhookReplayWindowSeconds,
     );
     if (!valid) {
       throw new UnauthorizedException({
         code: 'INVALID_SIGNATURE',
-        message: 'Webhook signature invalid',
+        message: 'Escrow webhook signature invalid',
       });
     }
 
-    const callback = input.payload.Body?.stkCallback;
+    const prisma = this.database.prisma;
     const eventId =
       input.payload.eventId ??
-      callback?.CheckoutRequestID ??
-      callback?.MerchantRequestID ??
+      input.payload.id ??
       input.payload.providerTxnId;
     if (!eventId) {
       throw new BadRequestException({
@@ -194,7 +195,7 @@ export class PaymentsService {
       .digest('hex');
 
     const existing = await prisma.webhookReceipt.findUnique({
-      where: { provider_eventId: { provider: 'mpesa', eventId } },
+      where: { provider_eventId: { provider: 'escrow', eventId } },
     });
     if (existing) {
       return { ok: true, accepted: true };
@@ -202,7 +203,7 @@ export class PaymentsService {
 
     await prisma.webhookReceipt.create({
       data: {
-        provider: 'mpesa',
+        provider: 'escrow',
         eventId,
         signatureValid: true,
         payloadHash,
@@ -210,36 +211,22 @@ export class PaymentsService {
       },
     });
 
-    // Async apply (fire-and-forget); idempotent confirm
-    void this.applyMpesaReceipt(eventId, input.payload).catch(() => {
-      // Worker reconcile will retry
+    void this.applyEscrowReceipt(eventId, input.payload).catch(() => {
+      // Reconcile loop retries
     });
 
     return { ok: true, accepted: true };
   }
 
-  async applyMpesaReceipt(
+  async applyEscrowReceipt(
     eventId: string,
     payload: {
       readonly orderId?: string | undefined;
+      readonly status?: string | undefined;
       readonly providerTxnId?: string | undefined;
       readonly amountMinor?: number | undefined;
       readonly currency?: string | undefined;
-      readonly Body?:
-        | {
-            readonly stkCallback?: {
-              readonly CheckoutRequestID?: string | undefined;
-              readonly MerchantRequestID?: string | undefined;
-              readonly ResultCode?: number | undefined;
-              readonly CallbackMetadata?:
-                | {
-                    readonly Item?:
-                      { Name: string; Value: string | number }[] | undefined;
-                  }
-                | undefined;
-            };
-          }
-        | undefined;
+      readonly id?: string | undefined;
     },
   ): Promise<void> {
     if (!this.database) {
@@ -247,64 +234,55 @@ export class PaymentsService {
     }
     const prisma = this.database.prisma;
     const receipt = await prisma.webhookReceipt.findUnique({
-      where: { provider_eventId: { provider: 'mpesa', eventId } },
+      where: { provider_eventId: { provider: 'escrow', eventId } },
     });
     if (!receipt || receipt.processedAt) {
       return;
     }
 
-    const callback = payload.Body?.stkCallback;
-    if (callback?.ResultCode !== undefined && callback.ResultCode !== 0) {
+    const status = (payload.status ?? '').toLowerCase();
+    if (status === 'failed' || status === 'cancelled') {
       await prisma.webhookReceipt.update({
         where: { id: receipt.id },
         data: { processedAt: new Date() },
       });
       return;
     }
-
-    const items = callback?.CallbackMetadata?.Item ?? [];
-    const amountItem = items.find((i) => i.Name === 'Amount');
-    const receiptItem = items.find((i) => i.Name === 'MpesaReceiptNumber');
-    const amountMinor =
-      payload.amountMinor ??
-      (typeof amountItem?.Value === 'number'
-        ? Math.round(amountItem.Value * 100)
-        : undefined);
-    const providerTxnId =
-      payload.providerTxnId ??
-      (typeof receiptItem?.Value === 'string' ? receiptItem.Value : eventId);
+    if (
+      status !== 'paid' &&
+      status !== 'released' &&
+      status !== 'confirmed' &&
+      status !== 'success'
+    ) {
+      return;
+    }
 
     let orderId = payload.orderId;
     if (!orderId) {
-      const checkoutId = callback?.CheckoutRequestID;
-      const merchantId = callback?.MerchantRequestID;
       const attempt = await prisma.paymentAttempt.findFirst({
         where: {
           OR: [
-            ...(checkoutId ? [{ providerCheckoutId: checkoutId }] : []),
-            ...(merchantId ? [{ providerReference: merchantId }] : []),
+            { providerReference: payload.id ?? eventId },
+            { providerCheckoutId: payload.id ?? eventId },
           ],
         },
         include: { payment: true },
       });
       orderId = attempt?.payment.orderId;
     }
-
-    if (!orderId || amountMinor === undefined) {
+    if (!orderId || payload.amountMinor === undefined) {
       return;
     }
 
-    const payment = await prisma.payment.findFirst({
-      where: { orderId },
-    });
+    const payment = await prisma.payment.findFirst({ where: { orderId } });
     if (!payment) {
       return;
     }
 
     await confirmPaymentForOrder(prisma, {
       orderId,
-      providerTxnId,
-      amountMinor,
+      providerTxnId: payload.providerTxnId ?? eventId,
+      amountMinor: payload.amountMinor,
       currency: payload.currency ?? payment.currency,
       rawPayload: payload,
     });
@@ -313,6 +291,40 @@ export class PaymentsService {
       where: { id: receipt.id },
       data: { processedAt: new Date() },
     });
+  }
+
+  /** @deprecated M-Pesa deferred — retained for legacy webhook tests only. */
+  verifyMpesaSignature(
+    rawBody: string,
+    signatureHeader: string | undefined,
+    timestampHeader: string | undefined,
+  ): boolean {
+    const secret = this.env?.MPESA_WEBHOOK_SECRET;
+    if (!secret) {
+      return (
+        this.env?.NODE_ENV !== 'production' && this.env?.NODE_ENV !== 'staging'
+      );
+    }
+    if (!signatureHeader || !timestampHeader) {
+      return false;
+    }
+    // Reuse escrow HMAC shape for legacy tests
+    return this.escrow.verifyWebhookSignature(
+      rawBody,
+      signatureHeader,
+      timestampHeader,
+      this.webhookReplayWindowSeconds,
+    );
+  }
+
+  handleMpesaWebhook(_input: {
+    readonly rawBody: string;
+    readonly signature?: string | undefined;
+    readonly timestamp?: string | undefined;
+    readonly payload: Record<string, unknown>;
+  }): Promise<{ ok: true; accepted: boolean; deferred: true }> {
+    // M-Pesa webhooks are no longer applied to customer orders.
+    return Promise.resolve({ ok: true, accepted: false, deferred: true });
   }
 
   async reconcilePendingPayments(): Promise<number> {

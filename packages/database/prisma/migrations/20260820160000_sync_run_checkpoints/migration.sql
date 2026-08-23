@@ -1,0 +1,5 @@
+ALTER TABLE "integrations"."source_sync_runs"
+  ADD COLUMN IF NOT EXISTS "products_updated" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "products_removed" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "duration_ms" INTEGER,
+  ADD COLUMN IF NOT EXISTS "checkpoint_json" JSONB NOT NULL DEFAULT '{}';

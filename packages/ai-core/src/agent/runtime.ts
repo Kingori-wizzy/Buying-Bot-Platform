@@ -102,7 +102,66 @@ export const COMMERCE_TOOL_DEFINITIONS: readonly AiToolDefinition[] = [
       type: 'object',
       properties: {
         productId: { type: 'string' },
+        query: { type: 'string' },
         limit: { type: 'integer' },
+      },
+    },
+  },
+  {
+    name: 'compareProducts',
+    description: 'Compare two to five products with source-backed prices',
+    riskLevel: 'read',
+    requiresHumanApproval: false,
+    parametersJsonSchema: {
+      type: 'object',
+      properties: {
+        productIds: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 2,
+          maxItems: 5,
+        },
+      },
+      required: ['productIds'],
+    },
+  },
+  {
+    name: 'getOffers',
+    description: 'List active offers for a product',
+    riskLevel: 'read',
+    requiresHumanApproval: false,
+    parametersJsonSchema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'string' },
+        slug: { type: 'string' },
+      },
+    },
+  },
+  {
+    name: 'getPriceHistory',
+    description: 'Get stored price observations for a product (never invent lowest price)',
+    riskLevel: 'read',
+    requiresHumanApproval: false,
+    parametersJsonSchema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'string' },
+        slug: { type: 'string' },
+        limit: { type: 'integer', minimum: 1, maximum: 100 },
+      },
+    },
+  },
+  {
+    name: 'getAvailability',
+    description: 'Get source-backed availability and price freshness for a product',
+    riskLevel: 'read',
+    requiresHumanApproval: false,
+    parametersJsonSchema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'string' },
+        slug: { type: 'string' },
       },
     },
   },

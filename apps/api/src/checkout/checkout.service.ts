@@ -219,11 +219,11 @@ export class CheckoutService {
           data: {
             id: paymentId,
             orderId: order.id,
-            provider: 'mpesa',
+            provider: 'escrow',
             status: 'PENDING',
             amountMinor: calculation.payableMinor,
             currency: calculation.currency,
-            msisdnE164: input.body.msisdnE164,
+            msisdnE164: input.body.msisdnE164 ?? null,
           },
         });
 
@@ -242,9 +242,17 @@ export class CheckoutService {
               orderId: order.id,
               paymentId,
               attemptId,
-              msisdnE164: input.body.msisdnE164,
               amountMinor: calculation.payableMinor,
               currency: calculation.currency,
+              ...(input.body.msisdnE164
+                ? { msisdnE164: input.body.msisdnE164 }
+                : {}),
+              ...(input.userId
+                ? { customerSubjectId: input.userId }
+                : {}),
+              ...(input.body.returnUrl
+                ? { returnUrl: input.body.returnUrl }
+                : {}),
             },
           },
         });

@@ -139,6 +139,17 @@ export const apiEnvObjectSchema = baseServiceEnvObjectSchema.extend({
   TAX_POLICY_CODE: z.string().trim().min(1).default('DEFAULT'),
   SHIPPING_DEFAULT_CODE: z.string().trim().min(1).default('FLAT'),
   PAYMENTS_ENABLED: booleanFromEnv,
+  /** Active payment rail: escrow (default) | mpesa (deferred). */
+  PAYMENT_PROVIDER: z.enum(['escrow', 'mpesa']).default('escrow'),
+  ESCROW_API_KEY: z.string().trim().min(1).optional(),
+  ESCROW_API_SECRET: z.string().trim().min(1).optional(),
+  ESCROW_BASE_URL: z.string().trim().url().optional(),
+  ESCROW_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
+  /** Test-only: allow escrow test double without live credentials. Never enable in production. */
+  ESCROW_ALLOW_TEST_DOUBLE: booleanFromEnv,
+  PUBLIC_API_BASE_URL: z.string().trim().url().optional(),
+  /** Explicit opt-in — M-Pesa is deferred from customer UX. */
+  MPESA_ENABLED: booleanFromEnv,
   MPESA_CONSUMER_KEY: z.string().trim().min(1).optional(),
   MPESA_CONSUMER_SECRET: z.string().trim().min(1).optional(),
   MPESA_SHORTCODE: z.string().trim().min(1).optional(),
@@ -151,6 +162,13 @@ export const apiEnvObjectSchema = baseServiceEnvObjectSchema.extend({
     .int()
     .positive()
     .default(300),
+  MEDIA_LOCAL_ROOT: z.string().trim().min(1).optional(),
+  MEDIA_PUBLIC_BASE_URL: z.string().trim().url().optional(),
+  MEDIA_MAX_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5 * 1024 * 1024),
   AI_SERVICE_BASE_URL: z.string().trim().url().optional(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().url().optional(),
   PRODUCT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
@@ -197,20 +215,46 @@ export const apiEnvSchema = apiEnvObjectSchema
 
     const paymentsEnabled = value.PAYMENTS_ENABLED === true;
     if (paymentsEnabled && requiresSecrets) {
-      for (const key of [
-        'MPESA_CONSUMER_KEY',
-        'MPESA_CONSUMER_SECRET',
-        'MPESA_SHORTCODE',
-        'MPESA_PASSKEY',
-        'MPESA_CALLBACK_URL',
-        'MPESA_WEBHOOK_SECRET',
-      ] as const) {
-        if (!value[key]) {
+      const provider = value.PAYMENT_PROVIDER;
+      if (provider === 'escrow') {
+        for (const key of [
+          'ESCROW_API_KEY',
+          'ESCROW_API_SECRET',
+          'ESCROW_BASE_URL',
+          'ESCROW_WEBHOOK_SECRET',
+        ] as const) {
+          if (!value[key]) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [key],
+              message: `${key} is required when PAYMENTS_ENABLED with PAYMENT_PROVIDER=escrow in staging/production`,
+            });
+          }
+        }
+        if (value.ESCROW_ALLOW_TEST_DOUBLE === true) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            path: [key],
-            message: `${key} is required when PAYMENTS_ENABLED in staging/production`,
+            path: ['ESCROW_ALLOW_TEST_DOUBLE'],
+            message:
+              'ESCROW_ALLOW_TEST_DOUBLE must be false in staging/production',
           });
+        }
+      } else if (value.MPESA_ENABLED === true) {
+        for (const key of [
+          'MPESA_CONSUMER_KEY',
+          'MPESA_CONSUMER_SECRET',
+          'MPESA_SHORTCODE',
+          'MPESA_PASSKEY',
+          'MPESA_CALLBACK_URL',
+          'MPESA_WEBHOOK_SECRET',
+        ] as const) {
+          if (!value[key]) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [key],
+              message: `${key} is required when PAYMENTS_ENABLED with M-Pesa in staging/production`,
+            });
+          }
         }
       }
     }
@@ -242,6 +286,9 @@ export const apiEnvSchema = apiEnvObjectSchema
         (value.NODE_ENV === 'production' || value.NODE_ENV === 'staging'),
       TAX_REQUIRED: value.TAX_REQUIRED ?? false,
       PAYMENTS_ENABLED: value.PAYMENTS_ENABLED ?? false,
+      PAYMENT_PROVIDER: value.PAYMENT_PROVIDER,
+      ESCROW_ALLOW_TEST_DOUBLE: value.ESCROW_ALLOW_TEST_DOUBLE ?? false,
+      MPESA_ENABLED: value.MPESA_ENABLED ?? false,
     };
   });
 
@@ -285,6 +332,14 @@ export const workerEnvSchema = baseServiceEnvObjectSchema
     MPESA_PASSKEY: z.string().trim().min(1).optional(),
     MPESA_CALLBACK_URL: z.string().trim().url().optional(),
     MPESA_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
+    MPESA_ENABLED: booleanFromEnv,
+    PAYMENT_PROVIDER: z.enum(['escrow', 'mpesa']).default('escrow'),
+    ESCROW_API_KEY: z.string().trim().min(1).optional(),
+    ESCROW_API_SECRET: z.string().trim().min(1).optional(),
+    ESCROW_BASE_URL: z.string().trim().url().optional(),
+    ESCROW_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
+    ESCROW_ALLOW_TEST_DOUBLE: booleanFromEnv,
+    PUBLIC_API_BASE_URL: z.string().trim().url().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().url().optional(),
     SMTP_URL: z.string().trim().min(1).optional(),
     WHATSAPP_ACCESS_TOKEN: z.string().trim().min(1).optional(),
@@ -304,6 +359,9 @@ export const workerEnvSchema = baseServiceEnvObjectSchema
       ...value,
       SERVICE_JWT_SECRET:
         serviceJwtSecret ?? 'dev-service-jwt-secret-at-least-32!!',
+      MPESA_ENABLED: value.MPESA_ENABLED ?? false,
+      ESCROW_ALLOW_TEST_DOUBLE: value.ESCROW_ALLOW_TEST_DOUBLE ?? false,
+      PAYMENT_PROVIDER: value.PAYMENT_PROVIDER,
     };
   });
 

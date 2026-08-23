@@ -54,9 +54,11 @@ describeDatabase('knowledge ingest and retrieval', () => {
         query: marker,
         limit: 5,
       });
-      expect(results.some((result) => result.documentId === created.id)).toBe(
-        true,
-      );
+      expect(
+        results.citations.some(
+          (result) => result.documentId === created.id,
+        ),
+      ).toBe(true);
     } finally {
       await prisma.$executeRawUnsafe(
         `DELETE FROM orders.outbox_messages

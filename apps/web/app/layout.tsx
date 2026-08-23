@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     template: '%s · Buying Bot',
   },
   description:
-    'Kenya-first AI shopping — browse, chat, checkout, and pay with M-Pesa.',
+    'Kenya-first AI shopping — browse, chat, checkout, and pay securely via escrow.',
 };
 
 export default function RootLayout({

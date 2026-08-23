@@ -13,15 +13,16 @@ import { PaymentsService } from './payments.service.js';
 
 const databaseUrl = process.env.DATABASE_URL_TEST ?? process.env.DATABASE_URL;
 
-describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
+describe.skipIf(!databaseUrl)('escrow webhook idempotency', () => {
   const prisma = createPrismaClient(databaseUrl);
   const dbClient = { prisma } as PrismaDatabaseClient;
 
-  const secret = 'test-webhook-secret-at-least-32-chars!!';
+  const secret = 'test-escrow-webhook-secret-at-least-32!!';
   const payments = new PaymentsService(dbClient, {
     NODE_ENV: 'test',
-    MPESA_WEBHOOK_SECRET: secret,
-    MPESA_ENV: 'sandbox',
+    PAYMENT_PROVIDER: 'escrow',
+    ESCROW_WEBHOOK_SECRET: secret,
+    ESCROW_ALLOW_TEST_DOUBLE: true,
     WEBHOOK_REPLAY_WINDOW_SECONDS: 300,
     DEFAULT_CURRENCY: 'KES',
   } as never);
@@ -39,14 +40,14 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
 
     const product = await prisma.product.create({
       data: {
-        name: `Pay Product ${randomUUID()}`,
-        slug: `pay-${randomUUID()}`,
+        name: `Escrow Product ${randomUUID()}`,
+        slug: `escrow-${randomUUID()}`,
         status: 'DRAFT',
         variants: {
           create: {
             name: 'Default',
             sku: {
-              create: { internalSku: `PAY-${randomUUID().slice(0, 8)}` },
+              create: { internalSku: `ESC-${randomUUID().slice(0, 8)}` },
             },
           },
         },
@@ -88,19 +89,18 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     const payment = await prisma.payment.create({
       data: {
         orderId,
-        provider: 'mpesa',
+        provider: 'escrow',
         status: 'INITIATED',
         amountMinor: 1000,
         currency: 'KES',
-        msisdnE164: '+254712345678',
       },
     });
     await prisma.paymentAttempt.create({
       data: {
         paymentId: payment.id,
         status: 'INITIATED',
-        providerCheckoutId: 'ws_test_checkout',
-        providerReference: 'mpesa_ref_test',
+        providerCheckoutId: 'esc_test_checkout',
+        providerReference: 'escrow_ref_test',
         initiatedAt: new Date(),
       },
     });
@@ -110,7 +110,15 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     await prisma.$disconnect();
   });
 
-  it('accepts duplicate webhook event ids as idempotent no-ops', async () => {
+  function sign(rawBody: string): { signature: string; timestamp: string } {
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = createHmac('sha256', secret)
+      .update(`${timestamp}.${rawBody}`)
+      .digest('hex');
+    return { signature, timestamp };
+  }
+
+  it('accepts duplicate escrow webhook event ids as idempotent no-ops', async () => {
     const eventId = `evt-${randomUUID()}`;
     const providerTxnId = `txn-${randomUUID()}`;
     const payload = {
@@ -119,26 +127,12 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
       providerTxnId,
       amountMinor: 1000,
       currency: 'KES',
-      Body: {
-        stkCallback: {
-          CheckoutRequestID: 'ws_test_checkout',
-          ResultCode: 0,
-          CallbackMetadata: {
-            Item: [
-              { Name: 'Amount', Value: 10 },
-              { Name: 'MpesaReceiptNumber', Value: providerTxnId },
-            ],
-          },
-        },
-      },
+      status: 'paid',
     };
     const rawBody = JSON.stringify(payload);
-    const timestamp = String(Math.floor(Date.now() / 1000));
-    const signature = createHmac('sha256', secret)
-      .update(`${timestamp}.${rawBody}`)
-      .digest('hex');
+    const { signature, timestamp } = sign(rawBody);
 
-    const first = await payments.handleMpesaWebhook({
+    const first = await payments.handleEscrowWebhook({
       rawBody,
       signature,
       timestamp,
@@ -146,9 +140,9 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     });
     expect(first.accepted).toBe(true);
 
-    await payments.applyMpesaReceipt(eventId, payload);
+    await payments.applyEscrowReceipt(eventId, payload);
 
-    const second = await payments.handleMpesaWebhook({
+    const second = await payments.handleEscrowWebhook({
       rawBody,
       signature,
       timestamp,
@@ -170,6 +164,68 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     expect(again.alreadyProcessed).toBe(true);
   }, 30_000);
 
+  it('rejects invalid escrow signature', async () => {
+    const payload = {
+      eventId: `evt-bad-${randomUUID()}`,
+      orderId,
+      status: 'paid',
+      amountMinor: 1000,
+      currency: 'KES',
+    };
+    const rawBody = JSON.stringify(payload);
+    await expect(
+      payments.handleEscrowWebhook({
+        rawBody,
+        signature: 'deadbeef',
+        timestamp: String(Math.floor(Date.now() / 1000)),
+        payload,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('does not mark order PAID on failed escrow status', async () => {
+    const pending = await prisma.order.create({
+      data: {
+        status: 'PENDING_PAYMENT',
+        currency: 'KES',
+        payableMinor: 1000,
+      },
+    });
+    await prisma.payment.create({
+      data: {
+        orderId: pending.id,
+        provider: 'escrow',
+        status: 'INITIATED',
+        amountMinor: 1000,
+        currency: 'KES',
+      },
+    });
+    const eventId = `evt-fail-${randomUUID()}`;
+    const payload = {
+      eventId,
+      orderId: pending.id,
+      providerTxnId: `txn-fail-${randomUUID()}`,
+      amountMinor: 1000,
+      currency: 'KES',
+      status: 'failed',
+    };
+    const rawBody = JSON.stringify(payload);
+    const { signature, timestamp } = sign(rawBody);
+
+    const accepted = await payments.handleEscrowWebhook({
+      rawBody,
+      signature,
+      timestamp,
+      payload,
+    });
+    expect(accepted.accepted).toBe(true);
+    await payments.applyEscrowReceipt(eventId, payload);
+    const order = await prisma.order.findUniqueOrThrow({
+      where: { id: pending.id },
+    });
+    expect(order.status).toBe('PENDING_PAYMENT');
+  }, 30_000);
+
   it('rejects amount mismatch on a pending order', async () => {
     const pending = await prisma.order.create({
       data: {
@@ -181,11 +237,10 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     await prisma.payment.create({
       data: {
         orderId: pending.id,
-        provider: 'mpesa',
+        provider: 'escrow',
         status: 'INITIATED',
         amountMinor: 1000,
         currency: 'KES',
-        msisdnE164: '+254712345678',
       },
     });
     await expect(
@@ -202,59 +257,17 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     expect(stillPending.status).toBe('PENDING_PAYMENT');
   }, 30_000);
 
-  it('does not mark order PAID on rejected STK ResultCode', async () => {
-    const pending = await prisma.order.create({
-      data: {
-        status: 'PENDING_PAYMENT',
-        currency: 'KES',
-        payableMinor: 1000,
-      },
-    });
-    const eventId = `evt-fail-${randomUUID()}`;
-    const payload = {
-      eventId,
-      orderId: pending.id,
-      providerTxnId: `txn-fail-${randomUUID()}`,
-      amountMinor: 1000,
-      currency: 'KES',
-      Body: {
-        stkCallback: {
-          CheckoutRequestID: 'ws_test_reject',
-          ResultCode: 1032,
-        },
-      },
-    };
-    const rawBody = JSON.stringify(payload);
-    const timestamp = String(Math.floor(Date.now() / 1000));
-    const signature = createHmac('sha256', secret)
-      .update(`${timestamp}.${rawBody}`)
-      .digest('hex');
-
-    const accepted = await payments.handleMpesaWebhook({
-      rawBody,
-      signature,
-      timestamp,
-      payload,
-    });
-    expect(accepted.accepted).toBe(true);
-    await payments.applyMpesaReceipt(eventId, payload);
-    const order = await prisma.order.findUniqueOrThrow({
-      where: { id: pending.id },
-    });
-    expect(order.status).toBe('PENDING_PAYMENT');
-  }, 30_000);
-
   it('holds late payment after reservation expiry', async () => {
     const product = await prisma.product.create({
       data: {
-        name: `Pay Late ${randomUUID()}`,
-        slug: `pay-late-${randomUUID()}`,
+        name: `Escrow Late ${randomUUID()}`,
+        slug: `escrow-late-${randomUUID()}`,
         status: 'DRAFT',
         variants: {
           create: {
             name: 'Default',
             sku: {
-              create: { internalSku: `PAYL-${randomUUID().slice(0, 8)}` },
+              create: { internalSku: `ESCL-${randomUUID().slice(0, 8)}` },
             },
           },
         },
@@ -291,11 +304,10 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     await prisma.payment.create({
       data: {
         orderId: lateOrder.id,
-        provider: 'mpesa',
+        provider: 'escrow',
         status: 'INITIATED',
         amountMinor: 500,
         currency: 'KES',
-        msisdnE164: '+254712345678',
       },
     });
 
@@ -315,4 +327,24 @@ describe.skipIf(!databaseUrl)('mpesa webhook idempotency', () => {
     });
     expect(balance.onHand).toBe(3);
   }, 30_000);
+
+  it('mpesa webhook endpoint is deferred and does not settle orders', async () => {
+    const pending = await prisma.order.create({
+      data: {
+        status: 'PENDING_PAYMENT',
+        currency: 'KES',
+        payableMinor: 1000,
+      },
+    });
+    const result = await payments.handleMpesaWebhook({
+      rawBody: '{}',
+      payload: { orderId: pending.id },
+    });
+    expect(result.deferred).toBe(true);
+    expect(result.accepted).toBe(false);
+    const still = await prisma.order.findUniqueOrThrow({
+      where: { id: pending.id },
+    });
+    expect(still.status).toBe('PENDING_PAYMENT');
+  });
 });

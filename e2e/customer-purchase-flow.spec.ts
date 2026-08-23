@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto';
+
 import { expect, test } from '@playwright/test';
 
 const apiBase = (process.env.API_BASE_URL || 'http://127.0.0.1:3000').replace(
@@ -6,6 +8,20 @@ const apiBase = (process.env.API_BASE_URL || 'http://127.0.0.1:3000').replace(
 );
 const webBase = (process.env.WEB_BASE_URL || '').replace(/\/$/, '');
 const origin = process.env.SMOKE_ORIGIN || 'http://localhost:3001';
+const escrowWebhookSecret =
+  process.env.ESCROW_WEBHOOK_SECRET ||
+  'e2e-escrow-webhook-secret-min-32-chars!!';
+
+function signEscrowBody(rawBody: string): {
+  signature: string;
+  timestamp: string;
+} {
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = createHmac('sha256', escrowWebhookSecret)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+  return { signature, timestamp };
+}
 
 function findOfferId(
   products: Array<{
@@ -139,7 +155,6 @@ test.describe('Customer purchase flow (API)', () => {
         'idempotency-key': idempotencyKey,
       },
       data: {
-        msisdnE164: '+254712345678',
         shippingMethodCode: 'FLAT',
       },
     });
@@ -159,32 +174,22 @@ test.describe('Customer purchase flow (API)', () => {
     const webhookPayload = {
       eventId: `e2e-${String(Date.now())}`,
       orderId,
-      providerTxnId: `sandbox_e2e_${String(Date.now())}`,
+      providerTxnId: `escrow_e2e_${String(Date.now())}`,
       amountMinor: checkoutBody.payableMinor,
       currency: checkoutBody.currency ?? 'KES',
-      Body: {
-        stkCallback: {
-          ResultCode: 0,
-          CheckoutRequestID: `ws_e2e_${String(Date.now())}`,
-          CallbackMetadata: {
-            Item: [
-              {
-                Name: 'Amount',
-                Value: (checkoutBody.payableMinor ?? 0) / 100,
-              },
-              {
-                Name: 'MpesaReceiptNumber',
-                Value: `SANDBOX${String(Date.now())}`,
-              },
-            ],
-          },
-        },
-      },
+      status: 'paid',
     };
+    const rawBody = JSON.stringify(webhookPayload);
+    const { signature, timestamp } = signEscrowBody(rawBody);
     const webhook = await request.post(
-      `${apiBase}/v1/webhooks/payments/mpesa`,
+      `${apiBase}/v1/webhooks/payments/escrow`,
       {
-        headers: { origin, 'content-type': 'application/json' },
+        headers: {
+          origin,
+          'content-type': 'application/json',
+          'x-escrow-signature': signature,
+          'x-escrow-timestamp': timestamp,
+        },
         data: webhookPayload,
       },
     );

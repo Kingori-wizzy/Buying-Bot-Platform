@@ -133,6 +133,9 @@ importers:
       '@buying-bot/database':
         specifier: workspace:^
         version: link:../../packages/database
+      '@buying-bot/product-sources':
+        specifier: workspace:^
+        version: link:../../packages/product-sources
       '@buying-bot/types':
         specifier: workspace:^
         version: link:../../packages/types
@@ -252,6 +255,9 @@ importers:
       '@buying-bot/database':
         specifier: workspace:^
         version: link:../../packages/database
+      '@buying-bot/product-sources':
+        specifier: workspace:^
+        version: link:../../packages/product-sources
       '@buying-bot/utils':
         specifier: workspace:*
         version: link:../../packages/utils
@@ -381,6 +387,28 @@ importers:
         version: 8.67.0(eslint@9.39.5(jiti@2.6.1))(typescript@5.9.3)
 
   packages/prettier-config: {}
+
+  packages/product-sources:
+    dependencies:
+      '@buying-bot/database':
+        specifier: workspace:*
+        version: link:../database
+      '@buying-bot/validation':
+        specifier: workspace:*
+        version: link:../validation
+    devDependencies:
+      '@buying-bot/typescript-config':
+        specifier: workspace:*
+        version: link:../typescript-config
+      '@types/node':
+        specifier: ^22.17.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.6.1)(yaml@2.9.0)
 
   packages/sdk:
     devDependencies:

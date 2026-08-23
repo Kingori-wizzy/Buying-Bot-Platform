@@ -14,22 +14,55 @@ export interface MpesaAdapterConfig {
   readonly passkey?: string | undefined;
   readonly callbackUrl?: string | undefined;
   readonly env: 'sandbox' | 'production';
+  /** When false (default), refuse initiate — M-Pesa is deferred. */
+  readonly enabled?: boolean | undefined;
 }
 
 /**
- * Daraja-style M-Pesa adapter. Sandbox mode simulates STK without real PIN storage.
- * Never logs secrets or PINs.
+ * Daraja-style M-Pesa adapter — DEFERRED / NOT active customer rail.
+ * Kept for future re-enable behind PAYMENT_PROVIDER=mpesa.
+ * Does not simulate successful live payments unless explicitly enabled.
  */
 export class MpesaAdapter implements PaymentProvider {
   readonly name = 'mpesa';
+  readonly configured: boolean;
+  private readonly enabled: boolean;
 
-  constructor(private readonly config: MpesaAdapterConfig) {}
+  constructor(private readonly config: MpesaAdapterConfig) {
+    this.enabled = config.enabled === true;
+    this.configured = Boolean(
+      this.enabled &&
+        config.consumerKey &&
+        config.consumerSecret &&
+        config.shortcode &&
+        config.passkey,
+    );
+  }
 
   initiate(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
-    if (!/^\+[1-9]\d{7,14}$/.test(input.msisdnE164)) {
+    if (!this.enabled) {
+      return Promise.resolve({
+        providerReference: `mpesa_disabled_${input.orderId.slice(0, 8)}`,
+        status: 'not_configured',
+        failureReason: 'MPESA_DISABLED',
+        raw: {
+          code: 'MPESA_DISABLED',
+          message:
+            'M-Pesa is deferred. Active customer payments use escrow (PAYMENT_PROVIDER=escrow).',
+        },
+      });
+    }
+    if (!input.msisdnE164 || !/^\+[1-9]\d{7,14}$/.test(input.msisdnE164)) {
       return Promise.reject(new Error('INVALID_MSISDN'));
     }
-    // Simulated sandbox checkout request id — no network in unit tests.
+    if (this.config.env === 'production' && !this.configured) {
+      return Promise.resolve({
+        providerReference: `mpesa_unconfigured_${input.orderId.slice(0, 8)}`,
+        status: 'not_configured',
+        failureReason: 'MPESA_CONFIG_INCOMPLETE',
+      });
+    }
+    // Explicitly enabled sandbox only — still not a live Daraja call.
     const providerCheckoutId = `ws_${randomUUID().replace(/-/g, '').slice(0, 16)}`;
     const providerReference = `mpesa_${createHash('sha256')
       .update(
@@ -37,36 +70,24 @@ export class MpesaAdapter implements PaymentProvider {
       )
       .digest('hex')
       .slice(0, 24)}`;
-
-    if (this.config.env === 'production') {
-      if (
-        !this.config.consumerKey ||
-        !this.config.consumerSecret ||
-        !this.config.shortcode ||
-        !this.config.passkey
-      ) {
-        return Promise.reject(new Error('MPESA_CONFIG_INCOMPLETE'));
-      }
-      // Production would call Daraja STK Push here (outside DB txs).
-    }
-
     return Promise.resolve({
       providerReference,
       providerCheckoutId,
+      status: 'pending',
       raw: {
+        mode: 'sandbox_simulation',
+        warning: 'SANDBOX SIMULATION — not live M-Pesa. Daraja HTTP not implemented.',
         ResponseCode: '0',
-        ResponseDescription: 'Success. Request accepted for processing',
         CheckoutRequestID: providerCheckoutId,
         MerchantRequestID: providerReference,
-        CustomerMessage: 'Success. Request accepted for processing',
       },
     });
   }
 
   query(providerReference: string): Promise<QueryPaymentResult> {
     return Promise.resolve({
-      status: 'pending',
-      raw: { providerReference, ResultCode: '0' },
+      status: this.enabled ? 'pending' : 'not_configured',
+      raw: { providerReference },
     });
   }
 }

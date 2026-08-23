@@ -117,6 +117,17 @@ export async function bootstrap(
 }
 
 function registerHealth(app: FastifyInstance, env: AiServiceEnv): void {
+  app.get('/', () => ({
+    status: 'ok',
+    service: env.SERVICE_NAME,
+    message: 'Buying Bot AI service is running',
+    links: {
+      health: '/health',
+      live: '/health/live',
+      ready: '/health/ready',
+      metrics: '/metrics',
+    },
+  }));
   app.get('/health/live', () => ({
     status: 'ok',
     service: env.SERVICE_NAME,

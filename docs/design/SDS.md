@@ -38,6 +38,16 @@ fail closed on financial uncertainty; async side effects.
 ## 8. Backend (`apps/api`)
 
 NestJS + Fastify (ADR-0005). Modules per domain. Guards for AuthN/Z. Zod
+
+### Catalog authority (2026-08-20)
+
+Authoritative product journey:
+
+`ADMIN → Product/Variant/SKU/Offer/Inventory (PostgreSQL) → Storefront / Search / AI → Cart → Checkout → (future escrow)`
+
+External marketplace/product-source adapters may remain in the monorepo as
+**DEFERRED / FUTURE MARKETPLACE INTEGRATION** but are not part of the active
+customer experience. AI tools and public catalog APIs read only the internal catalog.
 pipes. Exception filter → ApiErrorBody. Controllers thin; application
 services own use cases.
 

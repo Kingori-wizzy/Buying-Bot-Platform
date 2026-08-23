@@ -76,11 +76,11 @@ export default function OrderStatusPage() {
     <main className="page" id="main">
       <section className="stack">
         <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>
-          M-Pesa payment
+          Escrow payment
         </h1>
         <p className="muted" style={{ margin: 0 }}>
-          Waiting for authoritative payment status from the API (polled every
-          4s). Do not treat this page alone as paid.
+          Waiting for authoritative escrow payment status from the API (polled
+          every 4s). This page alone is never proof of payment.
         </p>
 
         {error ? (
@@ -129,11 +129,12 @@ export default function OrderStatusPage() {
 
             {tone === 'pending' ? (
               <div className="alert alert-warning">
-                <strong>Waiting for M-Pesa confirmation…</strong>
+                <strong>Waiting for escrow confirmation…</strong>
                 <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-                  Check your phone for the STK Push when payments are enabled.
-                  Elapsed {elapsedSec}s. If nothing arrives, keep this page open
-                  or retry after confirming Daraja credentials on the server.
+                  Provider:{' '}
+                  {order.payments?.[0]?.provider ?? 'escrow'}. Elapsed{' '}
+                  {elapsedSec}s. If escrow credentials are not configured, the
+                  payment attempt fails safely and will not show as paid.
                 </p>
               </div>
             ) : null}
@@ -158,10 +159,10 @@ export default function OrderStatusPage() {
 
             {tone === 'pending' && elapsedSec > 120 ? (
               <div className="alert">
-                Still pending after 2 minutes. This can mean the provider timed
-                out, payments are disabled (`PAYMENTS_ENABLED=false`), or the
-                webhook has not arrived yet. Status remains whatever the API
-                reports.
+                Still pending after 2 minutes. This can mean escrow credentials
+                are not configured (`ESCROW_*` / `PAYMENTS_ENABLED`), the
+                provider timed out, or the webhook has not arrived. Status
+                remains whatever the API reports.
               </div>
             ) : null}
           </div>

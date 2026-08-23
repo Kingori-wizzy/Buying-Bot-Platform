@@ -74,10 +74,30 @@ export default async function ProductDetailPage({ params }: Props) {
         </p>
 
         <div className="pdp">
-          <div className="pdp-gallery" aria-hidden>
-            {product.name}
+          <div className="pdp-gallery">
+            {product.primaryImageUrl ? (
+              <img
+                src={product.primaryImageUrl}
+                alt={product.name}
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  borderRadius: 'var(--bb-radius)',
+                }}
+              />
+            ) : (
+              <span aria-hidden>{product.name}</span>
+            )}
           </div>
           <div className="stack">
+            {(product as { contentOrigin?: string }).contentOrigin ===
+              'DEMO' ||
+            (product as { contentOrigin?: string }).contentOrigin ===
+              'IMPORT' ? (
+              <span className="badge badge-sandbox">
+                Demo / staging catalog data
+              </span>
+            ) : null}
             <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>
               {product.name}
             </h1>
@@ -96,8 +116,8 @@ export default async function ProductDetailPage({ params }: Props) {
             </p>
             <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
               {price
-                ? 'Price shown from the active Offer returned by the API. Checkout re-resolves totals server-side.'
-                : 'This product has no active offer. Add to Cart is unavailable until merchandising publishes a price.'}
+                ? 'Price from the administrator-managed Offer. Checkout re-resolves totals server-side.'
+                : 'This product has no active offer. Add to Cart is unavailable until an administrator publishes a price.'}
             </p>
 
             {offers.length > 1 ? (

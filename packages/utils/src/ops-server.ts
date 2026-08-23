@@ -115,6 +115,23 @@ export function createOpsServer(options: OpsServerOptions): OpsServer {
           return;
         }
 
+        if (path === '/' || path === '') {
+          sendJson(res, 200, {
+            status: 'ok',
+            service: options.service,
+            message: `${options.service} ops server is running`,
+            links: {
+              health: '/health',
+              live: '/health/live',
+              ready: '/health/ready',
+              metrics: '/metrics',
+            },
+            requestId,
+          });
+          finish(200);
+          return;
+        }
+
         if (path === '/health/live' || path === '/livez') {
           sendJson(res, 200, {
             status: 'ok',

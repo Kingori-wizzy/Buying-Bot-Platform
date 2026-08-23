@@ -23,6 +23,8 @@ import {
 } from '../auth/guards.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import {
+  type CatalogImportBody,
+  catalogImportSchema,
   type CreateBrandBody,
   createBrandSchema,
   type CreateCategoryBody,
@@ -33,8 +35,12 @@ import {
   createOfferSchema,
   type CreateProductBody,
   createProductSchema,
+  type UpdateOfferBody,
+  updateOfferSchema,
   type UpdateProductBody,
   updateProductSchema,
+  type UploadMediaBody,
+  uploadMediaSchema,
 } from './catalog.schemas.js';
 import { CatalogService } from './catalog.service.js';
 
@@ -86,6 +92,12 @@ export class CatalogAdminController {
     return this.catalog.updateProduct(id, body);
   }
 
+  @Post('products/:id/publish')
+  @RequirePermissions('catalog:update')
+  publishProduct(@Param('id') id: string): Promise<unknown> {
+    return this.catalog.publishProduct(id);
+  }
+
   @Get('products')
   @RequirePermissions('catalog:read')
   listProducts(
@@ -123,11 +135,52 @@ export class CatalogAdminController {
     return this.catalog.createOffer(body);
   }
 
+  @Patch('offers/:id')
+  @RequirePermissions('catalog:update')
+  updateOffer(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateOfferSchema)) body: UpdateOfferBody,
+  ): Promise<unknown> {
+    return this.catalog.updateOffer(id, body);
+  }
+
   @Post('media')
   @RequirePermissions('catalog:create')
   createMedia(
     @Body(new ZodValidationPipe(createMediaSchema)) body: CreateMediaBody,
   ): Promise<unknown> {
     return this.catalog.createMedia(body);
+  }
+
+  @Post('media/upload')
+  @RequirePermissions('catalog:create')
+  uploadMedia(
+    @Body(new ZodValidationPipe(uploadMediaSchema)) body: UploadMediaBody,
+  ): Promise<unknown> {
+    return this.catalog.uploadMediaBinary(body);
+  }
+
+  @Post('imports')
+  @RequirePermissions('catalog:create')
+  submitImport(
+    @Body(new ZodValidationPipe(catalogImportSchema)) body: CatalogImportBody,
+  ): Promise<unknown> {
+    return this.catalog.submitCatalogImport({
+      filename: body.filename,
+      csvText: body.csvText,
+      dryRun: body.dryRun,
+    });
+  }
+
+  @Get('imports')
+  @RequirePermissions('catalog:read')
+  listImports(): Promise<unknown> {
+    return this.catalog.listCatalogImports();
+  }
+
+  @Get('imports/:id')
+  @RequirePermissions('catalog:read')
+  getImport(@Param('id') id: string): Promise<unknown> {
+    return this.catalog.getCatalogImport(id);
   }
 }

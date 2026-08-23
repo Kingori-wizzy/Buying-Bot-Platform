@@ -54,6 +54,24 @@ export interface ProductListQuery {
   readonly categoryId?: string;
   readonly brandId?: string;
   readonly q?: string;
+  readonly priceMinMinor?: number;
+  readonly priceMaxMinor?: number;
+}
+
+export interface ProductProvenance {
+  readonly sourceCode: string;
+  readonly sourceName: string;
+  readonly sourceUrl: string;
+  readonly sellerName: string;
+  readonly priceMinor: number | null;
+  readonly currency: string | null;
+  readonly availabilityStatus: string;
+  readonly contentOrigin: string;
+  readonly priceObservedAt: string | null;
+  readonly priceFreshness: 'FRESH' | 'RECENT' | 'STALE' | 'EXPIRED';
+  readonly priceFreshnessLabel: string;
+  readonly imageUrl: string | null;
+  readonly imageAttribution: string | null;
 }
 
 export interface MoneyOffer {
@@ -70,6 +88,9 @@ export interface ProductSummary {
   readonly shortDescription?: string | null;
   readonly status?: string;
   readonly brand?: { readonly id: string; readonly name: string } | null;
+  readonly primaryImageUrl?: string | null;
+  readonly primaryImageAttribution?: string | null;
+  readonly provenance?: ProductProvenance | null;
   readonly variants?: readonly {
     readonly id: string;
     readonly sku?: {
@@ -141,9 +162,10 @@ export type AiStreamEvent =
   | { readonly type: 'error'; readonly message: string };
 
 export interface CheckoutBody {
-  readonly msisdnE164: string;
+  readonly msisdnE164?: string;
   readonly couponCode?: string;
   readonly shippingMethodCode?: string;
+  readonly returnUrl?: string;
 }
 
 export interface CreateProductBody {
@@ -152,13 +174,21 @@ export interface CreateProductBody {
   readonly shortDescription?: string;
   readonly description?: string;
   readonly status?:
-    'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
+    | 'DRAFT'
+    | 'PENDING_REVIEW'
+    | 'ACTIVE'
+    | 'INACTIVE'
+    | 'ARCHIVED';
   readonly brandId?: string | null;
   readonly primaryCategoryId?: string | null;
   readonly seoTitle?: string;
   readonly seoDescription?: string;
   readonly variantName?: string;
   readonly internalSku?: string;
+  readonly listPriceMinor?: number;
+  readonly currency?: string;
+  readonly initialStock?: number;
+  readonly contentOrigin?: 'ADMIN' | 'DEMO' | 'IMPORT';
 }
 
 export type UpdateProductBody = Partial<CreateProductBody>;
@@ -317,6 +347,8 @@ export class PlatformSdk {
       categoryId: query.categoryId,
       brandId: query.brandId,
       q: query.q,
+      priceMinMinor: query.priceMinMinor,
+      priceMaxMinor: query.priceMaxMinor,
     });
     const response = await this.request(`/v1/products${qs}`);
     return (await response.json()) as ProductListResponse;
@@ -338,9 +370,20 @@ export class PlatformSdk {
       categoryId: query.categoryId,
       brandId: query.brandId,
       q: query.q,
+      priceMinMinor: query.priceMinMinor,
+      priceMaxMinor: query.priceMaxMinor,
     });
     const response = await this.request(`/v1/search/products${qs}`);
     return (await response.json()) as ProductListResponse;
+  }
+
+  async compareProducts(productIds: readonly string[]): Promise<unknown> {
+    const response = await this.request('/v1/products/compare', {
+      method: 'POST',
+      json: { productIds },
+      csrf: true,
+    });
+    return response.json();
   }
 
   async chat(message: string): Promise<AiChatResponse> {
@@ -495,6 +538,24 @@ export class PlatformSdk {
     return response.json();
   }
 
+  async adminListProducts(
+    query: {
+      page?: number;
+      pageSize?: number;
+      status?: string;
+      q?: string;
+    } = {},
+  ): Promise<ProductListResponse> {
+    const qs = toQuery({
+      page: query.page,
+      pageSize: query.pageSize,
+      status: query.status,
+      q: query.q,
+    });
+    const response = await this.request(`/v1/admin/catalog/products${qs}`);
+    return (await response.json()) as ProductListResponse;
+  }
+
   async adminCreateProduct(body: CreateProductBody): Promise<unknown> {
     const response = await this.request('/v1/admin/catalog/products', {
       method: 'POST',
@@ -515,6 +576,142 @@ export class PlatformSdk {
         json: body,
         csrf: true,
       },
+    );
+    return response.json();
+  }
+
+  async adminPublishProduct(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/products/${encodeURIComponent(id)}/publish`,
+      { method: 'POST', json: {}, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminCreateOffer(body: {
+    skuId: string;
+    listPriceMinor: number;
+    currency?: string;
+    active?: boolean;
+  }): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/offers', {
+      method: 'POST',
+      json: body,
+      csrf: true,
+    });
+    return response.json();
+  }
+
+  async adminUpdateOffer(
+    id: string,
+    body: {
+      listPriceMinor?: number;
+      currency?: string;
+      active?: boolean;
+    },
+  ): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/offers/${encodeURIComponent(id)}`,
+      { method: 'PATCH', json: body, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminCreateMedia(body: {
+    objectKey: string;
+    mimeType: string;
+    productId?: string;
+    variantId?: string;
+    externalUrl?: string;
+    attribution?: string;
+    sortOrder?: number;
+  }): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/media', {
+      method: 'POST',
+      json: body,
+      csrf: true,
+    });
+    return response.json();
+  }
+
+  async adminUploadMedia(body: {
+    dataBase64: string;
+    mimeType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+    fileName?: string;
+    productId?: string;
+    variantId?: string;
+    sortOrder?: number;
+    attribution?: string;
+    altText?: string;
+  }): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/media/upload', {
+      method: 'POST',
+      json: body,
+      csrf: true,
+    });
+    return response.json();
+  }
+
+  async adminCreateBrand(body: {
+    name: string;
+    slug?: string;
+    description?: string;
+  }): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/brands', {
+      method: 'POST',
+      json: body,
+      csrf: true,
+    });
+    return response.json();
+  }
+
+  async adminCreateCategory(body: {
+    name: string;
+    slug?: string;
+    parentId?: string | null;
+    description?: string;
+    sortOrder?: number;
+    active?: boolean;
+  }): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/categories', {
+      method: 'POST',
+      json: body,
+      csrf: true,
+    });
+    return response.json();
+  }
+
+  async listBrands(): Promise<unknown> {
+    const response = await this.request('/v1/brands');
+    return response.json();
+  }
+
+  async listCategories(): Promise<unknown> {
+    const response = await this.request('/v1/categories');
+    return response.json();
+  }
+
+  async adminSubmitCatalogImport(body: {
+    filename: string;
+    csvText: string;
+    dryRun: boolean;
+  }): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/imports', {
+      method: 'POST',
+      json: body,
+      csrf: true,
+    });
+    return response.json();
+  }
+
+  async adminListCatalogImports(): Promise<unknown> {
+    const response = await this.request('/v1/admin/catalog/imports');
+    return response.json();
+  }
+
+  async adminGetCatalogImport(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/imports/${encodeURIComponent(id)}`,
     );
     return response.json();
   }

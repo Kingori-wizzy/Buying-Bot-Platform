@@ -124,6 +124,12 @@ enumerated in the final audit.
 | FR-CAT-008 | Search SHALL use PostgreSQL FTS + pg_trgm (+ pgvector where used) as stage-1; search index is derived.         | 0010,0006 |
 | FR-CAT-009 | Filters/sorts SHALL be allow-listed; unknown filters SHALL be rejected.                                        | 0009,0010 |
 | FR-CAT-010 | AI catalog access SHALL use authorized tools only; AI SHALL NOT query PostgreSQL directly.                     | 0010,0015 |
+| FR-CAT-011 | Current production catalog SHALL be administered by authorized administrators only; external marketplace ingestion is deferred and SHALL NOT be required for storefront, search, or AI product facts. | 0010 |
+
+**Business decision (2026-08-20):** Buying Bot’s current product catalog is administered
+directly by authorized administrators. External marketplace ingestion is deferred.
+Escrow integration remains an external prerequisite and is out of scope until credentials
+and provider documentation are supplied.
 
 ### 12.3 Inventory
 

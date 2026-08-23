@@ -18,13 +18,12 @@ function newIdempotencyKey(): string {
   return `checkout-${String(Date.now())}`;
 }
 
-const STEPS = ['Cart review', 'Delivery & M-Pesa', 'Confirm'] as const;
+const STEPS = ['Cart review', 'Delivery', 'Confirm & escrow'] as const;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [cart, setCart] = useState<CartView | null>(null);
-  const [msisdn, setMsisdn] = useState('+2547');
   const [coupon, setCoupon] = useState('');
   const [shippingMethodCode, setShippingMethodCode] = useState('FLAT');
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +53,15 @@ export default function CheckoutPage() {
     setBusy(true);
     setError(null);
     try {
+      const returnUrl =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/orders`
+          : undefined;
       const result = (await createBrowserSdk().checkout(
         {
-          msisdnE164: msisdn.trim(),
           shippingMethodCode,
           ...(coupon.trim() ? { couponCode: coupon.trim() } : {}),
+          ...(returnUrl ? { returnUrl } : {}),
         },
         newIdempotencyKey(),
       )) as { id?: string; orderId?: string };
@@ -85,8 +88,8 @@ export default function CheckoutPage() {
       <section className="stack">
         <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>Checkout</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Nest is authoritative for price, discounts, tax, inventory, and
-          payable amount. This page never invents totals.
+          Prices, discounts, tax, inventory, and payable amount are resolved by
+          the API. Payment is via escrow when configured.
         </p>
 
         <div className="steps" aria-label="Checkout steps">
@@ -156,24 +159,10 @@ export default function CheckoutPage() {
               setStep(2);
             }}
           >
-            <h2 style={{ margin: 0 }}>Delivery &amp; M-Pesa</h2>
+            <h2 style={{ margin: 0 }}>Delivery</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Enter the Safaricom number that will receive the STK Push when
-              payments are enabled on the server.
+              Choose shipping. Payment will use escrow — not M-Pesa.
             </p>
-            <div className="field">
-              <label htmlFor="msisdn">M-Pesa MSISDN (E.164)</label>
-              <input
-                id="msisdn"
-                value={msisdn}
-                onChange={(e) => {
-                  setMsisdn(e.target.value);
-                }}
-                required
-                pattern="^\+[1-9]\d{7,14}$"
-                placeholder="+2547XXXXXXXX"
-              />
-            </div>
             <div className="field">
               <label htmlFor="shipping">Shipping method code</label>
               <input
@@ -185,7 +174,7 @@ export default function CheckoutPage() {
               />
             </div>
             <div className="field">
-              <label htmlFor="coupon">Coupon (optional, one code)</label>
+              <label htmlFor="coupon">Coupon (optional)</label>
               <input
                 id="coupon"
                 value={coupon}
@@ -205,7 +194,7 @@ export default function CheckoutPage() {
                 Back
               </button>
               <button className="btn" type="submit">
-                Review &amp; pay
+                Review &amp; pay with escrow
               </button>
             </div>
           </form>
@@ -218,14 +207,15 @@ export default function CheckoutPage() {
               void onSubmit(e);
             }}
           >
-            <h2 style={{ margin: 0 }}>Confirm order</h2>
+            <h2 style={{ margin: 0 }}>Confirm &amp; start escrow</h2>
             <div className="alert alert-warning">
               Placing the order creates a <strong>PENDING_PAYMENT</strong>{' '}
-              order. Payment is confirmed only when the API reports a successful
-              M-Pesa webhook — not when this button succeeds.
+              order. Escrow confirmation comes only from a verified provider
+              webhook — never from this button alone. If escrow credentials are
+              not configured on the server, payment initiation fails safely.
             </div>
             <p>
-              <strong>Phone:</strong> {msisdn}
+              <strong>Payment method:</strong> Escrow
             </p>
             <p>
               <strong>Shipping code:</strong> {shippingMethodCode}
@@ -249,7 +239,7 @@ export default function CheckoutPage() {
                 Back
               </button>
               <button className="btn" type="submit" disabled={busy}>
-                {busy ? 'Placing order…' : 'Place order & await M-Pesa'}
+                {busy ? 'Placing order…' : 'Place order & start escrow'}
               </button>
             </div>
           </form>

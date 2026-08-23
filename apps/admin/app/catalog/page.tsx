@@ -21,6 +21,7 @@ export default function CatalogListPage() {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,10 +29,11 @@ export default function CatalogListPage() {
     setLoading(true);
     void (async () => {
       try {
-        const result = await createBrowserSdk().listProducts({
+        const result = await createBrowserSdk().adminListProducts({
           pageSize: PAGE_SIZE,
           page,
           ...(search ? { q: search } : {}),
+          ...(status ? { status } : {}),
         });
         setItems([...result.items]);
         setTotal(result.total ?? result.items.length);
@@ -46,7 +48,7 @@ export default function CatalogListPage() {
         setLoading(false);
       }
     })();
-  }, [page, search]);
+  }, [page, search, status]);
 
   const totalPages = total ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1;
 
@@ -65,14 +67,21 @@ export default function CatalogListPage() {
           </h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
             {total !== null ? `${String(total)} products` : 'Loading…'}
-            {' — '}admin catalog
+            {' — '}administrator-managed catalog
           </p>
         </div>
-        {can('catalog', 'create') ? (
-          <Link className="btn" href="/catalog/new">
-            + Create product
-          </Link>
-        ) : null}
+        <div className="cta-row">
+          {can('catalog', 'create') ? (
+            <Link className="btn btn-secondary" href="/catalog/imports">
+              CSV import
+            </Link>
+          ) : null}
+          {can('catalog', 'create') ? (
+            <Link className="btn" href="/catalog/new">
+              + Create product
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <form
@@ -80,19 +89,17 @@ export default function CatalogListPage() {
         className="panel"
         style={{ padding: '0.75rem 1rem' }}
       >
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <label className="sr-only" htmlFor="catalog-q">
-            Search catalog
-          </label>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
           <input
             id="catalog-q"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
             }}
-            placeholder="Search by name…"
+            placeholder="Search by name or slug…"
             style={{
               flex: 1,
+              minWidth: 180,
               font: 'inherit',
               padding: '0.5rem 0.75rem',
               border: '1px solid var(--bb-border)',
@@ -101,43 +108,28 @@ export default function CatalogListPage() {
               color: 'var(--bb-fg)',
             }}
           />
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Filter by status"
+          >
+            <option value="">All statuses</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="PENDING_REVIEW">PENDING_REVIEW</option>
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+            <option value="ARCHIVED">ARCHIVED</option>
+          </select>
           <button className="btn" type="submit">
             Search
           </button>
-          {search ? (
-            <button
-              className="btn btn-secondary"
-              type="button"
-              onClick={() => {
-                setQ('');
-                setSearch('');
-                setPage(1);
-              }}
-            >
-              Clear
-            </button>
-          ) : null}
         </div>
       </form>
 
       {error ? <p className="error">{error}</p> : null}
-
-      {loading ? (
-        <div className="stack">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{
-                height: 44,
-                borderRadius: 6,
-                background:
-                  'color-mix(in srgb, var(--bb-border) 40%, transparent)',
-                animation: 'shimmer 1.2s ease-in-out infinite',
-              }}
-            />
-          ))}
-        </div>
-      ) : null}
 
       {!loading && items.length === 0 && !error ? (
         <div className="empty-state">
@@ -155,26 +147,37 @@ export default function CatalogListPage() {
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Slug</th>
+                <th>Product</th>
+                <th>SKU</th>
+                <th>Category</th>
+                <th>Price</th>
                 <th>Status</th>
-                <th>Price (API)</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {items.map((product) => {
                 const price = firstOfferPrice(product);
+                const sku =
+                  product.variants?.[0]?.sku &&
+                  'internalSku' in (product.variants[0].sku as object)
+                    ? (product.variants[0].sku as { internalSku?: string })
+                        .internalSku ?? '—'
+                    : product.variants?.[0]?.sku?.id.slice(0, 8) ?? '—';
                 return (
                   <tr key={product.id}>
-                    <td>{product.name}</td>
                     <td>
-                      <code style={{ fontSize: '0.85em' }}>{product.slug}</code>
+                      <strong>{product.name}</strong>
+                      <div className="muted" style={{ fontSize: '0.85em' }}>
+                        {product.slug}
+                      </div>
                     </td>
                     <td>
-                      <span className="badge">
-                        {product.status ?? 'ACTIVE'}
-                      </span>
+                      <code style={{ fontSize: '0.85em' }}>{sku}</code>
+                    </td>
+                    <td>
+                      {(product as { primaryCategory?: { name?: string } })
+                        .primaryCategory?.name ?? '—'}
                     </td>
                     <td>
                       {price
@@ -182,9 +185,10 @@ export default function CatalogListPage() {
                         : '—'}
                     </td>
                     <td>
-                      {can('catalog', 'update') || can('catalog', 'read') ? (
-                        <Link href={`/catalog/${product.id}`}>Edit</Link>
-                      ) : null}
+                      <span className="badge">{product.status ?? 'DRAFT'}</span>
+                    </td>
+                    <td>
+                      <Link href={`/catalog/${product.id}`}>Edit</Link>
                     </td>
                   </tr>
                 );

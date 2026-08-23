@@ -18,6 +18,7 @@
     "@buying-bot/auth": "workspace:^",
     "@buying-bot/config": "workspace:*",
     "@buying-bot/database": "workspace:^",
+    "@buying-bot/product-sources": "workspace:^",
     "@buying-bot/types": "workspace:^",
     "@buying-bot/utils": "workspace:*",
     "@buying-bot/validation": "workspace:^",

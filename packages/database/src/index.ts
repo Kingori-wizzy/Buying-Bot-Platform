@@ -38,4 +38,8 @@ export {
   seedCommerceDefaults,
   seedIdentityCatalog,
 } from './seed.js';
+export {
+  DEMO_CATALOG_NOTICE,
+  seedDemoCatalog,
+} from './seed-demo-catalog.js';
 export { seedStagingCatalog, STAGING_PRODUCT_SLUG } from './seed-staging.js';

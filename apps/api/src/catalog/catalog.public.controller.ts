@@ -1,8 +1,10 @@
 import {
+  Body,
   Controller,
   Get,
   Inject,
   Param,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -10,6 +12,8 @@ import {
 import { CsrfGuard, Public, SessionAuthGuard } from '../auth/guards.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import {
+  type CompareProductsBody,
+  compareProductsSchema,
   type ProductListQuery,
   productListQuerySchema,
 } from './catalog.schemas.js';
@@ -62,5 +66,36 @@ export class CatalogPublicController {
     query: ProductListQuery,
   ): Promise<unknown> {
     return this.catalog.searchProducts(query);
+  }
+
+  @Post('products/compare')
+  @Public()
+  compare(
+    @Body(new ZodValidationPipe(compareProductsSchema))
+    body: CompareProductsBody,
+  ): Promise<unknown> {
+    return this.catalog.compareProducts(body.productIds);
+  }
+
+  @Get('products/:idOrSlug/price-history')
+  @Public()
+  priceHistory(
+    @Param('idOrSlug') idOrSlug: string,
+  ): Promise<unknown> {
+    return this.catalog
+      .getProduct(idOrSlug)
+      .then((product) =>
+        this.catalog.getPriceHistory((product as { id: string }).id),
+      );
+  }
+
+  @Get('products/:idOrSlug/availability')
+  @Public()
+  availability(@Param('idOrSlug') idOrSlug: string): Promise<unknown> {
+    return this.catalog
+      .getProduct(idOrSlug)
+      .then((product) =>
+        this.catalog.getAvailability((product as { id: string }).id),
+      );
   }
 }

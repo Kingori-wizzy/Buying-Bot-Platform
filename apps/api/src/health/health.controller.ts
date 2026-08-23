@@ -14,6 +14,27 @@ export class HealthController {
     @Inject(DATABASE_CLIENT) private readonly database: DatabaseClient | null,
   ) {}
 
+  @Get()
+  root(): {
+    status: 'ok';
+    service: string;
+    message: string;
+    links: Record<string, string>;
+  } {
+    return {
+      status: 'ok',
+      service: this.env.SERVICE_NAME,
+      message: 'Buying Bot API is running',
+      links: {
+        health: '/health',
+        live: '/health/live',
+        ready: '/health/ready',
+        products: '/v1/products',
+        docsHint: 'Use /v1/* routes — this is not a website',
+      },
+    };
+  }
+
   @Get(['health/live', 'livez'])
   live(): { status: 'ok'; service: string } {
     return { status: 'ok', service: this.env.SERVICE_NAME };

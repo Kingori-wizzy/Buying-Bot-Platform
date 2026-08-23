@@ -8,7 +8,10 @@ Results are engineering-local unless marked EXTERNAL.
 | Health & ops             | `apps/api` health + metrics | `apps/api/src/index.test.ts`, smoke           | PASS                                       |
 | AuthN register/login     | `apps/api/src/auth`         | `auth.integration.test.ts`                    | PASS                                       |
 | AuthZ RBAC + admin MFA   | guards + MFA crypto         | auth integration + security regression        | PASS                                       |
-| Catalog public/admin     | `catalog/*`                 | API tests + list smoke                        | PASS                                       |
+| Catalog public/admin     | `catalog/*`                 | API tests + list smoke + CSV unit + admin publish gates | PASS                                       |
+| Admin-managed catalog CX | admin catalog + web + AI    | marketplace disabled; provenance null on public APIs; E2E `admin-catalog-journey` | PASS (E2E needs admin creds)               |
+| Product CSV import       | catalog import + worker     | `catalog-csv.test.ts` + `catalog.import` outbox         | PASS                                       |
+| Marketplace aggregation  | `product-sources`           | Deferred — sources disabled by default                  | DEFERRED (not required for CX)             |
 | Inventory reserve/adjust | `inventory/*`               | concurrency test                              | PASS                                       |
 | Pricing / tax calc       | `pricing/*`                 | financial-calculation.engine.test.ts          | PASS                                       |
 | Cart guest/auth merge    | `cart/*`                    | cart.merge.test.ts                            | PASS                                       |

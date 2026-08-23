@@ -85,7 +85,14 @@ export class AiService {
     return { conversationId, response };
   }
 
-  async retrieve(body: RetrieveBody): Promise<RetrievalResult[]> {
+  async retrieve(body: RetrieveBody): Promise<{
+    citations: {
+      chunkId: string;
+      documentId: string;
+      score: number;
+      excerpt: string;
+    }[];
+  }> {
     const prisma = this.prisma();
     const embedding =
       body.embedding ?? deterministicEmbedding(body.query, 1536);
@@ -127,9 +134,17 @@ export class AiService {
         merged.set(row.chunkId, row);
       }
     }
-    return [...merged.values()]
-      .sort((left, right) => right.score - left.score)
-      .slice(0, body.limit);
+    return {
+      citations: [...merged.values()]
+        .sort((left, right) => right.score - left.score)
+        .slice(0, body.limit)
+        .map((row) => ({
+          chunkId: row.chunkId,
+          documentId: row.documentId,
+          score: row.score,
+          excerpt: row.excerpt,
+        })),
+    };
   }
 
   async executeTool(
@@ -203,6 +218,49 @@ export class AiService {
           page: 1,
           pageSize: this.positiveInteger(args, 'limit', 5),
         });
+      case 'compareProducts': {
+        const ids = args.productIds;
+        if (!Array.isArray(ids) || ids.length < 2) {
+          throw new BadRequestException({
+            code: 'INVALID_COMPARE',
+            message: 'productIds must be an array of at least 2 ids',
+          });
+        }
+        return this.catalog.compareProducts(
+          ids.filter((id): id is string => typeof id === 'string'),
+        );
+      }
+      case 'getOffers': {
+        const product = (await this.catalog.getProduct(
+          this.optionalString(args, 'productId') ??
+            this.requiredString(args, 'slug'),
+        )) as {
+          variants?: {
+            sku?: { offers?: { id: string; listPriceMinor: number; currency: string; active: boolean }[] };
+          }[];
+          provenance?: unknown;
+        };
+        const offers =
+          product.variants?.flatMap((v) => v.sku?.offers ?? []) ?? [];
+        return { offers, authoritative: true, catalog: 'admin_managed' };
+      }
+      case 'getPriceHistory': {
+        const product = (await this.catalog.getProduct(
+          this.optionalString(args, 'productId') ??
+            this.requiredString(args, 'slug'),
+        )) as { id: string };
+        return this.catalog.getPriceHistory(
+          product.id,
+          this.positiveInteger(args, 'limit', 20),
+        );
+      }
+      case 'getAvailability': {
+        const product = (await this.catalog.getProduct(
+          this.optionalString(args, 'productId') ??
+            this.requiredString(args, 'slug'),
+        )) as { id: string };
+        return this.catalog.getAvailability(product.id);
+      }
       case 'explainPricing':
         return this.explainPricing(
           this.requiredString(args, 'offerId'),

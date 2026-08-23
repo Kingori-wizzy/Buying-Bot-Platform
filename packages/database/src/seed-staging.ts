@@ -25,17 +25,21 @@ export async function seedStagingCatalog(
   const product = await prisma.product.upsert({
     where: { slug: STAGING_PRODUCT_SLUG },
     create: {
-      name: 'Staging Smoke Sample',
+      name: 'Staging Smoke Sample (DEMO / STAGING DATA)',
       slug: STAGING_PRODUCT_SLUG,
-      shortDescription: 'ACTIVE sample product for staging smoke only',
-      description: 'Do not use in production catalogs.',
+      shortDescription:
+        'DEMO / STAGING DATA — synthetic product for smoke tests only',
+      description:
+        'Explicitly synthetic. Do not present as live market pricing. Not for production catalogs.',
       status: 'ACTIVE',
-    },
+      ...( { contentOrigin: 'DEMO' } as Record<string, unknown>),
+    } as never,
     update: {
-      name: 'Staging Smoke Sample',
+      name: 'Staging Smoke Sample (DEMO / STAGING DATA)',
       status: 'ACTIVE',
       deletedAt: null,
-    },
+      ...( { contentOrigin: 'DEMO' } as Record<string, unknown>),
+    } as never,
   });
 
   let variant = await prisma.variant.findFirst({

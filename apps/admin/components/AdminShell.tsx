@@ -115,6 +115,26 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   Products
                 </Link>
               ) : null}
+              {value.can('catalog', 'create') ? (
+                <Link
+                  href="/catalog/imports"
+                  aria-current={
+                    isActive('/catalog/imports') ? 'page' : undefined
+                  }
+                >
+                  Imports
+                </Link>
+              ) : null}
+              {value.can('catalog', 'create') || value.can('catalog', 'read') ? (
+                <Link
+                  href="/catalog/taxonomy"
+                  aria-current={
+                    isActive('/catalog/taxonomy') ? 'page' : undefined
+                  }
+                >
+                  Brands & categories
+                </Link>
+              ) : null}
               {value.can('inventory', 'read') ||
               value.can('inventory', 'update') ? (
                 <Link

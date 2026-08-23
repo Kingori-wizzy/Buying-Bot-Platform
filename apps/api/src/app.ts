@@ -60,6 +60,7 @@ import { ObservabilityModule } from './observability/observability.module.js';
 import { bootstrapOpenTelemetry } from './observability/otel-bootstrap.js';
 import { PaymentsModule } from './payments/payments.module.js';
 import { PricingModule } from './pricing/pricing.module.js';
+import { ProductSourcesModule } from './product-sources/product-sources.module.js';
 import { SecurityModule } from './security/security.module.js';
 
 export interface ApiRuntime {
@@ -124,6 +125,7 @@ function createAppModule(deps: BootstrapDeps): Type<unknown> {
       HealthModule,
       AuthModule,
       CatalogModule,
+      ProductSourcesModule,
       InventoryModule,
       PricingModule,
       CartModule,

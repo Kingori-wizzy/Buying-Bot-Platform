@@ -7,6 +7,7 @@ import {
   publishPendingOutbox,
   requeueFailedOutbox,
 } from '@buying-bot/database';
+import { runProductSourceSync } from '@buying-bot/product-sources';
 import type { OpsServer } from '@buying-bot/utils';
 import {
   createLogger,
@@ -15,6 +16,7 @@ import {
   processHealthCheck,
 } from '@buying-bot/utils';
 
+import { runCatalogImportJob } from './catalog-import.js';
 import { processKnowledgeIngest } from './knowledge-ingest.js';
 import { InMemoryMetrics } from './metrics.js';
 import {
@@ -46,6 +48,15 @@ export async function processOutboxOnce(
     documentId: string;
     content: string;
   }) => Promise<void>,
+  onProductSourceSync?: (payload: {
+    sourceCode: string;
+    syncRunId: string;
+  }) => Promise<void>,
+  onCatalogImport?: (payload: {
+    importId: string;
+    rows: unknown[];
+    parseErrors?: unknown[];
+  }) => Promise<void>,
 ): Promise<number> {
   return publishPendingOutbox(prisma, async (type, payload) => {
     if (type === 'payment.initiate' && onPaymentInitiate) {
@@ -66,6 +77,21 @@ export async function processOutboxOnce(
         payload as { documentId: string; content: string },
       );
       return;
+    }
+    if (type === 'product-source.sync' && onProductSourceSync) {
+      await onProductSourceSync(
+        payload as { sourceCode: string; syncRunId: string },
+      );
+      return;
+    }
+    if (type === 'catalog.import' && onCatalogImport) {
+      await onCatalogImport(
+        payload as {
+          importId: string;
+          rows: unknown[];
+          parseErrors?: unknown[];
+        },
+      );
     }
   });
 }
@@ -115,14 +141,49 @@ export async function bootstrap(
       payload: PaymentInitiatePayload,
     ): Promise<void> => {
       await initiatePaymentFromOutbox(database, payload, {
-        consumerKey: env.MPESA_CONSUMER_KEY,
-        consumerSecret: env.MPESA_CONSUMER_SECRET,
-        shortcode: env.MPESA_SHORTCODE,
-        passkey: env.MPESA_PASSKEY,
-        callbackUrl: env.MPESA_CALLBACK_URL,
-        env: env.MPESA_ENV,
+        provider: env.PAYMENT_PROVIDER,
+        escrow: {
+          apiKey: env.ESCROW_API_KEY,
+          apiSecret: env.ESCROW_API_SECRET,
+          baseUrl: env.ESCROW_BASE_URL,
+          webhookSecret: env.ESCROW_WEBHOOK_SECRET,
+          allowTestDouble: env.ESCROW_ALLOW_TEST_DOUBLE,
+        },
+        mpesa: {
+          enabled: env.MPESA_ENABLED,
+          consumerKey: env.MPESA_CONSUMER_KEY,
+          consumerSecret: env.MPESA_CONSUMER_SECRET,
+          shortcode: env.MPESA_SHORTCODE,
+          passkey: env.MPESA_PASSKEY,
+          callbackUrl: env.MPESA_CALLBACK_URL,
+          env: env.MPESA_ENV,
+        },
       });
       metrics.inc('worker_payment_initiate_total');
+    };
+
+    const productSourceHandler = async (payload: {
+      sourceCode: string;
+      syncRunId: string;
+    }): Promise<void> => {
+      await runProductSourceSync(database, payload);
+      metrics.inc('worker_product_source_sync_total');
+    };
+
+    const catalogImportHandler = async (payload: {
+      importId: string;
+      rows: unknown[];
+      parseErrors?: unknown[];
+    }): Promise<void> => {
+      await runCatalogImportJob(database, {
+        importId: payload.importId,
+        rows: payload.rows as Parameters<typeof runCatalogImportJob>[1]['rows'],
+        parseErrors: (payload.parseErrors ?? []) as {
+          rowNumber: number;
+          error: string;
+        }[],
+      });
+      metrics.inc('worker_catalog_import_total');
     };
 
     timers.push(
@@ -130,7 +191,13 @@ export async function bootstrap(
         if (!prisma) {
           return;
         }
-        void processOutboxOnce(prisma, paymentHandler, knowledgeHandler).catch(
+        void processOutboxOnce(
+          prisma,
+          paymentHandler,
+          knowledgeHandler,
+          productSourceHandler,
+          catalogImportHandler,
+        ).catch(
           (error: unknown) => {
             logger.warn('Outbox tick failed', {
               error: error instanceof Error ? error.message : 'unknown',

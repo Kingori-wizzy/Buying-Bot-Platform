@@ -23,13 +23,13 @@ export class PaymentsWebhookController {
     @Inject(PaymentsService) private readonly payments: PaymentsService,
   ) {}
 
-  @Post('mpesa')
+  @Post('escrow')
   @Public()
   @SkipCsrf()
-  async mpesa(
+  async escrow(
     @Req() request: FastifyRequest,
-    @Headers('x-mpesa-signature') signature: string | undefined,
-    @Headers('x-mpesa-timestamp') timestamp: string | undefined,
+    @Headers('x-escrow-signature') signature: string | undefined,
+    @Headers('x-escrow-timestamp') timestamp: string | undefined,
   ): Promise<{ ok: true; accepted: boolean }> {
     const rawBody =
       typeof request.body === 'string'
@@ -39,28 +39,44 @@ export class PaymentsWebhookController {
       typeof request.body === 'object' && request.body !== null
         ? (request.body as {
             eventId?: string;
+            id?: string;
+            status?: string;
             orderId?: string;
             providerTxnId?: string;
             amountMinor?: number;
             currency?: string;
-            Body?: {
-              stkCallback?: {
-                CheckoutRequestID?: string;
-                MerchantRequestID?: string;
-                ResultCode?: number;
-                CallbackMetadata?: {
-                  Item?: { Name: string; Value: string | number }[];
-                };
-              };
-            };
           })
         : {};
 
-    return this.payments.handleMpesaWebhook({
+    return this.payments.handleEscrowWebhook({
       rawBody,
       signature,
       timestamp,
       payload,
+    });
+  }
+
+  /** Deferred — M-Pesa is not the active customer payment rail. */
+  @Post('mpesa')
+  @Public()
+  @SkipCsrf()
+  async mpesa(
+    @Req() request: FastifyRequest,
+    @Headers('x-mpesa-signature') signature: string | undefined,
+    @Headers('x-mpesa-timestamp') timestamp: string | undefined,
+  ): Promise<{ ok: true; accepted: boolean; deferred: true }> {
+    const rawBody =
+      typeof request.body === 'string'
+        ? request.body
+        : JSON.stringify(request.body ?? {});
+    return this.payments.handleMpesaWebhook({
+      rawBody,
+      signature,
+      timestamp,
+      payload:
+        typeof request.body === 'object' && request.body !== null
+          ? (request.body as Record<string, unknown>)
+          : {},
     });
   }
 }

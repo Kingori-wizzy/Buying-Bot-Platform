@@ -17,6 +17,7 @@
     "@buying-bot/ai-core": "workspace:*",
     "@buying-bot/config": "workspace:*",
     "@buying-bot/database": "workspace:^",
+    "@buying-bot/product-sources": "workspace:^",
     "@buying-bot/utils": "workspace:*",
     "jose": "^6.2.8"
   },

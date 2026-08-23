@@ -26,6 +26,8 @@
     "commitlint": "commitlint --edit",
     "smoke": "node ./scripts/smoke/staging-smoke.mjs",
     "integrity": "node ./scripts/integrity/check-data-integrity.mjs",
+    "verify:sandbox-marketplace": "node --env-file=.env ./scripts/dev/verify-sandbox-marketplace.mjs",
+    "sync:mock-products": "node --env-file=.env ./scripts/dev/sync-mock-products.mjs",
     "security:gate": "node ./scripts/security/security-gate.mjs",
     "test:e2e": "playwright test -c ./e2e/playwright.config.ts",
     "migrate:deploy": "pnpm --filter @buying-bot/database exec prisma migrate deploy",

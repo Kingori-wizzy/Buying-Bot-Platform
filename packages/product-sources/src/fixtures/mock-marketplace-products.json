@@ -1,0 +1,92 @@
+[
+  {
+    "sourceProductId": "mock-samsung-55-4k-2024",
+    "sourceOfferId": "mock-offer-samsung-55",
+    "title": "Samsung 55\" Crystal UHD 4K Smart TV AU8000",
+    "brandName": "Samsung",
+    "categorySlug": "televisions",
+    "shortDescription": "55-inch 4K UHD Smart TV with HDR",
+    "description": "Samsung 55 inch Crystal UHD 4K Smart TV. HDR10+, PurColor, Smart Hub. Screen size: 55 inches. Resolution: 4K UHD.",
+    "sourceUrl": "https://example.com/products/mock-samsung-55-4k",
+    "sellerName": "Mock Marketplace Kenya",
+    "gtin": "8806094567890",
+    "modelNumber": "UA55AU8000",
+    "amountMinor": 6499900,
+    "currency": "KES",
+    "availability": "VERIFIED",
+    "imageUrl": "https://images.example.com/mock/samsung-55-uhd.jpg",
+    "imageAttribution": "Mock Marketplace — licensed fixture for sandbox",
+    "specifications": {
+      "screen_size": "55 inches",
+      "resolution": "4K UHD",
+      "hdr": "HDR10+"
+    },
+    "variantName": "55 inch",
+    "contentOrigin": "SANDBOX"
+  },
+  {
+    "sourceProductId": "mock-lenovo-ideapad-dev",
+    "sourceOfferId": "mock-offer-lenovo-ideapad",
+    "title": "Lenovo IdeaPad 5 16GB RAM 512GB SSD",
+    "brandName": "Lenovo",
+    "categorySlug": "laptops",
+    "shortDescription": "Programming laptop with 16GB RAM under 100k",
+    "description": "Lenovo IdeaPad with AMD Ryzen 5, 16GB RAM, 512GB SSD. Suitable for development workloads.",
+    "sourceUrl": "https://example.com/products/mock-lenovo-ideapad",
+    "sellerName": "Mock Tech Store",
+    "gtin": "0196213456789",
+    "modelNumber": "IDEAPAD-5-16",
+    "amountMinor": 8999900,
+    "currency": "KES",
+    "availability": "VERIFIED",
+    "imageUrl": "https://images.example.com/mock/lenovo-ideapad.jpg",
+    "imageAttribution": "Mock Marketplace — licensed fixture for sandbox",
+    "specifications": {
+      "ram": "16GB",
+      "storage": "512GB SSD"
+    },
+    "variantName": "16GB/512GB",
+    "contentOrigin": "SANDBOX"
+  },
+  {
+    "sourceProductId": "mock-hisense-55-budget",
+    "sourceOfferId": "mock-offer-hisense-55",
+    "title": "Hisense 55\" 4K UHD Smart TV",
+    "brandName": "Hisense",
+    "categorySlug": "televisions",
+    "shortDescription": "Budget 55-inch 4K smart TV",
+    "description": "Hisense 55 inch 4K UHD Smart TV with Dolby Vision.",
+    "sourceUrl": "https://example.com/products/mock-hisense-55",
+    "sellerName": "Mock Marketplace Kenya",
+    "modelNumber": "55A6K",
+    "amountMinor": 5499900,
+    "currency": "KES",
+    "availability": "VERIFIED",
+    "imageUrl": "https://images.example.com/mock/hisense-55.jpg",
+    "imageAttribution": "Mock Marketplace — licensed fixture for sandbox",
+    "specifications": {
+      "screen_size": "55 inches",
+      "resolution": "4K UHD"
+    },
+    "variantName": "55 inch",
+    "contentOrigin": "SANDBOX"
+  },
+  {
+    "sourceProductId": "mock-nike-air-zoom-42",
+    "sourceOfferId": "mock-offer-nike-42",
+    "title": "Nike Air Zoom Pegasus — Size 42",
+    "brandName": "Nike",
+    "categorySlug": "footwear",
+    "shortDescription": "Running shoes size EU 42",
+    "description": "Nike Air Zoom Pegasus running shoes. Size 42.",
+    "sourceUrl": "https://example.com/products/mock-nike-pegasus-42",
+    "sellerName": "Mock Sports Outlet",
+    "amountMinor": 1499900,
+    "currency": "KES",
+    "availability": "UNKNOWN",
+    "imageUrl": "https://images.example.com/mock/nike-pegasus.jpg",
+    "imageAttribution": "Mock Marketplace — licensed fixture for sandbox",
+    "variantName": "EU 42",
+    "contentOrigin": "SANDBOX"
+  }
+]

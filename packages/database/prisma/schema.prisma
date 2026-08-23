@@ -438,20 +438,40 @@ model AttributeDefinition {
   @@schema("catalog")
 }
 
+enum CatalogContentOrigin {
+  ADMIN
+  DEMO
+  IMPORT
+
+  @@schema("catalog")
+}
+
+enum CatalogImportStatus {
+  PENDING
+  DRY_RUN
+  RUNNING
+  SUCCESS
+  FAILED
+  PARTIAL
+
+  @@schema("catalog")
+}
+
 model Product {
-  id                String           @id @default(uuid()) @db.Uuid
+  id                String              @id @default(uuid()) @db.Uuid
   name              String
-  slug              String           @unique
-  shortDescription  String?          @map("short_description")
+  slug              String              @unique
+  shortDescription  String?             @map("short_description")
   description       String?
-  status            ProductLifecycle @default(DRAFT)
-  brandId           String?          @map("brand_id") @db.Uuid
-  primaryCategoryId String?          @map("primary_category_id") @db.Uuid
-  seoTitle          String?          @map("seo_title")
-  seoDescription    String?          @map("seo_description")
-  deletedAt         DateTime?        @map("deleted_at") @db.Timestamptz(3)
-  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  status            ProductLifecycle    @default(DRAFT)
+  contentOrigin     CatalogContentOrigin @default(ADMIN) @map("content_origin")
+  brandId           String?             @map("brand_id") @db.Uuid
+  primaryCategoryId String?             @map("primary_category_id") @db.Uuid
+  seoTitle          String?             @map("seo_title")
+  seoDescription    String?             @map("seo_description")
+  deletedAt         DateTime?           @map("deleted_at") @db.Timestamptz(3)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   brand           Brand?                  @relation(fields: [brandId], references: [id])
   primaryCategory Category?               @relation("PrimaryCategory", fields: [primaryCategoryId], references: [id])
@@ -463,7 +483,48 @@ model Product {
   @@index([status])
   @@index([brandId])
   @@index([primaryCategoryId])
+  @@index([contentOrigin])
   @@map("products")
+  @@schema("catalog")
+}
+
+model CatalogImport {
+  id             String              @id @default(uuid()) @db.Uuid
+  filename       String
+  status         CatalogImportStatus @default(PENDING)
+  dryRun         Boolean             @default(false) @map("dry_run")
+  actingSubject  String?             @map("acting_subject") @db.Uuid
+  rowsTotal      Int                 @default(0) @map("rows_total")
+  rowsCreated    Int                 @default(0) @map("rows_created")
+  rowsUpdated    Int                 @default(0) @map("rows_updated")
+  rowsRejected   Int                 @default(0) @map("rows_rejected")
+  errorReportJson Json               @default("[]") @map("error_report_json")
+  startedAt      DateTime?           @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime?           @map("completed_at") @db.Timestamptz(3)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  rows CatalogImportRow[]
+
+  @@index([status, createdAt])
+  @@map("catalog_imports")
+  @@schema("catalog")
+}
+
+model CatalogImportRow {
+  id         String   @id @default(uuid()) @db.Uuid
+  importId   String   @map("import_id") @db.Uuid
+  rowNumber  Int      @map("row_number")
+  payloadJson Json    @map("payload_json")
+  ok         Boolean  @default(false)
+  error      String?
+  productId  String?  @map("product_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  import CatalogImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+
+  @@index([importId, rowNumber])
+  @@map("catalog_import_rows")
   @@schema("catalog")
 }
 
@@ -562,12 +623,14 @@ model PriceWindow {
 }
 
 model MediaAsset {
-  id        String           @id @default(uuid()) @db.Uuid
-  objectKey String           @map("object_key")
-  mimeType  String           @map("mime_type")
-  status    MediaAssetStatus @default(PENDING)
-  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id           String           @id @default(uuid()) @db.Uuid
+  objectKey    String           @map("object_key")
+  externalUrl  String?          @map("external_url")
+  attribution  String?
+  mimeType     String           @map("mime_type")
+  status       MediaAssetStatus @default(PENDING)
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   productMedia ProductMedia[]
   variantMedia VariantMedia[]
@@ -1006,6 +1069,224 @@ model WebhookReceipt {
   @@unique([provider, eventId])
   @@index([createdAt])
   @@map("webhook_receipts")
+  @@schema("integrations")
+}
+
+enum ProductSourceType {
+  MOCK
+  CSV_FEED
+  MERCHANT_API
+  AFFILIATE_FEED
+  MARKETPLACE_API
+
+  @@map("product_source_type")
+  @@schema("integrations")
+}
+
+enum ProductSourceStatus {
+  ACTIVE
+  PAUSED
+  DEGRADED
+  FAILED
+  NOT_CONFIGURED
+  DISABLED
+  ERROR
+
+  @@map("product_source_status")
+  @@schema("integrations")
+}
+
+enum SourceQuarantineReason {
+  MISSING_IDENTITY
+  INVALID_PRICE
+  UNSUPPORTED_CURRENCY
+  INVALID_IMAGE_URL
+  INVALID_SOURCE_URL
+  INVALID_GTIN
+  MISSING_PROVENANCE
+  OTHER
+
+  @@map("source_quarantine_reason")
+  @@schema("integrations")
+}
+
+enum SourceSyncRunStatus {
+  RUNNING
+  SUCCESS
+  FAILED
+
+  @@map("source_sync_run_status")
+  @@schema("integrations")
+}
+
+enum SourceFreshnessStatus {
+  VERIFIED
+  STALE
+  UNAVAILABLE
+  UNKNOWN
+
+  @@map("source_freshness_status")
+  @@schema("integrations")
+}
+
+enum SourceContentOrigin {
+  REAL_SOURCE
+  SANDBOX
+  TEST
+  DEMO
+
+  @@map("source_content_origin")
+  @@schema("integrations")
+}
+
+model ProductSource {
+  id                   String              @id @default(uuid()) @db.Uuid
+  code                 String              @unique
+  name                 String
+  sourceType           ProductSourceType   @map("source_type")
+  status               ProductSourceStatus @default(ACTIVE)
+  enabled              Boolean             @default(true)
+  configJson           Json                @default("{}") @map("config_json")
+  baseUrl              String?             @map("base_url")
+  apiVersion           String?             @map("api_version")
+  authType             String?             @map("auth_type")
+  syncIntervalMinutes  Int?                @map("sync_interval_minutes")
+  priority             Int                 @default(0)
+  countryCode          String?             @map("country_code")
+  defaultCurrency      String              @default("KES") @map("default_currency")
+  termsUrl             String?             @map("terms_url")
+  affiliateUrlTemplate String?             @map("affiliate_url_template")
+  rateLimitPerMinute   Int                 @default(60) @map("rate_limit_per_minute")
+  attributionRequired  Boolean             @default(false) @map("attribution_required")
+  healthStatus         String?             @map("health_status")
+  lastSyncAt           DateTime?           @map("last_sync_at") @db.Timestamptz(3)
+  lastSuccessAt        DateTime?           @map("last_success_at") @db.Timestamptz(3)
+  lastFailedAt         DateTime?           @map("last_failed_at") @db.Timestamptz(3)
+  lastError            String?             @map("last_error")
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  syncRuns             SourceSyncRun[]
+  productRecords       SourceProductRecord[]
+  priceObservations    PriceObservation[]
+  quarantinedProducts  QuarantinedSourceProduct[]
+
+  @@map("product_sources")
+  @@schema("integrations")
+}
+
+model SourceSyncRun {
+  id                String              @id @default(uuid()) @db.Uuid
+  sourceId          String              @map("source_id") @db.Uuid
+  status            SourceSyncRunStatus @default(RUNNING)
+  correlationId     String              @map("correlation_id")
+  productsFetched   Int                 @default(0) @map("products_fetched")
+  productsAccepted  Int                 @default(0) @map("products_accepted")
+  productsRejected  Int                 @default(0) @map("products_rejected")
+  productsUpdated   Int                 @default(0) @map("products_updated")
+  productsRemoved   Int                 @default(0) @map("products_removed")
+  durationMs        Int?                @map("duration_ms")
+  checkpointJson    Json                @default("{}") @map("checkpoint_json")
+  errorMessage      String?             @map("error_message")
+  startedAt         DateTime            @default(now()) @map("started_at") @db.Timestamptz(3)
+  completedAt       DateTime?           @map("completed_at") @db.Timestamptz(3)
+
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, startedAt])
+  @@map("source_sync_runs")
+  @@schema("integrations")
+}
+
+model SourceProductRecord {
+  id                     String                @id @default(uuid()) @db.Uuid
+  sourceId               String                @map("source_id") @db.Uuid
+  sourceProductId        String                @map("source_product_id")
+  sourceOfferId          String?               @map("source_offer_id")
+  productId              String?               @map("product_id") @db.Uuid
+  offerId                String?               @map("offer_id") @db.Uuid
+  skuId                  String?               @map("sku_id") @db.Uuid
+  sourceUrl              String                @map("source_url")
+  sellerName             String                @map("seller_name")
+  title                  String
+  brandName              String?               @map("brand_name")
+  gtin                   String?
+  dedupeKey              String                @map("dedupe_key")
+  canonicalGroupId       String?               @map("canonical_group_id") @db.Uuid
+  imageUrl               String?               @map("image_url")
+  imageAttribution       String?               @map("image_attribution")
+  priceMinor             Int?                  @map("price_minor")
+  currency               String?
+  availabilityStatus     SourceFreshnessStatus @default(UNKNOWN) @map("availability_status")
+  contentOrigin          SourceContentOrigin   @default(SANDBOX) @map("content_origin")
+  priceObservedAt        DateTime?             @map("price_observed_at") @db.Timestamptz(3)
+  availabilityObservedAt DateTime?             @map("availability_observed_at") @db.Timestamptz(3)
+  lastSeenAt             DateTime              @map("last_seen_at") @db.Timestamptz(3)
+  rawSnapshotJson        Json                  @default("{}") @map("raw_snapshot_json")
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime              @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  source            ProductSource      @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  priceObservations PriceObservation[]
+
+  @@unique([sourceId, sourceProductId])
+  @@index([dedupeKey])
+  @@index([productId])
+  @@index([canonicalGroupId])
+  @@map("source_product_records")
+  @@schema("integrations")
+}
+
+model PriceObservation {
+  id                    String   @id @default(uuid()) @db.Uuid
+  sourceId              String   @map("source_id") @db.Uuid
+  sourceProductRecordId String   @map("source_product_record_id") @db.Uuid
+  offerId               String?  @map("offer_id") @db.Uuid
+  amountMinor           Int      @map("amount_minor")
+  currency              String
+  observedAt            DateTime @map("observed_at") @db.Timestamptz(3)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  source              ProductSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  sourceProductRecord SourceProductRecord @relation(fields: [sourceProductRecordId], references: [id], onDelete: Cascade)
+
+  @@index([sourceProductRecordId, observedAt])
+  @@index([offerId])
+  @@map("price_observations")
+  @@schema("integrations")
+}
+
+model QuarantinedSourceProduct {
+  id              String                 @id @default(uuid()) @db.Uuid
+  sourceId        String                 @map("source_id") @db.Uuid
+  sourceProductId String                 @map("source_product_id")
+  reason          SourceQuarantineReason
+  detail          String?
+  rawSnapshotJson Json                   @default("{}") @map("raw_snapshot_json")
+  createdAt       DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  source ProductSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId, createdAt])
+  @@map("quarantined_source_products")
+  @@schema("integrations")
+}
+
+model PriceAlert {
+  id               String   @id @default(uuid()) @db.Uuid
+  subjectId        String   @map("subject_id") @db.Uuid
+  productId        String?  @map("product_id") @db.Uuid
+  offerId          String?  @map("offer_id") @db.Uuid
+  targetPriceMinor Int      @map("target_price_minor")
+  currency         String
+  active           Boolean  @default(true)
+  notifiedAt       DateTime? @map("notified_at") @db.Timestamptz(3)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([subjectId, active])
+  @@index([offerId, active])
+  @@map("price_alerts")
   @@schema("integrations")
 }
 
