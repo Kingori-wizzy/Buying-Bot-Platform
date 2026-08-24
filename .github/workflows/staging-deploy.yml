@@ -57,7 +57,7 @@ jobs:
             build_args: NEXT_PUBLIC_API_BASE_URL=https://staging.example.com
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Lowercase owner
         id: owner
