@@ -2,34 +2,16 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
-export interface StoredObject {
-  readonly objectKey: string;
-  readonly absolutePath: string;
-  readonly publicUrl: string | null;
-  readonly size: number;
-  readonly mimeType: string;
-}
-
-export interface ObjectStoragePort {
-  put(input: {
-    readonly bytes: Buffer;
-    readonly mimeType: string;
-    readonly originalName?: string | undefined;
-  }): Promise<StoredObject>;
-  get(objectKey: string): Promise<{ bytes: Buffer; mimeType: string } | null>;
-  delete(objectKey: string): Promise<void>;
-}
-
-const EXT_BY_MIME: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-};
+import {
+  buildProductObjectKey,
+  mimeFromObjectKey,
+  type ObjectStoragePort,
+  type StoredObject,
+} from './object-storage.port.js';
 
 /**
  * Local filesystem object storage for development.
- * Production should swap for S3/GCS/Azure via the same port.
+ * Production uses S3CompatibleStorage (MinIO / AWS S3).
  */
 export class LocalFilesystemStorage implements ObjectStoragePort {
   constructor(
@@ -43,14 +25,16 @@ export class LocalFilesystemStorage implements ObjectStoragePort {
     readonly originalName?: string | undefined;
   }): Promise<StoredObject> {
     const id = randomUUID();
-    const ext =
-      EXT_BY_MIME[input.mimeType] ??
-      (input.originalName?.includes('.')
-        ? input.originalName.split('.').pop()?.toLowerCase()
-        : 'bin') ??
-      'bin';
-    const hash = createHash('sha256').update(input.bytes).digest('hex').slice(0, 12);
-    const objectKey = `products/${id}-${hash}.${ext}`;
+    const hash = createHash('sha256')
+      .update(input.bytes)
+      .digest('hex')
+      .slice(0, 12);
+    const objectKey = buildProductObjectKey(
+      input.mimeType,
+      input.originalName,
+      hash,
+      id,
+    );
     const absolutePath = path.join(this.rootDir, objectKey);
     await mkdir(path.dirname(absolutePath), { recursive: true });
     await writeFile(absolutePath, input.bytes);
@@ -73,11 +57,7 @@ export class LocalFilesystemStorage implements ObjectStoragePort {
     const absolutePath = path.join(this.rootDir, safe);
     try {
       const bytes = await readFile(absolutePath);
-      const ext = path.extname(safe).toLowerCase();
-      const mimeType =
-        Object.entries(EXT_BY_MIME).find(([, e]) => `.${e}` === ext)?.[0] ??
-        'application/octet-stream';
-      return { bytes, mimeType };
+      return { bytes, mimeType: mimeFromObjectKey(safe) };
     } catch {
       return null;
     }

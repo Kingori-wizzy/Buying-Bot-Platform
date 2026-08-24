@@ -148,7 +148,13 @@ export async function confirmPaymentForOrder(
     if (!order) {
       throw new Error('Order not found');
     }
-    if (order.status === 'PAID' || order.status === 'RECONCILIATION_HOLD') {
+    if (
+      order.status === 'PAID' ||
+      order.status === 'PROCESSING' ||
+      order.status === 'FULFILLING' ||
+      order.status === 'COMPLETED' ||
+      order.status === 'RECONCILIATION_HOLD'
+    ) {
       return { alreadyProcessed: true };
     }
     if (order.status !== 'PENDING_PAYMENT') {
@@ -259,6 +265,44 @@ export async function confirmPaymentForOrder(
       where: { id: order.id },
       data: { status: nextStatus },
     });
+
+    if (nextStatus === 'PAID') {
+      const items = await tx.orderItem.findMany({
+        where: { orderId: order.id },
+      });
+      for (const item of items) {
+        const offer = await tx.offer.findFirst({
+          where: { id: item.offerId, deletedAt: null },
+        });
+        const method = offer?.deliveryMethod ?? 'MANUAL';
+        if (method === 'NONE') {
+          continue;
+        }
+        const existing = await tx.digitalFulfillment.findFirst({
+          where: { orderId: order.id, orderItemId: item.id },
+        });
+        if (existing) {
+          continue;
+        }
+        await tx.digitalFulfillment.create({
+          data: {
+            orderId: order.id,
+            orderItemId: item.id,
+            deliveryMethod: method,
+            status: 'PENDING',
+            deliveryPayloadJson: {
+              productName: item.productName,
+              skuCode: item.skuCode,
+              note: 'Awaiting authorized digital delivery',
+            },
+          },
+        });
+      }
+      await tx.order.update({
+        where: { id: order.id },
+        data: { status: 'PROCESSING' },
+      });
+    }
 
     return { alreadyProcessed: false };
   });

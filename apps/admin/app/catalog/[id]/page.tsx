@@ -101,11 +101,7 @@ export default function CatalogEditPage() {
           ? { seoDescription: seoDescription.trim() }
           : {}),
         status: status as
-          | 'DRAFT'
-          | 'PENDING_REVIEW'
-          | 'ACTIVE'
-          | 'INACTIVE'
-          | 'ARCHIVED',
+          'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED',
       });
 
       const skuId = product?.variants?.[0]?.sku?.id;
@@ -170,8 +166,70 @@ export default function CatalogEditPage() {
     }
   }
 
+  async function onUnpublish(): Promise<void> {
+    if (!can('catalog', 'update')) {
+      setError('Missing catalog:update');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await createBrowserSdk().adminUnpublishProduct(params.id);
+      await reload();
+      setMessage('Unpublished (INACTIVE)');
+    } catch (err) {
+      setError(
+        err instanceof PlatformApiError ? err.message : 'Unpublish failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onArchive(): Promise<void> {
+    if (!can('catalog', 'update')) {
+      setError('Missing catalog:update');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await createBrowserSdk().adminArchiveProduct(params.id);
+      await reload();
+      setMessage('Archived');
+    } catch (err) {
+      setError(
+        err instanceof PlatformApiError ? err.message : 'Archive failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onRemoveImage(assetId: string): Promise<void> {
+    if (!can('catalog', 'update')) {
+      setError('Missing catalog:update');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await createBrowserSdk().adminDeleteMedia(assetId);
+      await reload();
+      setMessage('Image removed');
+    } catch (err) {
+      setError(
+        err instanceof PlatformApiError ? err.message : 'Remove image failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const offer = product?.variants?.[0]?.sku?.offers?.[0];
-  const primaryImage = product?.media?.[0]?.mediaAsset?.externalUrl;
 
   return (
     <section className="stack">
@@ -179,8 +237,7 @@ export default function CatalogEditPage() {
         <div>
           <h1 style={{ margin: 0 }}>Edit product</h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            {product?.slug ?? '…'} · origin{' '}
-            {product?.contentOrigin ?? 'ADMIN'}
+            {product?.slug ?? '…'} · origin {product?.contentOrigin ?? 'ADMIN'}
           </p>
         </div>
         <button
@@ -192,6 +249,26 @@ export default function CatalogEditPage() {
           }}
         >
           Publish
+        </button>
+        <button
+          className="btn btn-ghost"
+          type="button"
+          disabled={busy || !can('catalog', 'update')}
+          onClick={() => {
+            void onUnpublish();
+          }}
+        >
+          Unpublish
+        </button>
+        <button
+          className="btn btn-ghost"
+          type="button"
+          disabled={busy || !can('catalog', 'update')}
+          onClick={() => {
+            void onArchive();
+          }}
+        >
+          Archive
         </button>
       </div>
 
@@ -259,7 +336,9 @@ export default function CatalogEditPage() {
             : ' No offer yet — set a price before publishing.'}
         </p>
         <div className="field">
-          <label htmlFor="price">List price (minor units, e.g. 6499900 = KSh 64,999.00)</label>
+          <label htmlFor="price">
+            List price (minor units, e.g. 6499900 = KSh 64,999.00)
+          </label>
           <input
             id="price"
             inputMode="numeric"
@@ -282,12 +361,38 @@ export default function CatalogEditPage() {
         </div>
 
         <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Media</h2>
-        {primaryImage ? (
-          <img
-            src={primaryImage}
-            alt=""
-            style={{ maxWidth: 220, borderRadius: 8 }}
-          />
+        {product?.media && product.media.length > 0 ? (
+          <ul className="stack" style={{ listStyle: 'none', padding: 0 }}>
+            {product.media.map((row) => {
+              const asset = row.mediaAsset;
+              if (!asset) {
+                return null;
+              }
+              return (
+                <li key={asset.id}>
+                  {asset.externalUrl ? (
+                    <img
+                      src={asset.externalUrl}
+                      alt=""
+                      style={{ maxWidth: 220, borderRadius: 8 }}
+                    />
+                  ) : (
+                    <p className="muted">{asset.objectKey}</p>
+                  )}
+                  <button
+                    className="btn btn-ghost"
+                    type="button"
+                    disabled={busy || !can('catalog', 'update')}
+                    onClick={() => {
+                      void onRemoveImage(asset.id);
+                    }}
+                  >
+                    Remove image
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         ) : (
           <p className="muted">No image linked yet.</p>
         )}
@@ -380,7 +485,8 @@ export default function CatalogEditPage() {
 
         {product?.variants?.[0]?.sku ? (
           <p className="muted" style={{ margin: 0 }}>
-            SKU: {product.variants[0].sku.internalSku ?? product.variants[0].sku.id}
+            SKU:{' '}
+            {product.variants[0].sku.internalSku ?? product.variants[0].sku.id}
           </p>
         ) : null}
 

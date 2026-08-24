@@ -53,6 +53,12 @@ export class CatalogPublicController {
     return this.catalog.listCategories();
   }
 
+  @Get('categories/:slug')
+  @Public()
+  categoryBySlug(@Param('slug') slug: string): Promise<unknown> {
+    return this.catalog.getCategoryBySlug(slug);
+  }
+
   @Get('brands')
   @Public()
   brands(): Promise<unknown> {
@@ -79,9 +85,7 @@ export class CatalogPublicController {
 
   @Get('products/:idOrSlug/price-history')
   @Public()
-  priceHistory(
-    @Param('idOrSlug') idOrSlug: string,
-  ): Promise<unknown> {
+  priceHistory(@Param('idOrSlug') idOrSlug: string): Promise<unknown> {
     return this.catalog
       .getProduct(idOrSlug)
       .then((product) =>

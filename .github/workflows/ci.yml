@@ -58,6 +58,9 @@ jobs:
       HOST: 0.0.0.0
       PORT: '3000'
       PAYMENTS_ENABLED: 'false'
+      PAYMENT_PROVIDER: escrow
+      MARKETPLACE_INGESTION_ENABLED: 'false'
+      MPESA_ENABLED: 'false'
       AI_PROVIDER: deterministic
 
     steps:
@@ -157,6 +160,9 @@ jobs:
         run: |
           if [[ -f /tmp/api.pid ]]; then kill "$(cat /tmp/api.pid)" || true; fi
 
+      - name: Security gate
+        run: pnpm run security:gate
+
       - name: Dependency audit
         run: pnpm audit --audit-level=high
 
@@ -172,6 +178,12 @@ jobs:
           - app: api
             dockerfile: infrastructure/docker/base/Dockerfile.node
             build_args: APP_NAME=api
+          - app: worker
+            dockerfile: infrastructure/docker/base/Dockerfile.node
+            build_args: APP_NAME=worker
+          - app: ai-service
+            dockerfile: infrastructure/docker/base/Dockerfile.node
+            build_args: APP_NAME=ai-service
           - app: web
             dockerfile: infrastructure/docker/apps/Dockerfile.web
             build_args: |

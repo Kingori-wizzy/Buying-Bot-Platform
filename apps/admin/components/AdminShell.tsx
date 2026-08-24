@@ -59,10 +59,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     if (pathname === '/login') return;
     if (me?.realm !== 'admin') {
       router.replace('/login');
-      return;
-    }
-    if (!me.mfaSatisfied && pathname !== '/login') {
-      router.replace('/login?mfa=1');
     }
   }, [loading, me, pathname, router]);
 
@@ -125,7 +121,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   Imports
                 </Link>
               ) : null}
-              {value.can('catalog', 'create') || value.can('catalog', 'read') ? (
+              {value.can('catalog', 'create') ||
+              value.can('catalog', 'read') ? (
                 <Link
                   href="/catalog/taxonomy"
                   aria-current={

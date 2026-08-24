@@ -15,7 +15,6 @@ import {
 
 import type { ApiEnv } from '../config/env.js';
 import { APP_ENV, DATABASE_CLIENT, PRODUCT_CACHE } from '../config/tokens.js';
-import { LocalFilesystemStorage } from '../media/local-filesystem.storage.js';
 import { validateUpload } from '../security/upload-validation.js';
 import type {
   CreateBrandBody,
@@ -31,14 +30,56 @@ import type {
 import { parseCatalogCsv } from './catalog-csv.js';
 import { pickPrimaryImage } from './catalog-provenance.js';
 import { type ProductCache, productCacheKey } from './product-cache.js';
-import { looksLikeUuid,slugify, slugWithSuffix } from './slug.js';
+import { looksLikeUuid, slugify, slugWithSuffix } from './slug.js';
 
 /** Public catalog only exposes active, non-deleted offers (matches getProduct). */
 const ACTIVE_OFFER_WHERE = { active: true, deletedAt: null } as const;
 
+function availableUnits(product: {
+  variants: {
+    sku?: {
+      offers?: { listPriceMinor: number; inventoryMode?: string }[];
+      inventoryBalances?: { onHand: number; reserved: number }[];
+    } | null;
+  }[];
+}): number {
+  const unlimited = product.variants.some((variant) =>
+    (variant.sku?.offers ?? []).some(
+      (offer) => offer.inventoryMode === 'UNLIMITED',
+    ),
+  );
+  if (unlimited) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+  return product.variants.reduce((sum, variant) => {
+    const balances = variant.sku?.inventoryBalances ?? [];
+    return (
+      sum +
+      balances.reduce(
+        (acc, row) => acc + Math.max(0, row.onHand - row.reserved),
+        0,
+      )
+    );
+  }, 0);
+}
+
+function lowestOfferMinor(product: {
+  variants: {
+    sku?: { offers?: { listPriceMinor: number }[] } | null;
+  }[];
+}): number | null {
+  const prices = product.variants.flatMap((v) => v.sku?.offers ?? []);
+  if (prices.length === 0) {
+    return null;
+  }
+  return Math.min(...prices.map((o) => o.listPriceMinor));
+}
+
 type CatalogPrisma = PrismaClient & {
   catalogImport: {
-    create: (args: { data: Record<string, unknown> }) => Promise<{ id: string }>;
+    create: (args: {
+      data: Record<string, unknown>;
+    }) => Promise<{ id: string }>;
     update: (args: {
       where: { id: string };
       data: Record<string, unknown>;
@@ -81,16 +122,85 @@ export class CatalogService {
     total: number;
   }> {
     const prisma = this.prisma();
+    let categoryId = query.categoryId;
+    if (!categoryId && query.categorySlug) {
+      const cat = await prisma.category.findFirst({
+        where: { slug: query.categorySlug, deletedAt: null, active: true },
+      });
+      categoryId = cat?.id;
+      if (!categoryId) {
+        return {
+          items: [],
+          page: query.page,
+          pageSize: query.pageSize,
+          total: 0,
+        };
+      }
+    }
+    const childIds =
+      categoryId !== undefined
+        ? (
+            await prisma.category.findMany({
+              where: { parentId: categoryId, deletedAt: null },
+              select: { id: true },
+            })
+          ).map((c) => c.id)
+        : [];
+    const categoryFilter =
+      categoryId !== undefined
+        ? {
+            primaryCategoryId: {
+              in: [categoryId, ...childIds],
+            },
+          }
+        : {};
+
     const where = {
       deletedAt: null,
       status: 'ACTIVE' as const,
       ...(query.brandId ? { brandId: query.brandId } : {}),
-      ...(query.categoryId ? { primaryCategoryId: query.categoryId } : {}),
+      ...categoryFilter,
+      ...(query.productKind ? { productKind: query.productKind } : {}),
+      ...(query.digitalType ? { digitalType: query.digitalType } : {}),
       ...(query.q
         ? {
             OR: [
               { name: { contains: query.q, mode: 'insensitive' as const } },
               { slug: { contains: query.q, mode: 'insensitive' as const } },
+              {
+                shortDescription: {
+                  contains: query.q,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                description: {
+                  contains: query.q,
+                  mode: 'insensitive' as const,
+                },
+              },
+              {
+                brand: {
+                  name: { contains: query.q, mode: 'insensitive' as const },
+                },
+              },
+              {
+                primaryCategory: {
+                  name: { contains: query.q, mode: 'insensitive' as const },
+                },
+              },
+              {
+                variants: {
+                  some: {
+                    sku: {
+                      internalSku: {
+                        contains: query.q,
+                        mode: 'insensitive' as const,
+                      },
+                    },
+                  },
+                },
+              },
             ],
           }
         : {}),
@@ -122,21 +232,41 @@ export class CatalogService {
         where,
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
-        orderBy: { createdAt: 'desc' },
+        orderBy:
+          query.sort === 'price_asc' || query.sort === 'price_desc'
+            ? { createdAt: 'desc' as const }
+            : { createdAt: 'desc' as const },
         include: {
           brand: true,
           primaryCategory: true,
           media: { include: { mediaAsset: true } },
           variants: {
             include: {
-              sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
+              sku: {
+                include: {
+                  offers: { where: ACTIVE_OFFER_WHERE },
+                  inventoryBalances: true,
+                },
+              },
             },
           },
         },
       }),
     ]);
+    let filtered = items;
+    if (query.inStock === true) {
+      filtered = filtered.filter((product) => availableUnits(product) > 0);
+    }
+    if (query.sort === 'price_asc' || query.sort === 'price_desc') {
+      const dir = query.sort === 'price_asc' ? 1 : -1;
+      filtered = [...filtered].sort((a, b) => {
+        const pa = lowestOfferMinor(a) ?? Number.POSITIVE_INFINITY;
+        const pb = lowestOfferMinor(b) ?? Number.POSITIVE_INFINITY;
+        return (pa - pb) * dir;
+      });
+    }
     return {
-      items: await this.enrichPublicProducts(items),
+      items: await this.enrichPublicProducts(filtered),
       page: query.page,
       pageSize: query.pageSize,
       total,
@@ -239,6 +369,95 @@ export class CatalogService {
     return this.prisma().category.findMany({
       where: { deletedAt: null, active: true },
       orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+      include: {
+        children: {
+          where: { deletedAt: null, active: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+        },
+        _count: {
+          select: {
+            primaryProducts: {
+              where: { deletedAt: null, status: 'ACTIVE' },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async getCategoryBySlug(slug: string): Promise<unknown> {
+    const category = await this.prisma().category.findFirst({
+      where: { slug, deletedAt: null, active: true },
+      include: {
+        parent: true,
+        children: {
+          where: { deletedAt: null, active: true },
+          orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+          include: {
+            _count: {
+              select: {
+                primaryProducts: {
+                  where: { deletedAt: null, status: 'ACTIVE' },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            primaryProducts: {
+              where: { deletedAt: null, status: 'ACTIVE' },
+            },
+          },
+        },
+      },
+    });
+    if (!category) {
+      throw new NotFoundException({
+        code: 'CATEGORY_NOT_FOUND',
+        message: 'Category not found',
+      });
+    }
+    return category;
+  }
+
+  async updateCategory(
+    id: string,
+    body: import('./catalog.schemas.js').UpdateCategoryBody,
+  ): Promise<unknown> {
+    const prisma = this.prisma();
+    const existing = await prisma.category.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!existing) {
+      throw new NotFoundException({
+        code: 'CATEGORY_NOT_FOUND',
+        message: 'Category not found',
+      });
+    }
+    let slug = existing.slug;
+    if (body.slug !== undefined || body.name !== undefined) {
+      slug = await this.ensureUniqueSlug(
+        'category',
+        body.slug ?? body.name ?? existing.name,
+        id,
+      );
+    }
+    return prisma.category.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        slug,
+        ...(body.parentId !== undefined ? { parentId: body.parentId } : {}),
+        ...(body.description !== undefined
+          ? { description: body.description }
+          : {}),
+        ...(body.sortOrder !== undefined ? { sortOrder: body.sortOrder } : {}),
+        ...(body.active !== undefined ? { active: body.active } : {}),
+        ...(body.archived === true
+          ? { active: false, deletedAt: new Date() }
+          : {}),
+      },
     });
   }
 
@@ -286,26 +505,62 @@ export class CatalogService {
         media: { include: { mediaAsset: true } },
         variants: {
           include: {
-            sku: { include: { offers: { where: ACTIVE_OFFER_WHERE } } },
+            sku: {
+              include: {
+                offers: { where: ACTIVE_OFFER_WHERE },
+                inventoryBalances: true,
+              },
+            },
           },
         },
       },
     });
     const byId = new Map(products.map((p) => [p.id, p]));
-    let ordered = ids.map((id) => byId.get(id)).filter(Boolean) as typeof products;
+    let ordered = ids
+      .map((id) => byId.get(id))
+      .filter(Boolean) as typeof products;
 
-    if (query.priceMinMinor !== undefined || query.priceMaxMinor !== undefined) {
+    if (
+      query.priceMinMinor !== undefined ||
+      query.priceMaxMinor !== undefined
+    ) {
       ordered = ordered.filter((product) => {
         const prices = product.variants.flatMap((v) => v.sku?.offers ?? []);
         return prices.some((offer) => {
-          if (query.priceMinMinor !== undefined && offer.listPriceMinor < query.priceMinMinor) {
+          if (
+            query.priceMinMinor !== undefined &&
+            offer.listPriceMinor < query.priceMinMinor
+          ) {
             return false;
           }
-          if (query.priceMaxMinor !== undefined && offer.listPriceMinor > query.priceMaxMinor) {
+          if (
+            query.priceMaxMinor !== undefined &&
+            offer.listPriceMinor > query.priceMaxMinor
+          ) {
             return false;
           }
           return true;
         });
+      });
+    }
+
+    if (query.brandId) {
+      ordered = ordered.filter((product) => product.brandId === query.brandId);
+    }
+    if (query.categoryId) {
+      ordered = ordered.filter(
+        (product) => product.primaryCategoryId === query.categoryId,
+      );
+    }
+    if (query.inStock === true) {
+      ordered = ordered.filter((product) => availableUnits(product) > 0);
+    }
+    if (query.sort === 'price_asc' || query.sort === 'price_desc') {
+      const dir = query.sort === 'price_asc' ? 1 : -1;
+      ordered = [...ordered].sort((a, b) => {
+        const pa = lowestOfferMinor(a) ?? Number.POSITIVE_INFINITY;
+        const pb = lowestOfferMinor(b) ?? Number.POSITIVE_INFINITY;
+        return (pa - pb) * dir;
       });
     }
 
@@ -387,9 +642,17 @@ export class CatalogService {
           shortDescription: body.shortDescription ?? null,
           description: body.description ?? null,
           status: body.status ?? 'DRAFT',
-          ...( {
-            contentOrigin: body.contentOrigin ?? 'ADMIN',
-          } as Record<string, unknown>),
+          contentOrigin: body.contentOrigin ?? 'ADMIN',
+          productKind: body.productKind ?? 'DIGITAL',
+          digitalType:
+            body.digitalType === undefined
+              ? body.productKind === 'PHYSICAL'
+                ? null
+                : 'OTHER'
+              : body.digitalType,
+          ...(body.features ? { featuresJson: body.features } : {}),
+          requirementsText: body.requirementsText ?? null,
+          instructionsText: body.instructionsText ?? null,
           brandId: body.brandId ?? null,
           primaryCategoryId: body.primaryCategoryId ?? null,
           seoTitle: body.seoTitle ?? null,
@@ -416,10 +679,18 @@ export class CatalogService {
             listPriceMinor: body.listPriceMinor,
             currency,
             active: true,
+            inventoryMode: body.inventoryMode ?? 'FINITE',
+            deliveryMethod: body.deliveryMethod ?? 'MANUAL',
+            validityDays: body.validityDays ?? null,
           },
         });
       }
-      if (location && body.initialStock !== undefined) {
+      const inventoryMode = body.inventoryMode ?? 'FINITE';
+      if (
+        location &&
+        body.initialStock !== undefined &&
+        inventoryMode === 'FINITE'
+      ) {
         await tx.inventoryBalance.create({
           data: {
             skuId: sku.id,
@@ -437,7 +708,9 @@ export class CatalogService {
             created.name,
             created.shortDescription,
             created.description,
+            created.digitalType,
             internalSku,
+            body.features?.join(' '),
           ]
             .filter(Boolean)
             .join(' '),
@@ -447,7 +720,9 @@ export class CatalogService {
             created.name,
             created.shortDescription,
             created.description,
+            created.digitalType,
             internalSku,
+            body.features?.join(' '),
           ]
             .filter(Boolean)
             .join(' '),
@@ -494,7 +769,22 @@ export class CatalogService {
             : {}),
           ...(body.status !== undefined ? { status: body.status } : {}),
           ...(body.contentOrigin !== undefined
-            ? ({ contentOrigin: body.contentOrigin } as Record<string, unknown>)
+            ? { contentOrigin: body.contentOrigin }
+            : {}),
+          ...(body.productKind !== undefined
+            ? { productKind: body.productKind }
+            : {}),
+          ...(body.digitalType !== undefined
+            ? { digitalType: body.digitalType }
+            : {}),
+          ...(body.features !== undefined
+            ? { featuresJson: body.features }
+            : {}),
+          ...(body.requirementsText !== undefined
+            ? { requirementsText: body.requirementsText }
+            : {}),
+          ...(body.instructionsText !== undefined
+            ? { instructionsText: body.instructionsText }
             : {}),
           ...(body.brandId !== undefined ? { brandId: body.brandId } : {}),
           ...(body.primaryCategoryId !== undefined
@@ -506,6 +796,24 @@ export class CatalogService {
             : {}),
         },
       });
+      const categoryId = updated.primaryCategoryId;
+      const category = categoryId
+        ? await tx.category.findFirst({
+            where: { id: categoryId, deletedAt: null },
+          })
+        : null;
+      const brandId = updated.brandId;
+      const brand = brandId
+        ? await tx.brand.findFirst({
+            where: { id: brandId, deletedAt: null },
+          })
+        : null;
+      const sku = await tx.sku.findFirst({
+        where: {
+          variant: { productId: id, deletedAt: null },
+          deletedAt: null,
+        },
+      });
       await tx.productSearchDocument.upsert({
         where: { productId: id },
         create: {
@@ -514,6 +822,14 @@ export class CatalogService {
             updated.name,
             updated.shortDescription,
             updated.description,
+            updated.digitalType,
+            category?.name,
+            category?.slug,
+            brand?.name,
+            sku?.internalSku,
+            Array.isArray(updated.featuresJson)
+              ? (updated.featuresJson as string[]).join(' ')
+              : null,
           ]
             .filter(Boolean)
             .join(' '),
@@ -523,6 +839,14 @@ export class CatalogService {
             updated.name,
             updated.shortDescription,
             updated.description,
+            updated.digitalType,
+            category?.name,
+            category?.slug,
+            brand?.name,
+            sku?.internalSku,
+            Array.isArray(updated.featuresJson)
+              ? (updated.featuresJson as string[]).join(' ')
+              : null,
           ]
             .filter(Boolean)
             .join(' '),
@@ -539,6 +863,14 @@ export class CatalogService {
   async publishProduct(id: string): Promise<unknown> {
     await this.assertProductPublishable(id);
     return this.updateProduct(id, { status: 'ACTIVE' });
+  }
+
+  async unpublishProduct(id: string): Promise<unknown> {
+    return this.updateProduct(id, { status: 'INACTIVE' });
+  }
+
+  async archiveProduct(id: string): Promise<unknown> {
+    return this.updateProduct(id, { status: 'ARCHIVED' });
   }
 
   private async assertProductPublishable(productId: string): Promise<void> {
@@ -605,6 +937,8 @@ export class CatalogService {
     pageSize: number;
     status?: string;
     q?: string;
+    categoryId?: string;
+    digitalType?: string;
   }): Promise<{
     items: unknown[];
     page: number;
@@ -620,14 +954,35 @@ export class CatalogService {
       'ARCHIVED',
     ] as const;
     const statusFilter = allowed.find((value) => value === query.status);
+    const digitalTypes = [
+      'DIGITAL_ACCOUNT',
+      'DIGITAL_SUBSCRIPTION',
+      'DIGITAL_SERVICE',
+      'DIGITAL_ACCESS',
+      'DIGITAL_LICENSE',
+      'DIGITAL_CREDENTIAL',
+      'DIGITAL_REWARD',
+      'OTHER',
+    ] as const;
+    const digitalTypeFilter = digitalTypes.find(
+      (value) => value === query.digitalType,
+    );
     const where = {
       deletedAt: null,
       ...(statusFilter ? { status: statusFilter } : {}),
+      ...(query.categoryId ? { primaryCategoryId: query.categoryId } : {}),
+      ...(digitalTypeFilter ? { digitalType: digitalTypeFilter } : {}),
       ...(query.q
         ? {
             OR: [
               { name: { contains: query.q, mode: 'insensitive' as const } },
               { slug: { contains: query.q, mode: 'insensitive' as const } },
+              {
+                shortDescription: {
+                  contains: query.q,
+                  mode: 'insensitive' as const,
+                },
+              },
             ],
           }
         : {}),
@@ -674,6 +1029,9 @@ export class CatalogService {
         taxInclusive: body.taxInclusive ?? true,
         taxClass: body.taxClass ?? null,
         active: body.active ?? true,
+        inventoryMode: body.inventoryMode ?? 'FINITE',
+        deliveryMethod: body.deliveryMethod ?? 'MANUAL',
+        validityDays: body.validityDays ?? null,
       },
     });
   }
@@ -750,13 +1108,9 @@ export class CatalogService {
       },
     );
 
-    const root =
-      this.env?.MEDIA_LOCAL_ROOT ??
-      `${process.cwd()}${process.cwd().includes('\\') ? '\\' : '/'}.data/media`;
-    const publicBase =
-      this.env?.MEDIA_PUBLIC_BASE_URL ??
-      `${this.env?.PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:3000'}/v1/media/files`;
-    const storage = new LocalFilesystemStorage(root, publicBase);
+    const { createObjectStorage } =
+      await import('../media/create-object-storage.js');
+    const storage = createObjectStorage(this.env);
     const stored = await storage.put({
       bytes,
       mimeType: body.mimeType,
@@ -777,6 +1131,33 @@ export class CatalogService {
           ? { attribution: body.altText }
           : { attribution: 'Administrator-uploaded product image' }),
     });
+  }
+
+  async deleteMedia(id: string): Promise<{ ok: true }> {
+    const prisma = this.prisma();
+    const asset = await prisma.mediaAsset.findFirst({ where: { id } });
+    if (!asset || asset.status === 'DELETED') {
+      throw new NotFoundException({
+        code: 'MEDIA_NOT_FOUND',
+        message: 'Media asset not found',
+      });
+    }
+    await prisma.$transaction(async (tx) => {
+      await tx.productMedia.deleteMany({ where: { mediaAssetId: id } });
+      await tx.variantMedia.deleteMany({ where: { mediaAssetId: id } });
+      await tx.mediaAsset.update({
+        where: { id },
+        data: { status: 'DELETED' },
+      });
+    });
+    try {
+      const { createObjectStorage } =
+        await import('../media/create-object-storage.js');
+      await createObjectStorage(this.env).delete(asset.objectKey);
+    } catch {
+      // Object already gone or driver unavailable — metadata is deleted.
+    }
+    return { ok: true };
   }
 
   getMediaStorageRoot(): string {
@@ -809,6 +1190,15 @@ export class CatalogService {
           ? { taxInclusive: body.taxInclusive }
           : {}),
         ...(body.taxClass !== undefined ? { taxClass: body.taxClass } : {}),
+        ...(body.inventoryMode !== undefined
+          ? { inventoryMode: body.inventoryMode }
+          : {}),
+        ...(body.deliveryMethod !== undefined
+          ? { deliveryMethod: body.deliveryMethod }
+          : {}),
+        ...(body.validityDays !== undefined
+          ? { validityDays: body.validityDays }
+          : {}),
       },
     });
   }
@@ -866,6 +1256,7 @@ export class CatalogService {
       },
       include: {
         brand: true,
+        primaryCategory: { include: { parent: true } },
         media: { include: { mediaAsset: true } },
         variants: {
           include: {
@@ -887,18 +1278,29 @@ export class CatalogService {
       const sku = product.variants[0]?.sku;
       const offer = sku?.offers[0];
       const media = product.media[0]?.mediaAsset;
-      const available = (sku?.inventoryBalances ?? []).reduce(
-        (sum, row) => sum + row.onHand - row.reserved,
-        0,
-      );
+      const category = product.primaryCategory;
+      const isSubcategory = Boolean(category?.parentId && category.parent);
+      const mainCategory = isSubcategory ? category?.parent : category;
+      const subcategory = isSubcategory ? category : null;
+      const available = availableUnits(product);
+      const features = Array.isArray(product.featuresJson)
+        ? product.featuresJson
+        : [];
       return {
         productId: id,
         found: true,
         name: product.name,
         brand: product.brand?.name ?? null,
+        category: mainCategory?.name ?? null,
+        subcategory: subcategory?.name ?? null,
+        digitalType: product.digitalType,
+        features,
         offerId: offer?.id ?? null,
         listPriceMinor: offer?.listPriceMinor ?? null,
         currency: offer?.currency ?? null,
+        validityDays: offer?.validityDays ?? null,
+        deliveryMethod: offer?.deliveryMethod ?? null,
+        inventoryMode: offer?.inventoryMode ?? null,
         imageUrl: media?.externalUrl ?? null,
         imageAttribution: media?.attribution ?? null,
         availableUnits: available,

@@ -1,8 +1,8 @@
 # Buying Bot Platform
 
-AI-powered omnichannel commerce ecosystem, managed as a **pnpm + Turborepo** monorepo.
+AI-powered **digital products** commerce platform (admin-managed catalog), managed as a **pnpm + Turborepo** monorepo.
 
-This repository contains the **engineering foundation** and **application shells** (no product features yet).
+The shop catalog is published by administrators into PostgreSQL. External marketplace ingestion (Jumia/Kilimall/feeds) is deferred and disabled by default.
 
 ## Repository layout
 
@@ -12,7 +12,7 @@ This repository contains the **engineering foundation** and **application shells
 ├── packages/             # Shared libraries and configs
 ├── infrastructure/       # docker, kubernetes, terraform, nginx, monitoring, scripts
 ├── docs/                 # Engineering docs (code-quality, github, …)
-├── .github/              # Issue/PR templates, CODEOWNERS, Dependabot, Actions
+├── .github/              # Issue/PR templates, CODEOWNERS, Actions
 ├── .husky/               # Git hooks (pre-commit, commit-msg)
 ├── .vscode/              # Shared editor recommendations and workspace settings
 ├── packages/
@@ -82,7 +82,7 @@ Production readiness checklist: [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION
 | `packages/`       | Shared packages (`ui`, `types`, `config`, …) + engineering configs. See `packages/README.md`. |
 | `infrastructure/` | Production skeleton: docker, kubernetes, terraform, nginx, monitoring, scripts.               |
 | `docs/`           | Architecture, ADRs, standards, and operational catalogs.                                      |
-| `.github/`        | Issue/PR templates, CODEOWNERS, Dependabot, and CI workflows. See `docs/github.md`.           |
+| `.github/`        | Issue/PR templates, CODEOWNERS, and CI workflows. See `docs/github.md`.                       |
 | `.vscode/`        | Shared VS Code/Cursor workspace settings and extension recommendations.                       |
 
 ### Workspace configuration
@@ -128,7 +128,6 @@ Production readiness checklist: [`docs/PRODUCTION_READINESS.md`](docs/PRODUCTION
 | `.github/ISSUE_TEMPLATE/`          | Bug Report + Feature Request forms; template config.        |
 | `.github/PULL_REQUEST_TEMPLATE.md` | Standard PR checklist and test plan.                        |
 | `.github/CODEOWNERS`               | Default and path-based review ownership (`@Kingori-wizzy`). |
-| `.github/dependabot.yml`           | Weekly npm + GitHub Actions dependency updates.             |
 | `.github/workflows/ci.yml`         | CI: install → lint → typecheck → build → test.              |
 | `docs/github.md`                   | Full documentation of every GitHub workflow and template.   |
 
@@ -176,7 +175,7 @@ Summary:
 
 ## GitHub
 
-See [`docs/github.md`](docs/github.md) for templates, CODEOWNERS, Dependabot, and Actions documentation.
+See [`docs/github.md`](docs/github.md) and [`docs/Deployment/GITHUB_ACTIONS_AND_SECRETS.md`](docs/Deployment/GITHUB_ACTIONS_AND_SECRETS.md).
 
 CI pipeline (`.github/workflows/ci.yml`): **install → lint → typecheck → build → test**.
 

@@ -340,6 +340,13 @@ export class ProductSourcesService {
     sourceCode: string,
     actingSubjectId?: string,
   ): Promise<{ syncRunId: string }> {
+    if (process.env.MARKETPLACE_INGESTION_ENABLED !== 'true') {
+      throw new BadRequestException({
+        code: 'MARKETPLACE_INGESTION_DISABLED',
+        message:
+          'Marketplace product-source sync is deferred. The shop catalog is admin-managed. Set MARKETPLACE_INGESTION_ENABLED=true only for explicit future marketplace work.',
+      });
+    }
     await this.ensureDefaultSources();
     const prisma = this.prisma();
     const source = await prisma.productSource.findUnique({

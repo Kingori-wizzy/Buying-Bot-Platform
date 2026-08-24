@@ -161,7 +161,7 @@ export default function CheckoutPage() {
           >
             <h2 style={{ margin: 0 }}>Delivery</h2>
             <p className="muted" style={{ margin: 0 }}>
-              Choose shipping. Payment will use escrow — not M-Pesa.
+              Choose shipping. Payment uses Escrow after order creation.
             </p>
             <div className="field">
               <label htmlFor="shipping">Shipping method code</label>

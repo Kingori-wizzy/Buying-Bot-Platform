@@ -17,6 +17,8 @@ interface CategoryRow {
   name: string;
   slug: string;
   active?: boolean;
+  parentId?: string | null;
+  children?: CategoryRow[];
 }
 
 export default function TaxonomyPage() {
@@ -25,6 +27,7 @@ export default function TaxonomyPage() {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [brandName, setBrandName] = useState('');
   const [categoryName, setCategoryName] = useState('');
+  const [parentId, setParentId] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -69,9 +72,7 @@ export default function TaxonomyPage() {
     }
   }
 
-  async function createCategory(e: {
-    preventDefault(): void;
-  }): Promise<void> {
+  async function createCategory(e: { preventDefault(): void }): Promise<void> {
     e.preventDefault();
     if (!can('catalog', 'create')) {
       setError('Missing catalog:create');
@@ -84,10 +85,12 @@ export default function TaxonomyPage() {
       await createBrowserSdk().adminCreateCategory({
         name: categoryName.trim(),
         active: true,
+        ...(parentId ? { parentId } : {}),
       });
       setCategoryName('');
+      setParentId('');
       await reload();
-      setMessage('Category created');
+      setMessage(parentId ? 'Subcategory created' : 'Category created');
     } catch (err) {
       setError(
         err instanceof PlatformApiError
@@ -99,13 +102,17 @@ export default function TaxonomyPage() {
     }
   }
 
+  const roots = categories.filter((c) => !c.parentId);
+
   return (
     <section className="stack">
       <div className="section-head">
         <div>
-          <h1 style={{ margin: 0 }}>Brands & categories</h1>
+          <h1 style={{ margin: 0 }}>Categories &amp; brands</h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Taxonomy for admin-managed products. Mutations go through the API.
+            Digital shop taxonomy. Five root categories are seeded on API boot.
+            Create subcategories under a parent. Do not invent commercial
+            products here.
           </p>
         </div>
       </div>
@@ -149,11 +156,27 @@ export default function TaxonomyPage() {
           </ul>
         </form>
 
-        <form
-          className="panel stack"
-          onSubmit={(e) => void createCategory(e)}
-        >
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>Create category</h2>
+        <form className="panel stack" onSubmit={(e) => void createCategory(e)}>
+          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+            Create category / subcategory
+          </h2>
+          <div className="field">
+            <label htmlFor="parentId">Parent (optional → subcategory)</label>
+            <select
+              id="parentId"
+              value={parentId}
+              onChange={(e) => {
+                setParentId(e.target.value);
+              }}
+            >
+              <option value="">— top-level category —</option>
+              {roots.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="field">
             <label htmlFor="categoryName">Name</label>
             <input
@@ -173,9 +196,20 @@ export default function TaxonomyPage() {
             {busy ? 'Saving…' : 'Add category'}
           </button>
           <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
-            {categories.map((c) => (
+            {roots.map((c) => (
               <li key={c.id}>
-                {c.name} <span className="muted">({c.slug})</span>
+                <strong>{c.name}</strong>{' '}
+                <span className="muted">({c.slug})</span>
+                {c.children && c.children.length > 0 ? (
+                  <ul>
+                    {c.children.map((child) => (
+                      <li key={child.id}>
+                        {child.name}{' '}
+                        <span className="muted">({child.slug})</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
               </li>
             ))}
           </ul>

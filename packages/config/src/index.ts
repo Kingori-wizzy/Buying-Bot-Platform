@@ -117,6 +117,8 @@ export const apiEnvObjectSchema = baseServiceEnvObjectSchema.extend({
     .int()
     .positive()
     .default(60 * 60 * 24),
+  /** When true, admin login requires TOTP. Default false (password-only). */
+  ADMIN_MFA_REQUIRED: booleanFromEnv,
   STEP_UP_TTL_SECONDS: z.coerce
     .number()
     .int()
@@ -148,6 +150,18 @@ export const apiEnvObjectSchema = baseServiceEnvObjectSchema.extend({
   /** Test-only: allow escrow test double without live credentials. Never enable in production. */
   ESCROW_ALLOW_TEST_DOUBLE: booleanFromEnv,
   PUBLIC_API_BASE_URL: z.string().trim().url().optional(),
+  /** Canonical public URLs for preflight/docs (web, admin, API). */
+  PUBLIC_WEB_URL: z.string().trim().url().optional(),
+  PUBLIC_ADMIN_URL: z.string().trim().url().optional(),
+  PUBLIC_API_URL: z.string().trim().url().optional(),
+  /** Hostnames without scheme (nginx / DNS). Example: shop.example.com */
+  SHOP_DOMAIN: z.string().trim().min(1).optional(),
+  ADMIN_DOMAIN: z.string().trim().min(1).optional(),
+  API_DOMAIN: z.string().trim().min(1).optional(),
+  /** Alias for S3_ACCESS_KEY_ID (AWS-style naming). */
+  S3_ACCESS_KEY: z.string().trim().min(1).optional(),
+  /** Alias for S3_SECRET_ACCESS_KEY. */
+  S3_SECRET_KEY: z.string().trim().min(1).optional(),
   /** Explicit opt-in — M-Pesa is deferred from customer UX. */
   MPESA_ENABLED: booleanFromEnv,
   MPESA_CONSUMER_KEY: z.string().trim().min(1).optional(),
@@ -169,9 +183,22 @@ export const apiEnvObjectSchema = baseServiceEnvObjectSchema.extend({
     .int()
     .positive()
     .default(5 * 1024 * 1024),
+  /** local (dev) | s3 | minio */
+  MEDIA_DRIVER: z.enum(['local', 's3', 'minio']).default('local'),
+  S3_ENDPOINT: z.string().trim().url().optional(),
+  S3_REGION: z.string().trim().min(1).default('us-east-1'),
+  S3_BUCKET: z.string().trim().min(1).optional(),
+  S3_ACCESS_KEY_ID: z.string().trim().min(1).optional(),
+  S3_SECRET_ACCESS_KEY: z.string().trim().min(1).optional(),
+  S3_FORCE_PATH_STYLE: booleanFromEnv,
   AI_SERVICE_BASE_URL: z.string().trim().url().optional(),
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().trim().url().optional(),
   PRODUCT_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
+  /**
+   * When false (default), marketplace product-source sync cannot populate the shop.
+   * Admin-managed catalog is the production source of truth.
+   */
+  MARKETPLACE_INGESTION_ENABLED: booleanFromEnv,
 });
 
 export const apiEnvSchema = apiEnvObjectSchema
@@ -258,6 +285,26 @@ export const apiEnvSchema = apiEnvObjectSchema
         }
       }
     }
+
+    if (
+      requiresSecrets &&
+      (value.MEDIA_DRIVER === 's3' || value.MEDIA_DRIVER === 'minio')
+    ) {
+      for (const key of [
+        'S3_ENDPOINT',
+        'S3_BUCKET',
+        'S3_ACCESS_KEY_ID',
+        'S3_SECRET_ACCESS_KEY',
+      ] as const) {
+        if (!value[key]) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} is required when MEDIA_DRIVER is s3/minio in staging/production`,
+          });
+        }
+      }
+    }
   })
   .transform((value) => {
     const isTest = value.NODE_ENV === 'test';
@@ -289,6 +336,11 @@ export const apiEnvSchema = apiEnvObjectSchema
       PAYMENT_PROVIDER: value.PAYMENT_PROVIDER,
       ESCROW_ALLOW_TEST_DOUBLE: value.ESCROW_ALLOW_TEST_DOUBLE ?? false,
       MPESA_ENABLED: value.MPESA_ENABLED ?? false,
+      ADMIN_MFA_REQUIRED: value.ADMIN_MFA_REQUIRED ?? false,
+      MARKETPLACE_INGESTION_ENABLED:
+        value.MARKETPLACE_INGESTION_ENABLED ?? false,
+      S3_FORCE_PATH_STYLE: value.S3_FORCE_PATH_STYLE ?? true,
+      MEDIA_DRIVER: value.MEDIA_DRIVER,
     };
   });
 
@@ -448,6 +500,37 @@ export class ConfigError extends Error {
 }
 
 /**
+ * Map common deployment env aliases before schema validation.
+ */
+export function normalizeDeploymentEnv(
+  env: NodeJS.ProcessEnv,
+): NodeJS.ProcessEnv {
+  const out: NodeJS.ProcessEnv = { ...env };
+  if (!out.S3_ACCESS_KEY_ID && out.S3_ACCESS_KEY) {
+    out.S3_ACCESS_KEY_ID = out.S3_ACCESS_KEY;
+  }
+  if (!out.S3_SECRET_ACCESS_KEY && out.S3_SECRET_KEY) {
+    out.S3_SECRET_ACCESS_KEY = out.S3_SECRET_KEY;
+  }
+  if (!out.PUBLIC_API_BASE_URL && out.PUBLIC_API_URL) {
+    out.PUBLIC_API_BASE_URL = out.PUBLIC_API_URL;
+  }
+  if (!out.PUBLIC_WEB_URL && out.SHOP_DOMAIN) {
+    out.PUBLIC_WEB_URL = `https://${out.SHOP_DOMAIN.replace(/^https?:\/\//, '')}`;
+  }
+  if (!out.PUBLIC_ADMIN_URL && out.ADMIN_DOMAIN) {
+    out.PUBLIC_ADMIN_URL = `https://${out.ADMIN_DOMAIN.replace(/^https?:\/\//, '')}`;
+  }
+  if (!out.PUBLIC_API_URL && out.API_DOMAIN) {
+    out.PUBLIC_API_URL = `https://${out.API_DOMAIN.replace(/^https?:\/\//, '')}`;
+  }
+  if (!out.PUBLIC_API_BASE_URL && out.PUBLIC_API_URL) {
+    out.PUBLIC_API_BASE_URL = out.PUBLIC_API_URL;
+  }
+  return out;
+}
+
+/**
  * Load and validate environment variables. Fails fast on invalid config.
  * Never substitutes unsafe production defaults for required secrets.
  */
@@ -456,7 +539,7 @@ export function loadEnv<TSchema extends z.ZodTypeAny>(
   env: NodeJS.ProcessEnv = process.env,
   label = 'Environment',
 ): z.infer<TSchema> {
-  const result = schema.safeParse(env);
+  const result = schema.safeParse(normalizeDeploymentEnv(env));
   if (!result.success) {
     const issues = result.error.issues.map(
       (issue) => `${issue.path.join('.') || '(root)'}: ${issue.message}`,

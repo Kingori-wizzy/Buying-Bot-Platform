@@ -3,7 +3,7 @@
 **Scope:** Buying Bot Platform engineering (M1–M25)  
 **Last verified:** 2026-08-13  
 **Classification:** CONDITIONALLY PRODUCTION READY (see
-[project/PRODUCTION_READINESS_REPORT.md](./project/PRODUCTION_READINESS_REPORT.md))
+[project/FINAL_IMPLEMENTATION_REPORT.md](./project/FINAL_IMPLEMENTATION_REPORT.md))
 
 Use this checklist before promoting any environment. Check items only after
 evidence. EXTERNAL items remain unchecked by design.
@@ -26,16 +26,15 @@ evidence. EXTERNAL items remain unchecked by design.
 ## Security
 
 - [x] Dependency audit in CI
-- [x] Dependabot enabled
+- [x] Dependabot not used (removed)
 - [x] Secret scanning in CI (gitleaks)
-- [x] Security reporting policy (`SECURITY.md`)
+- [x] GitHub Actions + GitHub Secrets (no Vault)
 - [x] Authentication implemented (sessions)
 - [x] Authorization / RBAC enforced server-side
 - [x] Rate limiting (Redis with memory fallback)
 - [x] Security headers on product APIs (Helmet)
 - [x] Webhook signature verification (payments path)
 - [x] AI prompt-injection controls (guardrails)
-- [ ] Full secrets manager integration (Vault/SM) — EXTERNAL
 - [ ] Formal pen-test — EXTERNAL
 - [ ] Live WAF — EXTERNAL
 

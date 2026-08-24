@@ -1,23 +1,26 @@
-# Production Docker Compose (template)
+# Production Docker Compose (Hostinger VPS)
 
 **ADR-0019:** Compose-first. Do **not** put real secrets in this file.
 
 ```bash
-cp .env.production.example .env.production   # create from staging example; fill via secrets manager
-# Set strong unique secrets offline — never commit .env.production
-docker compose -f infrastructure/docker/compose/docker-compose.staging.yml \
-  --env-file .env.production up -d --build
+sudo cp .env.production.example /etc/buyingbot/env.production
+sudo chmod 600 /etc/buyingbot/env.production
+# fill secrets…
+bash scripts/vps/preflight.sh /etc/buyingbot/env.production
+
+docker compose -f infrastructure/docker/compose/docker-compose.production.yml \
+  --env-file /etc/buyingbot/env.production up -d --build
 ```
 
-Production differs from staging by:
+| Concern        | Production                                           |
+| -------------- | ---------------------------------------------------- |
+| `NODE_ENV`     | `production`                                         |
+| Secrets        | `/etc/buyingbot/env.production` (not Git)            |
+| Payments       | Escrow; `PAYMENTS_ENABLED=false` until EXTERNAL keys |
+| M-Pesa CX      | Disabled                                             |
+| Object storage | MinIO (`MEDIA_DRIVER=s3`)                            |
+| TLS            | Nginx + Let's Encrypt mount                          |
+| DB ports       | **Not** published                                    |
+| Seeds          | Never run staging seed in production                 |
 
-| Concern            | Requirement                                        |
-| ------------------ | -------------------------------------------------- |
-| `NODE_ENV`         | `production`                                       |
-| Secrets            | From secrets manager / host env — not git          |
-| `PAYMENTS_ENABLED` | `false` until EXTERNAL M-Pesa + legal gates        |
-| TLS                | Terminated at EXTERNAL load balancer / nginx certs |
-| Backups            | Scheduled `backup-postgres` + offsite copy         |
-| Seeds              | **Never** run `seed-staging` in production         |
-
-Use the staging compose topology at smaller/equal scale; swap image tags to release versions from GHCR after `staging-deploy.yml` push.
+Staging topology remains `docker-compose.staging.yml` for non-prod.

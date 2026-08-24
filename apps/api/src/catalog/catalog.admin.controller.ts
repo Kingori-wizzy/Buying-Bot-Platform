@@ -2,6 +2,7 @@ import { z } from '@buying-bot/validation';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Inject,
   Param,
@@ -35,6 +36,9 @@ import {
   createOfferSchema,
   type CreateProductBody,
   createProductSchema,
+  digitalProductTypeSchema,
+  type UpdateCategoryBody,
+  updateCategorySchema,
   type UpdateOfferBody,
   updateOfferSchema,
   type UpdateProductBody,
@@ -75,6 +79,15 @@ export class CatalogAdminController {
     return this.catalog.createCategory(body);
   }
 
+  @Patch('categories/:id')
+  @RequirePermissions('catalog:update')
+  updateCategory(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(updateCategorySchema)) body: UpdateCategoryBody,
+  ): Promise<unknown> {
+    return this.catalog.updateCategory(id, body);
+  }
+
   @Post('products')
   @RequirePermissions('catalog:create')
   createProduct(
@@ -98,6 +111,18 @@ export class CatalogAdminController {
     return this.catalog.publishProduct(id);
   }
 
+  @Post('products/:id/unpublish')
+  @RequirePermissions('catalog:update')
+  unpublishProduct(@Param('id') id: string): Promise<unknown> {
+    return this.catalog.unpublishProduct(id);
+  }
+
+  @Post('products/:id/archive')
+  @RequirePermissions('catalog:update')
+  archiveProduct(@Param('id') id: string): Promise<unknown> {
+    return this.catalog.archiveProduct(id);
+  }
+
   @Get('products')
   @RequirePermissions('catalog:read')
   listProducts(
@@ -108,6 +133,8 @@ export class CatalogAdminController {
           pageSize: z.coerce.number().int().min(1).max(100).default(20),
           status: z.string().trim().min(1).optional(),
           q: z.string().trim().min(1).optional(),
+          categoryId: z.string().uuid().optional(),
+          digitalType: digitalProductTypeSchema.optional(),
         }),
       ),
     )
@@ -116,6 +143,8 @@ export class CatalogAdminController {
       pageSize: number;
       status?: string;
       q?: string;
+      categoryId?: string;
+      digitalType?: string;
     },
   ): Promise<unknown> {
     return this.catalog.adminListProducts(query);
@@ -158,6 +187,12 @@ export class CatalogAdminController {
     @Body(new ZodValidationPipe(uploadMediaSchema)) body: UploadMediaBody,
   ): Promise<unknown> {
     return this.catalog.uploadMediaBinary(body);
+  }
+
+  @Delete('media/:id')
+  @RequirePermissions('catalog:update')
+  deleteMedia(@Param('id') id: string): Promise<unknown> {
+    return this.catalog.deleteMedia(id);
   }
 
   @Post('imports')

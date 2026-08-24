@@ -1,13 +1,22 @@
 import { expect, test } from '@playwright/test';
 
+/**
+ * DEFERRED: marketplace/sandbox ingestion is not on the production shop path.
+ * Enable only when MARKETPLACE_INGESTION_ENABLED=true and sandbox products exist.
+ */
 const apiBase = (process.env.API_BASE_URL || 'http://127.0.0.1:3000').replace(
   /\/$/,
   '',
 );
 const origin = process.env.SMOKE_ORIGIN || 'http://localhost:3001';
+const marketplaceEnabled = process.env.MARKETPLACE_INGESTION_ENABLED === 'true';
 
-test.describe('Sandbox marketplace journey', () => {
+test.describe('Sandbox marketplace journey (DEFERRED)', () => {
   test('search → provenance → compare → cart (sandbox)', async ({ request }) => {
+    test.skip(
+      !marketplaceEnabled,
+      'Marketplace ingestion deferred — digital catalog is admin-managed',
+    );
     test.skip(!apiBase, 'API_BASE_URL not set');
 
     const search = await request.get(

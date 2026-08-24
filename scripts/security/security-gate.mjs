@@ -49,15 +49,27 @@ for (const pattern of liveKeyPatterns) {
 pass('.env.example has no live-key patterns');
 
 const requiredDocs = [
+  'docs/DOCUMENTATION_INDEX.md',
   'docs/project/EXTERNAL_PREREQUISITES.md',
   'docs/project/PRODUCTION_LAUNCH_CHECKLIST.md',
-  'docs/project/PRODUCTION_READINESS_REPORT.md',
   'docs/project/FINAL_IMPLEMENTATION_REPORT.md',
+  'docs/design/DIGITAL_PRODUCT_CATALOG_ARCHITECTURE.md',
   'docs/Deployment/runbooks/DEPLOYMENT_RUNBOOK.md',
   'docs/Deployment/runbooks/ROLLBACK_RUNBOOK.md',
+  'docs/Deployment/HOSTINGER_DEPLOYMENT_RUNBOOK.md',
+  'docs/Deployment/GITHUB_ACTIONS_AND_SECRETS.md',
+  'docs/Deployment/SECRETS_MANAGEMENT.md',
+  'docs/Deployment/FIREWALL.md',
+  'docs/Deployment/ESCROW_CONFIGURATION.md',
+  'docs/Deployment/BACKUP_RESTORE.md',
   '.env.staging.example',
   '.env.production.example',
   'infrastructure/docker/compose/docker-compose.staging.yml',
+  'infrastructure/docker/compose/docker-compose.production.yml',
+  'scripts/deployment/deploy-production.sh',
+  'scripts/deployment/production-preflight.mjs',
+  'scripts/deployment/bootstrap-env.mjs',
+  'scripts/deployment/post-deploy-smoke.mjs',
 ];
 for (const doc of requiredDocs) {
   if (!existsSync(join(root, doc))) fail(`missing ${doc}`);
@@ -110,6 +122,18 @@ if (!ci.includes('gitleaks')) fail('ci.yml missing gitleaks');
 else pass('ci.yml includes gitleaks');
 if (!ci.includes('pnpm audit')) fail('ci.yml missing pnpm audit');
 else pass('ci.yml includes pnpm audit');
+
+const prodDeploy = join(root, '.github/workflows/production-deploy.yml');
+if (!existsSync(prodDeploy)) fail('missing production-deploy.yml');
+else {
+  const text = readFileSync(prodDeploy, 'utf8');
+  if (!text.includes('workflow_dispatch'))
+    fail('production deploy must be manual');
+  if (!text.includes('environment: production')) {
+    fail('production deploy must use protected production environment');
+  }
+  pass('production deploy is manual + environment-gated');
+}
 
 if (failed > 0) {
   console.error(`Security gate failed: ${failed} issue(s)`);

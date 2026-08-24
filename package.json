@@ -29,6 +29,10 @@
     "verify:sandbox-marketplace": "node --env-file=.env ./scripts/dev/verify-sandbox-marketplace.mjs",
     "sync:mock-products": "node --env-file=.env ./scripts/dev/sync-mock-products.mjs",
     "security:gate": "node ./scripts/security/security-gate.mjs",
+    "vps:preflight": "bash ./scripts/vps/preflight.sh",
+    "production:preflight": "node ./scripts/deployment/production-preflight.mjs",
+    "production:bootstrap-env": "node ./scripts/deployment/bootstrap-env.mjs",
+    "production:smoke": "node ./scripts/deployment/post-deploy-smoke.mjs",
     "test:e2e": "playwright test -c ./e2e/playwright.config.ts",
     "migrate:deploy": "pnpm --filter @buying-bot/database exec prisma migrate deploy",
     "staging:up": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/staging/up.ps1",
@@ -55,7 +59,8 @@
       "effect": ">=3.20.0",
       "sharp": ">=0.35.0",
       "postcss": ">=8.5.18",
-      "deepmerge-ts": "^8.0.1"
+      "deepmerge-ts": "^8.0.1",
+      "fast-xml-parser": ">=4.5.5"
     }
   }
 }

@@ -51,6 +51,55 @@ enum ProductLifecycle {
   @@schema("catalog")
 }
 
+enum ProductKind {
+  DIGITAL
+  PHYSICAL
+
+  @@schema("catalog")
+}
+
+enum DigitalProductType {
+  DIGITAL_ACCOUNT
+  DIGITAL_SUBSCRIPTION
+  DIGITAL_SERVICE
+  DIGITAL_ACCESS
+  DIGITAL_LICENSE
+  DIGITAL_CREDENTIAL
+  DIGITAL_REWARD
+  OTHER
+
+  @@schema("catalog")
+}
+
+enum InventoryMode {
+  FINITE
+  UNLIMITED
+  MANUAL
+
+  @@schema("catalog")
+}
+
+enum DigitalDeliveryMethod {
+  MANUAL
+  ENTITLEMENT
+  LICENSE_CODE
+  ACCESS_INSTRUCTIONS
+  DOWNLOAD
+  NONE
+
+  @@schema("catalog")
+}
+
+enum DigitalFulfillmentStatus {
+  PENDING
+  READY
+  DELIVERED
+  FAILED
+  CANCELLED
+
+  @@schema("catalog")
+}
+
 enum MediaAssetStatus {
   PENDING
   READY
@@ -93,6 +142,9 @@ enum CartStatus {
 enum OrderStatus {
   PENDING_PAYMENT
   PAID
+  PROCESSING
+  FULFILLING
+  COMPLETED
   CANCELLED
   FAILED
   RECONCILIATION_HOLD
@@ -465,6 +517,12 @@ model Product {
   description       String?
   status            ProductLifecycle    @default(DRAFT)
   contentOrigin     CatalogContentOrigin @default(ADMIN) @map("content_origin")
+  productKind       ProductKind         @default(DIGITAL) @map("product_kind")
+  digitalType       DigitalProductType? @map("digital_type")
+  featuresJson      Json?               @map("features_json")
+  requirementsText  String?             @map("requirements_text")
+  instructionsText  String?             @map("instructions_text")
+  metadataJson      Json?               @map("metadata_json")
   brandId           String?             @map("brand_id") @db.Uuid
   primaryCategoryId String?             @map("primary_category_id") @db.Uuid
   seoTitle          String?             @map("seo_title")
@@ -484,6 +542,8 @@ model Product {
   @@index([brandId])
   @@index([primaryCategoryId])
   @@index([contentOrigin])
+  @@index([productKind])
+  @@index([digitalType])
   @@map("products")
   @@schema("catalog")
 }
@@ -590,6 +650,11 @@ model Offer {
   taxInclusive    Boolean   @default(true) @map("tax_inclusive")
   taxClass        String?   @map("tax_class")
   active          Boolean   @default(true)
+  inventoryMode   InventoryMode @default(FINITE) @map("inventory_mode")
+  deliveryMethod  DigitalDeliveryMethod @default(MANUAL) @map("delivery_method")
+  validityDays    Int?      @map("validity_days")
+  /// Non-secret fulfillment hints only (never passwords/tokens).
+  fulfillmentHintsJson Json? @map("fulfillment_hints_json")
   deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(3)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -930,6 +995,7 @@ model Order {
   items              OrderItem[]
   financialSnapshot  OrderFinancialSnapshot?
   payments           Payment[]
+  digitalFulfillments DigitalFulfillment[]
 
   @@index([userId, createdAt])
   @@index([status])
@@ -975,6 +1041,31 @@ model OrderFinancialSnapshot {
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("order_financial_snapshots")
+  @@schema("orders")
+}
+
+/**
+ * Digital delivery record. payloadJson must never contain raw passwords/tokens
+ * intended for logs; customer-visible delivery content is gated by status.
+ */
+model DigitalFulfillment {
+  id              String                   @id @default(uuid()) @db.Uuid
+  orderId         String                   @map("order_id") @db.Uuid
+  orderItemId     String?                  @map("order_item_id") @db.Uuid
+  deliveryMethod  DigitalDeliveryMethod    @map("delivery_method")
+  status          DigitalFulfillmentStatus @default(PENDING)
+  /// Customer-safe delivery payload after payment (instructions, entitlement id).
+  /// Never store account passwords or API secrets here without encryption + RBAC.
+  deliveryPayloadJson Json?                @map("delivery_payload_json")
+  deliveredAt     DateTime?                @map("delivered_at") @db.Timestamptz(3)
+  createdAt       DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([status])
+  @@map("digital_fulfillments")
   @@schema("orders")
 }
 

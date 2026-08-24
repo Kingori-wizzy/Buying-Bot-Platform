@@ -12,10 +12,16 @@ interface CompareRow {
   found: boolean;
   name?: string;
   brand?: string | null;
+  category?: string | null;
+  subcategory?: string | null;
   listPriceMinor?: number | null;
   currency?: string | null;
+  validityDays?: number | null;
+  deliveryMethod?: string | null;
+  features?: unknown;
   imageUrl?: string | null;
   contentOrigin?: string | null;
+  availableUnits?: number | null;
 }
 
 export default function ComparePage() {
@@ -42,11 +48,16 @@ export default function ComparePage() {
           body: JSON.stringify({ productIds: ids }),
         });
         if (!res.ok) {
-          throw new PlatformApiError('Compare failed', { status: res.status, code: 'COMPARE_FAILED' });
+          throw new PlatformApiError('Compare failed', {
+            status: res.status,
+            code: 'COMPARE_FAILED',
+          });
         }
         setRows((await res.json()) as CompareRow[]);
       } catch (err) {
-        setError(err instanceof PlatformApiError ? err.message : 'Compare failed');
+        setError(
+          err instanceof PlatformApiError ? err.message : 'Compare failed',
+        );
       }
     })();
   }, [idsParam]);
@@ -54,9 +65,12 @@ export default function ComparePage() {
   return (
     <main className="page" id="main">
       <section className="stack">
-        <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>Compare products</h1>
+        <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>
+          Compare products
+        </h1>
         <p className="muted" style={{ margin: 0 }}>
-          Prices and availability come from Buying Bot&apos;s administrator-managed catalog.
+          Prices and availability come from Buying Bot&apos;s
+          administrator-managed catalog.
         </p>
         {error ? (
           <p className="error" role="alert">
@@ -67,23 +81,56 @@ export default function ComparePage() {
           {rows.map((row) => (
             <article key={row.productId} className="panel stack">
               {row.imageUrl ? (
-                <img src={row.imageUrl} alt="" style={{ width: '100%', borderRadius: 8 }} />
+                <img
+                  src={row.imageUrl}
+                  alt=""
+                  style={{ width: '100%', borderRadius: 8 }}
+                />
               ) : (
-                <div className="thumb">{row.name?.slice(0, 2).toUpperCase() ?? '?'}</div>
+                <div className="thumb">
+                  {row.name?.slice(0, 2).toUpperCase() ?? '?'}
+                </div>
               )}
-              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{row.name ?? row.productId}</h2>
-              {row.brand ? <p className="muted" style={{ margin: 0 }}>{row.brand}</p> : null}
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+                {row.name ?? row.productId}
+              </h2>
+              {row.brand ? (
+                <p className="muted" style={{ margin: 0 }}>
+                  {row.brand}
+                </p>
+              ) : null}
+              {row.category ? (
+                <p className="muted" style={{ margin: 0 }}>
+                  {row.category}
+                  {row.subcategory ? ` / ${row.subcategory}` : ''}
+                </p>
+              ) : null}
               {typeof row.listPriceMinor === 'number' && row.currency ? (
                 <p className="price" style={{ margin: 0 }}>
                   {formatMoneyMinor(row.listPriceMinor, row.currency)}
                 </p>
               ) : null}
-              {row.contentOrigin === 'DEMO' || row.contentOrigin === 'IMPORT' ? (
+              {row.deliveryMethod ? (
                 <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
-                  {row.contentOrigin === 'DEMO' ? 'DEMO / STAGING DATA' : 'Imported catalog item'}
+                  Delivery:{' '}
+                  {row.deliveryMethod.replace(/_/g, ' ').toLowerCase()}
+                  {row.validityDays
+                    ? ` · ${String(row.validityDays)} days`
+                    : ''}
                 </p>
               ) : null}
-              <Link className="btn btn-secondary" href={`/products/${row.productId}`}>
+              {row.contentOrigin === 'DEMO' ||
+              row.contentOrigin === 'IMPORT' ? (
+                <p className="muted" style={{ margin: 0, fontSize: '0.85rem' }}>
+                  {row.contentOrigin === 'DEMO'
+                    ? 'DEMO / STAGING DATA'
+                    : 'Imported catalog item'}
+                </p>
+              ) : null}
+              <Link
+                className="btn btn-secondary"
+                href={`/products/${row.productId}`}
+              >
                 View details
               </Link>
             </article>

@@ -50,7 +50,7 @@ Contributors must follow:
 - No secrets, tokens, private keys, or production credentials in git
 - Use `.env.example` (never commit real `.env`) when apps introduce configuration
 - Least-privilege CI permissions (see [docs/github.md](./docs/github.md))
-- Dependency updates via Dependabot; review high/critical advisories promptly
+- Review high/critical dependency advisories promptly (`pnpm audit` in CI)
 - Quality gates in [docs/standards/coding-standards.md](./docs/standards/coding-standards.md)
 
 ## Disclosure policy

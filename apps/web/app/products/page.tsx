@@ -22,7 +22,11 @@ export default async function ProductsPage({
   const params = await searchParams;
   const page = Number(params.page ?? '1') || 1;
   const q = params.q?.trim() ?? undefined;
-  const sort = params.sort ?? '';
+  const sortRaw = params.sort ?? '';
+  const sort =
+    sortRaw === 'newest' || sortRaw === 'price_asc' || sortRaw === 'price_desc'
+      ? sortRaw
+      : undefined;
   const pageSize = 24;
   const sdk = createServerSdk();
   let items: Awaited<ReturnType<typeof sdk.listProducts>>['items'] = [];

@@ -49,14 +49,17 @@ test.describe('Admin-managed catalog journey', () => {
         'x-csrf-token': token,
       },
       data: {
-        name: `Admin Journey Laptop ${suffix}`,
-        slug: `admin-journey-laptop-${suffix}`,
-        shortDescription: 'Admin-managed E2E product',
+        name: `E2E Digital Product ${suffix}`,
+        slug: `e2e-digital-product-${suffix}`,
+        shortDescription: 'E2E DIGITAL SAMPLE — not commercial inventory',
         status: 'DRAFT',
-        listPriceMinor: 99_999_00,
+        productKind: 'DIGITAL',
+        digitalType: 'DIGITAL_ACCESS',
+        inventoryMode: 'UNLIMITED',
+        deliveryMethod: 'ACCESS_INSTRUCTIONS',
+        listPriceMinor: 10000,
         currency: 'KES',
-        initialStock: 3,
-        contentOrigin: 'ADMIN',
+        contentOrigin: 'DEMO',
       },
     });
     expect([200, 201].includes(create.status())).toBeTruthy();
@@ -82,7 +85,7 @@ test.describe('Admin-managed catalog journey', () => {
     expect(publish.ok()).toBeTruthy();
 
     const search = await request.get(
-      `${apiBase}/v1/search/products?q=Admin%20Journey%20Laptop&pageSize=10`,
+      `${apiBase}/v1/search/products?q=E2E%20Digital%20Product&pageSize=10`,
       { headers: { origin } },
     );
     expect(search.ok()).toBeTruthy();

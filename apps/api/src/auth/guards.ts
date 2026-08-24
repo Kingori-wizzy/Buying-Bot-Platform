@@ -190,7 +190,10 @@ export class RealmGuard implements CanActivate {
 
 @Injectable()
 export class MfaSatisfiedGuard implements CanActivate {
-  constructor(@Inject(Reflector) private readonly reflector: Reflector) {}
+  constructor(
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(APP_ENV) private readonly env: ApiEnv,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
     const required = this.reflector.getAllAndOverride<boolean | undefined>(
@@ -198,6 +201,9 @@ export class MfaSatisfiedGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
     if (required !== true) {
+      return true;
+    }
+    if (!this.env.ADMIN_MFA_REQUIRED) {
       return true;
     }
     const request = context.switchToHttp().getRequest<AuthedRequest>();

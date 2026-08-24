@@ -14,8 +14,8 @@ export function ProductCard({ product }: { product: ProductSummary }) {
   const initial = product.name.slice(0, 2).toUpperCase();
   const imageUrl = product.primaryImageUrl ?? null;
   const isDemo =
-    (product as { contentOrigin?: string }).contentOrigin === 'DEMO' ||
-    (product as { contentOrigin?: string }).contentOrigin === 'IMPORT';
+    product.contentOrigin === 'DEMO' || product.contentOrigin === 'IMPORT';
+  const categoryName = product.primaryCategory?.name;
 
   return (
     <li className="product-card">
@@ -25,17 +25,27 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         aria-hidden
         tabIndex={-1}
       >
-        {imageUrl ? (
-          <img src={imageUrl} alt="" loading="lazy" />
-        ) : (
-          initial
-        )}
+        {imageUrl ? <img src={imageUrl} alt="" loading="lazy" /> : initial}
       </Link>
       <div className="product-card-body">
         {isDemo ? (
-          <span className="badge badge-sandbox" style={{ marginBottom: '0.35rem' }}>
+          <span
+            className="badge badge-sandbox"
+            style={{ marginBottom: '0.35rem' }}
+          >
             Demo catalog
           </span>
+        ) : null}
+        {categoryName ? (
+          <p
+            className="muted"
+            style={{ margin: '0 0 0.25rem', fontSize: '0.8rem' }}
+          >
+            {categoryName}
+            {product.digitalType
+              ? ` · ${product.digitalType.replace(/_/g, ' ')}`
+              : ''}
+          </p>
         ) : null}
         <h3>
           <Link href={`/products/${product.slug}`}>{product.name}</Link>
@@ -57,8 +67,11 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         </p>
         <div className="product-card-actions">
           {price ? <AddToCartButton offerId={price.offerId} compact /> : null}
-          <Link className="btn btn-secondary" href={`/products/${product.slug}`}>
-            View
+          <Link
+            className="btn btn-secondary"
+            href={`/products/${product.slug}`}
+          >
+            View product
           </Link>
         </div>
       </div>

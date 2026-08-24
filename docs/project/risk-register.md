@@ -15,7 +15,7 @@
 | R-011 | Search outage             | M   | L   | L   | Exact id + checkout continue               | Rebuild FTS                            | M6         |
 | R-012 | Object storage outage     | M   | M   | M   | Degrade media                              | Retry uploads                          | M6         |
 | R-013 | Perf regression           | M   | M   | M   | Load tests M21                             | Scale/cache                            | M21        |
-| R-014 | Dependency CVE            | M   | M   | M   | audit/Dependabot                           | Patch/rollback                         | continuous |
+| R-014 | Dependency CVE            | M   | M   | M   | CI `pnpm audit`                            | Patch/rollback                         | continuous |
 | R-015 | Bad deploy                | M   | H   | H   | Gated deploy; rollback images              | Revert                                 | M23–M25    |
 | R-016 | Backup/restore failure    | M   | H   | H   | Mandatory drills M22                       | Delay payments go-live                 | M22        |
 | R-017 | Vendor lock-in            | L   | M   | M   | Ports/adapters                             | Swap adapter                           | 0016       |

@@ -251,7 +251,7 @@ export class AuthService {
       });
     }
 
-    const mfaRequired = realmDb === 'ADMIN';
+    const mfaRequired = realmDb === 'ADMIN' && this.env.ADMIN_MFA_REQUIRED;
     const sessionToken = createSessionToken();
     const ttl =
       realmDb === 'ADMIN'

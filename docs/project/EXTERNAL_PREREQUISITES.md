@@ -1,59 +1,51 @@
 # External prerequisites
 
-Items that **cannot** be completed inside this repository alone.  
-Do not invent credentials, DNS, SSL, vendor contracts, or legal approvals.
+Only items that **cannot** be completed inside this repository. Do not invent credentials, domains, certificates, or legal approvals.
 
-## TECHNICAL — CAN COMPLETE LOCALLY (done or scripted)
+## Accounts / infrastructure
 
-| Item                                                | Status   |
-| --------------------------------------------------- | -------- |
-| Staging Compose + nginx + Dockerfiles               | VERIFIED |
-| Env validation fail-fast / production secret refine | VERIFIED |
-| Smoke / integrity / security gate scripts           | VERIFIED |
-| Migrations + pgvector + FTS                         | VERIFIED |
-| Backup/restore scripts + local restore drill        | VERIFIED |
-| GHCR build workflow (no auto prod deploy)           | VERIFIED |
-| AI degradation without AI process                   | VERIFIED |
-| `deepmerge-ts` audit override (`^8.0.1`)            | VERIFIED |
-| Sandbox webhook → PAID (not live M-Pesa)            | VERIFIED |
+| Item                                          | Why it is external                                        |
+| --------------------------------------------- | --------------------------------------------------------- |
+| Hostinger VPS                                 | Hardware/network is purchased and operated by the company |
+| DNS (Cloudflare or registrar)                 | Domain ownership                                          |
+| TLS certificates (Let’s Encrypt / Cloudflare) | Issued after DNS exists                                   |
+| GitHub Environment `production` + SSH secrets | Org/repo access                                           |
+| Offsite backup destination                    | Object storage / S3 / encrypted USB policy                |
 
-## EXTERNAL — REQUIRES ACCOUNT / RESOURCE
+## Payments
 
-| Item                          | Config / location             | Verification                 |
-| ----------------------------- | ----------------------------- | ---------------------------- |
-| Staging smoke sample product  | `seed-staging-cli.js`         | Run before E2E/demo checkout |
-| DNS A/AAAA records            | Edge DNS                      | HTTPS resolves               |
-| TLS certificates              | nginx / LB                    | Browser padlock              |
-| Secrets manager               | Inject `.env.production`      | Boot without git secrets     |
-| GHCR pull on host             | `docker login ghcr.io`        | Image pull                   |
-| M-Pesa Daraja keys + callback | `MPESA_*`, `PAYMENTS_ENABLED` | Sandbox STK then live        |
-| SMTP / SMS / WhatsApp         | Notification adapters         | Test intent delivery         |
-| AI vendor keys / Ollama host  | `OPENAI_API_KEY` etc.         | Non-deterministic chat       |
-| Object storage                | Media/backups                 | Upload + restore             |
-| Managed Postgres PITR         | Cloud PG                      | Point-in-time restore        |
-| OTel collector + Alertmanager | Monitoring stack              | Alerts fire                  |
-| WAF / CDN                     | Edge                          | OPTIONAL                     |
+| Item                                             | Notes                                   |
+| ------------------------------------------------ | --------------------------------------- |
+| Escrow API key, secret, base URL, webhook secret | Required before `PAYMENTS_ENABLED=true` |
+| Provider webhook allowlist to production API     | Provider console                        |
 
-## BUSINESS — REQUIRES HUMAN DECISION
+M-Pesa customer checkout is **out of scope**. Do not treat Daraja keys as a launch requirement.
 
-| Item                      | Notes                   |
-| ------------------------- | ----------------------- |
-| Enable live payments      | Finance + risk sign-off |
-| Tax rate BPS for live VAT | Finance                 |
-| Shipping rates / couriers | Ops                     |
-| Support / refund policy   | Ops                     |
-| Merchant agreements       | Legal/biz               |
+## Catalog / content
 
-## LEGAL — REQUIRES APPROVAL
+| Item                                        | Notes                             |
+| ------------------------------------------- | --------------------------------- |
+| Subcategories under the five roots          | Admin-created                     |
+| Product names, descriptions, images, prices | Company-approved only             |
+| Fulfillment delivery content policy         | What customers receive after PAID |
 
-| Item                     | Notes                                |
-| ------------------------ | ------------------------------------ |
-| Privacy policy / ToS     | Counsel                              |
-| Kenya DPA process        | Counsel                              |
-| PCI scope if cards later | Counsel (M-Pesa first reduces scope) |
-| Formal penetration test  | Security vendor                      |
+## Optional providers
+
+| Item                                  | Notes                          |
+| ------------------------------------- | ------------------------------ |
+| OpenAI / Anthropic / Ollama host      | AI quality; shop works without |
+| SMTP / SMS / WhatsApp                 | Notifications                  |
+| `age` recipient for encrypted backups | Backup encryption              |
+
+## Legal / assurance
+
+| Item                                   | Notes           |
+| -------------------------------------- | --------------- |
+| Privacy policy / ToS                   | Counsel         |
+| Kenya DPA process                      | Counsel         |
+| Formal penetration test                | Security vendor |
+| Finance sign-off to enable live Escrow | Risk            |
 
 ## Explicit non-claims
 
-This repository does **not** include live production credentials, purchased
-domains, signed legal documents, or fabricated EXTERNAL verification.
+This repository does not include live production secrets, purchased domains, signed contracts, or a restored-on-Hostinger backup drill.

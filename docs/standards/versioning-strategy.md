@@ -46,7 +46,7 @@ Lockstep “platform version” tags (`v1.0.0`) may be added later for complianc
 
 ## Dependency versioning
 
-- Application dependencies follow Dependabot PRs and SemVer ranges in manifests.
+- Application dependencies follow SemVer ranges in manifests; lockfile updates are reviewed in PRs.
 - CI installs with `pnpm install --frozen-lockfile`; the lockfile is the source of truth for reproducible builds.
 
 ## Pre-release channels (future)

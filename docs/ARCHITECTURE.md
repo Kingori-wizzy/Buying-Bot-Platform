@@ -11,7 +11,7 @@ This document is the **source of truth** for platform architecture. Repository s
 
 ## 1. Mission
 
-The Buying Bot Platform is an **AI-powered omnichannel commerce ecosystem**. It enables consistent buying experiences across digital channels while centralizing domain logic, AI assistance, and operational control.
+The Buying Bot Platform is an **admin-controlled digital products marketplace** with an AI shopping assistant, server-authoritative cart/checkout, Escrow payments, and digital fulfillment. PostgreSQL is the catalog source of truth. External marketplace ingestion and M-Pesa customer checkout are deferred.
 
 ## 2. System context
 
@@ -59,7 +59,7 @@ apps/             Deployable applications
 packages/         Shared libraries and engineering configs
 infrastructure/   IaC and environment definitions
 docs/             Architecture, ADRs, standards
-.github/          Templates, CODEOWNERS, Dependabot, Actions
+.github/          Templates, CODEOWNERS, Actions
 .vscode/          Editor defaults aligned with quality toolchain
 ```
 
@@ -133,14 +133,14 @@ Details: [code-quality.md](./code-quality.md), [github.md](./github.md), [PRODUC
 | Branching    | Trunk-based with short-lived `feature/*`, `fix/*`, `chore/*` — [branching-strategy.md](./standards/branching-strategy.md) |
 | Versioning   | SemVer + Conventional Commits — [versioning-strategy.md](./standards/versioning-strategy.md)                              |
 | Reviews      | Pull requests + CODEOWNERS                                                                                                |
-| Dependencies | Dependabot (npm + GitHub Actions)                                                                                         |
+| Dependencies | Manual review + CI `pnpm audit` (Dependabot is not used)                                                                  |
 
 ## 7. Security architecture (repository level)
 
 - Secrets never committed; use `.env.example` (committed template) and never commit `.env`.
 - Vulnerabilities reported per [SECURITY.md](../SECURITY.md).
 - CI permissions default to `contents: read`; pipeline includes gitleaks + dependency audit.
-- Dependency updates are automated and reviewed.
+- Dependency updates are reviewed in CI (`pnpm audit`); Dependabot is not used.
 
 ## 8. Evolution model
 

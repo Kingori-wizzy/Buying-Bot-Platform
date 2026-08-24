@@ -471,7 +471,7 @@ product analytics) chosen later — **not installed now**.
 - Clickjacking: `frame-ancestors` CSP
 - Review all `NEXT_PUBLIC_*`
 - Third-party scripts: allowlist; prefer server-side tag proxies later
-- Dependency scanning already in CI direction (ADR-0003 / Dependabot)
+- Dependency scanning already in CI direction (ADR-0003; `pnpm audit`)
 
 **Browser → Frontend → API → Domain → Infrastructure.** Browser never talks
 to data stores directly.

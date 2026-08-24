@@ -11,6 +11,7 @@ import {
   createPrismaClient,
   PrismaDatabaseClient,
   seedCommerceDefaults,
+  seedDigitalShopTaxonomy,
   seedIdentityCatalog,
 } from '@buying-bot/database';
 import {
@@ -202,7 +203,8 @@ export async function bootstrap(
           ? { taxDefaultRateBps: env.TAX_DEFAULT_RATE_BPS }
           : {}),
       });
-      logger.info('Identity and commerce catalogs seeded');
+      await seedDigitalShopTaxonomy(prisma);
+      logger.info('Identity, commerce, and digital shop taxonomy seeded');
     }
   }
 

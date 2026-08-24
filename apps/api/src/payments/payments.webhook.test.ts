@@ -153,7 +153,7 @@ describe.skipIf(!databaseUrl)('escrow webhook idempotency', () => {
     const order = await prisma.order.findUniqueOrThrow({
       where: { id: orderId },
     });
-    expect(order.status).toBe('PAID');
+    expect(order.status).toBe('PROCESSING');
 
     const again = await confirmPaymentForOrder(prisma, {
       orderId,

@@ -6,13 +6,14 @@ import { InventoryModule } from '../inventory/inventory.module.js';
 import { PricingModule } from '../pricing/pricing.module.js';
 import { CheckoutController } from './checkout.controller.js';
 import { CheckoutService } from './checkout.service.js';
+import { DigitalFulfillmentService } from './digital-fulfillment.service.js';
 import { OrdersAdminController } from './orders.admin.controller.js';
 
 @Module({
   imports: [AuthModule, CartModule, PricingModule, InventoryModule],
   controllers: [CheckoutController, OrdersAdminController],
-  providers: [CheckoutService],
-  exports: [CheckoutService],
+  providers: [CheckoutService, DigitalFulfillmentService],
+  exports: [CheckoutService, DigitalFulfillmentService],
 })
 // eslint-disable-next-line @typescript-eslint/no-extraneous-class -- Nest module
 export class CheckoutModule {}

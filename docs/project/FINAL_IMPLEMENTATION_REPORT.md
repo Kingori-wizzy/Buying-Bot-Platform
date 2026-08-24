@@ -1,156 +1,157 @@
-# Final implementation report (M0–M25 + post-M25 hardening)
+# Final implementation report
 
-**Date:** 2026-08-18  
-**Release candidate:** `0.1.0-rc.3`  
-**Recommendation:** **CONDITIONALLY PRODUCTION READY**
+**Date:** 2026-08-24  
+**Classification:** **CONDITIONALLY PRODUCTION READY**
 
-> **rc.3 gap-closure:** Worker payment outbox; sandbox webhook → PAID journey; AI SSE storefront; catalog slug UUID fix; IDOR on customer orders; late-payment HOLD; `deepmerge-ts` override. See [FINAL_PRODUCTION_VERIFICATION_REPORT.md](./FINAL_PRODUCTION_VERIFICATION_REPORT.md).
+Evidence is from source, Prisma, Compose, CI, and local quality gates — not from older duplicate reports.
 
-## 1. Executive summary
+Buying Bot is an **admin-controlled digital products shop**: PostgreSQL catalog, AI shopping tools, server-authoritative cart/checkout, Escrow payments (fail-closed without credentials), digital fulfillment after verified payment. Hostinger VPS Compose is the production packaging.
 
-Buying Bot Platform is an engineering-complete Compose-first commerce + AI
-system through M0–M25, with an additional post-M25 hardening pass (expanded
-smoke/integrity/security gates, AI 503 degradation, production env template,
-ops launch sequence). Live Kenya commerce with real money remains gated on
-EXTERNAL DNS/TLS, payment keys, secrets manager, legal, and on-call staffing.
+**Not claimed:** live Escrow money movement, issued TLS, Hostinger restore drill, or company commercial inventory.
 
-## 2. M0–M25 completion matrix
+---
 
-| ID      | Name                   | Status | Tests / evidence                             | Blockers                |
-| ------- | ---------------------- | ------ | -------------------------------------------- | ----------------------- |
-| M0–M5   | Foundation + Auth      | DONE   | verify, auth integration                     | —                       |
-| M6–M12  | Commerce core          | DONE   | API suite, integrity                         | Live M-Pesa EXTERNAL    |
-| M13–M14 | Web/Admin              | DONE   | Next build                                   | Staging host EXTERNAL   |
-| M15–M17 | AI/RAG/tools           | DONE   | ai-core/ai-service tests; AI 503 degradation | Vendor keys EXTERNAL    |
-| M18–M22 | Notify/obs/sec/perf/DR | DONE   | metrics, hardening checklist, local DR       | Pen-test/Vault EXTERNAL |
-| M23     | Staging RC             | DONE   | staging compose, smoke, CI docker-build      | Remote deploy EXTERNAL  |
-| M24     | Readiness              | DONE   | readiness report, restore drill              | EXTERNAL gates          |
-| M25     | Launch prep            | DONE   | checklists, architecture                     | EXTERNAL gates          |
-| Post    | rc.2 hardening         | DONE   | security:gate, expanded smoke                | EXTERNAL gates          |
+## 1. Actual architecture
 
-## 3. Current staging status
+```text
+Internet → Cloudflare/DNS (EXTERNAL) → Nginx :80/:443
+  → web / admin / api
+  → PostgreSQL + Redis + MinIO (internal)
+  → worker + ai-service (internal)
+  → Escrow provider (EXTERNAL when PAYMENTS_ENABLED=true)
+```
 
-| Item                  | Status           |
-| --------------------- | ---------------- |
-| Local/CI quality      | VERIFIED         |
-| Staging compose files | VERIFIED         |
-| Remote staging host   | BLOCKED EXTERNAL |
-| TLS on staging        | BLOCKED EXTERNAL |
+GitHub Actions + GitHub Secrets/Environments for CI/CD. Runtime secrets: `/etc/buyingbot/env.production`. Vault is not used.
 
-See `GAP_MATRIX_STAGING_PRODUCTION.md`.
+## 2–5. Frontend / backend / API / database
 
-## 4. Requirements traceability
+| Layer                   | Status                                                                                                  |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| Storefront (`apps/web`) | **IMPLEMENTED + VERIFIED** (build, typecheck; digital homepage/category/cart/checkout/orders/assistant) |
+| Admin (`apps/admin`)    | **IMPLEMENTED + VERIFIED** (catalog create/taxonomy/orders fulfillment)                                 |
+| API (`apps/api`)        | **IMPLEMENTED + VERIFIED** (auth, catalog, cart, checkout, payments webhooks, AI tools)                 |
+| PostgreSQL / Prisma     | **IMPLEMENTED + VERIFIED** (migrate deploy, integrity; digital catalog migration applied in local DB)   |
 
-See `docs/project/RTM_VERIFICATION.md` — critical FRs map to modules/tests;
-EXTERNAL items marked PARTIAL/BLOCKED without fabricated PASS.
+Public catalog queries `status: ACTIVE` only. Prices from Offer rows, not client input.
 
-## 5. Architecture verification
+## 6–7. Admin / catalog
 
-Matches Accepted ADR-0005–0020. Nest+Fastify API; Prisma/PG SoT; AI no direct
-DB; Compose-first (no K8s introduced). Evidence: apps/packages + ADRs.
+| Capability                     | Status                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Five root categories seeded    | **IMPLEMENTED + VERIFIED** (idempotent seed on API boot; E2E digital-catalog)                            |
+| Subcategories via `parentId`   | **IMPLEMENTED + NOT VERIFIED** in live E2E (UI+API exist; skipped without admin creds)                   |
+| Digital product create/publish | **IMPLEMENTED + VERIFIED** (schemas, admin UI, unit tests)                                               |
+| Marketplace ingestion          | **DEFERRED** (`MARKETPLACE_INGESTION_ENABLED` default false; production compose/preflight refuse enable) |
 
-## 6. Security assessment
+**READY FOR ADMIN CATALOG DATA** — production shop starts without invented products.
 
-VERIFIED locally: CSRF/CORS/MFA admin, Helmet, gitleaks CI, security:gate,
-no frontend server-secret env reads, no tracked `.env`.  
-BLOCKED EXTERNAL: pen-test, Vault, WAF.  
-Evidence: `docs/Security/SECURITY_AUDIT_M24.md`, `pnpm run security:gate`.
+## 8. AI/RAG
 
-## 7. Performance assessment
+| Item                                 | Status                                                                      |
+| ------------------------------------ | --------------------------------------------------------------------------- |
+| Tool-grounded catalog search/compare | **IMPLEMENTED + VERIFIED** (unit/guardrail tests; prompt forbids invention) |
+| Live LLM vendor                      | **EXTERNAL PREREQUISITE** (`AI_PROVIDER=deterministic` default)             |
+| Shop without AI                      | **IMPLEMENTED + VERIFIED** (degrade; checkout independent)                  |
 
-PARTIAL — k6 scripts present (`infrastructure/perf/k6`); measured SLOs
-ASPIRATIONAL / BLOCKED without staging URL + k6 binary run evidence.
+## 9–11. Cart / checkout / Escrow
 
-## 8. Reliability assessment
+| Item                          | Status                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| Server price/availability     | **IMPLEMENTED + VERIFIED** (API tests)                                                     |
+| Customer M-Pesa UX            | **DEFERRED** (checkout copy is Escrow-only; `MPESA_ENABLED` must stay false in production) |
+| Escrow adapter + HMAC webhook | **IMPLEMENTED + VERIFIED** (webhook tests; unpaid path fail-closed)                        |
+| Live Escrow                   | **EXTERNAL PREREQUISITE**                                                                  |
 
-VERIFIED: health/ready, graceful shutdown, outbox reprocess, AI unavailable → 503. PARTIAL: multi-node failover unproven.  
-Evidence: `RELIABILITY_VALIDATION_M24.md`, smoke AI 503.
+After verified payment: order **PAID** then **PROCESSING** with `digital_fulfillments`.
 
-## 9. AI/RAG assessment
+## 12. Digital fulfillment
 
-VERIFIED: tool gateway, deterministic provider tests, RAG schema/pgvector,
-hallucination boundary (tools). EXTERNAL: live model keys.
+**IMPLEMENTED + PARTIAL:** abstraction + admin READY/DELIVERED; no automatic credential vaulting (by design). Payload keys `password`/`secret`/`token` rejected.
 
-## 10. Payment assessment
+## 13. Media
 
-VERIFIED: adapter + webhook idempotency tests; fail-closed default
-`PAYMENTS_ENABLED=false`. BLOCKED: live keys + callback allowlist + legal.
+**IMPLEMENTED + VERIFIED** locally (upload validation tests, MinIO compose). Storefront images **NOT VERIFIED** against a live Hostinger MinIO until deploy.
 
-## 11. Database assessment
+## 14. Notifications
 
-VERIFIED: 3 migrations, pgvector, integrity SQL suite PASS.
+**PARTIAL / MOCK unless configured:** intents + adapters; SMTP/SMS/WhatsApp **EXTERNAL**. Failures must not mutate payment rows (outbox pattern).
 
-## 12. Disaster recovery assessment
+## 15. Security
 
-VERIFIED locally: backup/restore scripts + M24 restore drill evidence.  
-EXTERNAL: offsite retention monitoring, managed PITR.
+**IMPLEMENTED + VERIFIED** locally: sessions/RBAC/CSRF/CORS allowlist/Helmet/gitleaks/`security:gate`/no frontend secret env.  
+**EXTERNAL:** pen-test, WAF.
 
-## 13. Observability assessment
+Production preflight rejects wildcard CORS, `COOKIE_SECURE!=true`, marketplace ingestion, M-Pesa enable, Escrow test double.
 
-VERIFIED: `/metrics`, correlation IDs, alert definitions doc.  
-EXTERNAL: collector, Alertmanager, on-call routing.
+## 16. CI/CD
 
-## 14. CI/CD assessment
+| Workflow                | Status                                                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | lint/typecheck/test/integrity/smoke/e2e API/gitleaks/audit/docker (api, worker, ai, web, admin) + security:gate |
+| `staging-deploy.yml`    | GHCR; SSH optional                                                                                              |
+| `production-deploy.yml` | **manual** `workflow_dispatch` + `environment: production`                                                      |
 
-VERIFIED: frozen install, gitleaks, lint/typecheck/test/build/audit, migrate,
-integrity, smoke, docker-build, staging-deploy (push-only without SSH secrets).
+## 17. Hostinger deployment
 
-## 15. Technical debt
+Compose production file: no public DB/Redis/MinIO ports; nginx 80/443; healthchecks; restart policies; resource limits; migrate job.  
+**Scripts:** preflight, deploy, smoke, backup.  
+**Live Hostinger instance:** **EXTERNAL / NOT VERIFIED**.
 
-OCR deep parsers; centralized alerting wiring; browser E2E optional without
-base URL; k8s/terraform folders remain intentional placeholders.
+## 18. Backup / DR
 
-## 16. External prerequisites
+Scripts exist. Restore **NOT VERIFIED** on Hostinger (drill is human action). RPO ≤ 24h target documented; not proven.
 
-See `EXTERNAL_PREREQUISITES.md` (TECHNICAL / EXTERNAL / BUSINESS / LEGAL).
+## 19. Tests executed (this phase / local evidence)
 
-## 17. Remaining risks
+| Command                     | Result                                                         |
+| --------------------------- | -------------------------------------------------------------- |
+| `pnpm lint`                 | PASS (prior digital-catalog pass; re-run after this hardening) |
+| `pnpm typecheck`            | PASS (prior)                                                   |
+| `pnpm test`                 | PASS (prior; 48 API tests including escrow → PROCESSING)       |
+| `pnpm build`                | PASS (prior)                                                   |
+| `pnpm run security:gate`    | to re-run after doc consolidation                              |
+| `pnpm run integrity`        | PASS (prior, local DB)                                         |
+| E2E digital catalog         | PASS                                                           |
+| E2E marketplace sandbox     | SKIPPED (deferred)                                             |
+| E2E purchase                | SKIPPED without published product + matching Escrow secret     |
+| Docker compose on Hostinger | **NOT VERIFIED**                                               |
 
-Live payment delays; inventory races (mitigated by tests); AI scope creep
-(ADR-0015); secret sprawl (secrets manager EXTERNAL).
+## 20–21. Failures / fixes
 
-## 18. Production readiness score (evidence-based)
+- Prisma generate EPERM on Windows (engine lock) — retried after unlock.
+- Webhook tests expected `PAID` after digital fulfillment — fixed to `PROCESSING`.
+- Marketplace E2E assumed sandbox products — skipped unless ingestion enabled.
+- Duplicate Hostinger/marketplace documentation — consolidated; obsolete reports deleted.
 
-| Domain        | Score              |
-| ------------- | ------------------ |
-| Architecture  | PASS               |
-| Security      | PARTIAL            |
-| Reliability   | PARTIAL            |
-| Testing       | PASS               |
-| CI/CD         | PASS               |
-| Observability | PARTIAL            |
-| Performance   | BLOCKED (measured) |
-| Database      | PASS               |
-| AI            | PARTIAL            |
-| Payments      | PARTIAL            |
-| DR            | PASS (local)       |
-| Documentation | PASS               |
-| Operations    | PARTIAL            |
+## 22. Remaining blockers
 
-## 19. Release candidate information
+1. Company catalog (subcategories, products, prices, images)
+2. Escrow live credentials + webhook URL allowlist
+3. DNS + TLS certificates
+4. Hostinger VPS provision + restore drill
+5. GitHub `production` environment secrets
+6. Notification providers (optional until ops needs them)
+7. Formal pen-test
 
-- **VERSION:** `0.1.0-rc.2`
-- **Local quality gate:** `pnpm run verify` exit 0 (lint, typecheck, test, build, audit high)
-- **Commands:** `pnpm run verify`, `pnpm run security:gate`, `pnpm run integrity`, `pnpm run smoke`
-- Generate metadata: `pnpm run release:metadata`
+## 23. Required company credentials
 
-## 20. Final launch recommendation
+See [EXTERNAL_PREREQUISITES.md](./EXTERNAL_PREREQUISITES.md). Do not invent values.
 
-**CONDITIONALLY PRODUCTION READY.**
+## 24. Required company business data
 
-Engineering may enter monitored staging once an EXTERNAL host + TLS + secrets
-are supplied. Do **not** claim full **PRODUCTION READY** or enable live payments
-until EXTERNAL + BUSINESS + LEGAL gates in the launch checklist are cleared.
+Five roots exist as taxonomy only. Company must supply subcategories, SKUs, prices, delivery policy, and media.
 
-### Exact next human actions
+## 25. Documentation consolidated
 
-1. Provision staging VM; copy `.env.staging.example` → secrets; `pnpm run staging:up` / compose up.
-2. Point DNS + TLS at nginx.
-3. Configure GHCR pull + optional `STAGING_SSH_HOST` for deploy workflow.
-4. Obtain M-Pesa sandbox then live keys; keep `PAYMENTS_ENABLED=false` until signed.
-5. Configure SMTP/SMS and AI vendor keys.
-6. Schedule pen-test + legal ToS/privacy.
-7. Assign on-call; load alert definitions into Alertmanager.
-8. Run k6 against staging URL; attach results to PERFORMANCE_VALIDATION doc.
-9. Enable offsite backups; re-run restore drill against staging.
-10. Only then flip production payments and cut over.
+Authoritative map: [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md). Obsolete duplicate marketplace/VPS/readiness reports removed.
+
+## 26. Final deployment instructions
+
+[HOSTINGER_DEPLOYMENT_RUNBOOK.md](../Deployment/HOSTINGER_DEPLOYMENT_RUNBOOK.md)
+
+## 27. Final classification
+
+**CONDITIONALLY PRODUCTION READY**
+
+Ready to deploy the **engineering package** to a Hostinger VPS and for **admins to load catalog data**.  
+Not **PRODUCTION READY** for live customer money or a filled commercial catalog.

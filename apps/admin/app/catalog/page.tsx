@@ -22,6 +22,7 @@ export default function CatalogListPage() {
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [digitalType, setDigitalType] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +35,7 @@ export default function CatalogListPage() {
           page,
           ...(search ? { q: search } : {}),
           ...(status ? { status } : {}),
+          ...(digitalType ? { digitalType } : {}),
         });
         setItems([...result.items]);
         setTotal(result.total ?? result.items.length);
@@ -48,7 +50,7 @@ export default function CatalogListPage() {
         setLoading(false);
       }
     })();
-  }, [page, search, status]);
+  }, [page, search, status, digitalType]);
 
   const totalPages = total ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : 1;
 
@@ -123,6 +125,24 @@ export default function CatalogListPage() {
             <option value="INACTIVE">INACTIVE</option>
             <option value="ARCHIVED">ARCHIVED</option>
           </select>
+          <select
+            value={digitalType}
+            onChange={(e) => {
+              setDigitalType(e.target.value);
+              setPage(1);
+            }}
+            aria-label="Filter by digital type"
+          >
+            <option value="">All digital types</option>
+            <option value="DIGITAL_ACCOUNT">DIGITAL_ACCOUNT</option>
+            <option value="DIGITAL_SUBSCRIPTION">DIGITAL_SUBSCRIPTION</option>
+            <option value="DIGITAL_SERVICE">DIGITAL_SERVICE</option>
+            <option value="DIGITAL_ACCESS">DIGITAL_ACCESS</option>
+            <option value="DIGITAL_LICENSE">DIGITAL_LICENSE</option>
+            <option value="DIGITAL_CREDENTIAL">DIGITAL_CREDENTIAL</option>
+            <option value="DIGITAL_REWARD">DIGITAL_REWARD</option>
+            <option value="OTHER">OTHER</option>
+          </select>
           <button className="btn" type="submit">
             Search
           </button>
@@ -161,9 +181,9 @@ export default function CatalogListPage() {
                 const sku =
                   product.variants?.[0]?.sku &&
                   'internalSku' in (product.variants[0].sku as object)
-                    ? (product.variants[0].sku as { internalSku?: string })
-                        .internalSku ?? '—'
-                    : product.variants?.[0]?.sku?.id.slice(0, 8) ?? '—';
+                    ? ((product.variants[0].sku as { internalSku?: string })
+                        .internalSku ?? '—')
+                    : (product.variants?.[0]?.sku?.id.slice(0, 8) ?? '—');
                 return (
                   <tr key={product.id}>
                     <td>

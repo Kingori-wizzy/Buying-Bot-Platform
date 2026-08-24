@@ -2,7 +2,7 @@
 
 import { PlatformApiError } from '@buying-bot/sdk';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useAdminSession } from '@/components/AdminShell';
 import { createBrowserSdk } from '@/lib/api';
@@ -10,7 +10,19 @@ import { createBrowserSdk } from '@/lib/api';
 interface NamedRow {
   id: string;
   name: string;
+  parentId?: string | null;
 }
+
+const DIGITAL_TYPES = [
+  'DIGITAL_ACCOUNT',
+  'DIGITAL_SUBSCRIPTION',
+  'DIGITAL_SERVICE',
+  'DIGITAL_ACCESS',
+  'DIGITAL_LICENSE',
+  'DIGITAL_CREDENTIAL',
+  'DIGITAL_REWARD',
+  'OTHER',
+] as const;
 
 export default function CatalogCreatePage() {
   const router = useRouter();
@@ -22,11 +34,33 @@ export default function CatalogCreatePage() {
   const [initialStock, setInitialStock] = useState('0');
   const [status, setStatus] = useState<'DRAFT' | 'ACTIVE'>('DRAFT');
   const [brandId, setBrandId] = useState('');
+  const [rootCategoryId, setRootCategoryId] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [digitalType, setDigitalType] =
+    useState<(typeof DIGITAL_TYPES)[number]>('DIGITAL_ACCOUNT');
+  const [inventoryMode, setInventoryMode] = useState<
+    'FINITE' | 'UNLIMITED' | 'MANUAL'
+  >('FINITE');
+  const [deliveryMethod, setDeliveryMethod] = useState<
+    | 'MANUAL'
+    | 'ENTITLEMENT'
+    | 'ACCESS_INSTRUCTIONS'
+    | 'LICENSE_CODE'
+    | 'DOWNLOAD'
+  >('MANUAL');
   const [brands, setBrands] = useState<NamedRow[]>([]);
   const [categories, setCategories] = useState<NamedRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const roots = useMemo(
+    () => categories.filter((c) => !c.parentId),
+    [categories],
+  );
+  const subcategories = useMemo(
+    () => categories.filter((c) => c.parentId === rootCategoryId),
+    [categories, rootCategoryId],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -57,6 +91,7 @@ export default function CatalogCreatePage() {
         ? Number.parseInt(listPriceMinor, 10)
         : undefined;
       const stock = Number.parseInt(initialStock, 10);
+      const primaryCategoryId = categoryId || rootCategoryId || undefined;
       const created = (await createBrowserSdk().adminCreateProduct({
         name,
         ...(slug.trim() ? { slug: slug.trim() } : {}),
@@ -65,12 +100,18 @@ export default function CatalogCreatePage() {
           : {}),
         status,
         contentOrigin: 'ADMIN',
+        productKind: 'DIGITAL',
+        digitalType,
+        inventoryMode,
+        deliveryMethod,
         ...(brandId ? { brandId } : {}),
-        ...(categoryId ? { primaryCategoryId: categoryId } : {}),
+        ...(primaryCategoryId ? { primaryCategoryId } : {}),
         ...(price !== undefined && Number.isFinite(price)
           ? { listPriceMinor: price, currency: 'KES' }
           : {}),
-        ...(Number.isFinite(stock) ? { initialStock: stock } : {}),
+        ...(inventoryMode === 'FINITE' && Number.isFinite(stock)
+          ? { initialStock: stock }
+          : {}),
       })) as { id: string };
       router.push(`/catalog/${created.id}`);
     } catch (err) {
@@ -82,11 +123,11 @@ export default function CatalogCreatePage() {
 
   return (
     <section className="stack">
-      <h1>Create product</h1>
+      <h1>Create digital product</h1>
       <p className="muted">
-        Products are managed by administrators. Create as DRAFT, then set price
-        and publish when ready. Manage brands/categories under Catalog → Brands
-        &amp; categories.
+        Admin-managed digital catalog. Select a main category (and optional
+        subcategory), configure type and fulfillment, save as DRAFT, then
+        publish when ready.
       </p>
       <form
         className="panel"
@@ -95,7 +136,43 @@ export default function CatalogCreatePage() {
         }}
       >
         <div className="field">
-          <label htmlFor="name">Name</label>
+          <label htmlFor="rootCategory">1. Main category</label>
+          <select
+            id="rootCategory"
+            value={rootCategoryId}
+            onChange={(e) => {
+              setRootCategoryId(e.target.value);
+              setCategoryId('');
+            }}
+          >
+            <option value="">— select —</option>
+            {roots.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="subCategory">2. Subcategory (optional)</label>
+          <select
+            id="subCategory"
+            value={categoryId}
+            onChange={(e) => {
+              setCategoryId(e.target.value);
+            }}
+            disabled={!rootCategoryId}
+          >
+            <option value="">— use main category —</option>
+            {subcategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="name">3. Name</label>
           <input
             id="name"
             value={name}
@@ -116,7 +193,23 @@ export default function CatalogCreatePage() {
           />
         </div>
         <div className="field">
-          <label htmlFor="brand">Brand</label>
+          <label htmlFor="digitalType">5. Digital product type</label>
+          <select
+            id="digitalType"
+            value={digitalType}
+            onChange={(e) => {
+              setDigitalType(e.target.value as (typeof DIGITAL_TYPES)[number]);
+            }}
+          >
+            {DIGITAL_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="brand">Brand / platform (optional)</label>
           <select
             id="brand"
             value={brandId}
@@ -133,23 +226,6 @@ export default function CatalogCreatePage() {
           </select>
         </div>
         <div className="field">
-          <label htmlFor="category">Category</label>
-          <select
-            id="category"
-            value={categoryId}
-            onChange={(e) => {
-              setCategoryId(e.target.value);
-            }}
-          >
-            <option value="">— none —</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
           <label htmlFor="short">Short description</label>
           <textarea
             id="short"
@@ -160,7 +236,7 @@ export default function CatalogCreatePage() {
           />
         </div>
         <div className="field">
-          <label htmlFor="price">List price (minor units, optional)</label>
+          <label htmlFor="price">7. List price (minor units)</label>
           <input
             id="price"
             inputMode="numeric"
@@ -168,22 +244,54 @@ export default function CatalogCreatePage() {
             onChange={(e) => {
               setListPriceMinor(e.target.value);
             }}
-            placeholder="e.g. 6499900"
+            placeholder="e.g. 199900 = KSh 1,999.00"
           />
         </div>
         <div className="field">
-          <label htmlFor="stock">Initial stock</label>
-          <input
-            id="stock"
-            inputMode="numeric"
-            value={initialStock}
+          <label htmlFor="inventoryMode">8. Inventory mode</label>
+          <select
+            id="inventoryMode"
+            value={inventoryMode}
             onChange={(e) => {
-              setInitialStock(e.target.value);
+              setInventoryMode(e.target.value as typeof inventoryMode);
             }}
-          />
+          >
+            <option value="FINITE">FINITE</option>
+            <option value="UNLIMITED">UNLIMITED</option>
+            <option value="MANUAL">MANUAL</option>
+          </select>
+        </div>
+        {inventoryMode === 'FINITE' ? (
+          <div className="field">
+            <label htmlFor="stock">Initial stock</label>
+            <input
+              id="stock"
+              inputMode="numeric"
+              value={initialStock}
+              onChange={(e) => {
+                setInitialStock(e.target.value);
+              }}
+            />
+          </div>
+        ) : null}
+        <div className="field">
+          <label htmlFor="delivery">9. Digital delivery method</label>
+          <select
+            id="delivery"
+            value={deliveryMethod}
+            onChange={(e) => {
+              setDeliveryMethod(e.target.value as typeof deliveryMethod);
+            }}
+          >
+            <option value="MANUAL">MANUAL</option>
+            <option value="ENTITLEMENT">ENTITLEMENT</option>
+            <option value="ACCESS_INSTRUCTIONS">ACCESS_INSTRUCTIONS</option>
+            <option value="LICENSE_CODE">LICENSE_CODE</option>
+            <option value="DOWNLOAD">DOWNLOAD</option>
+          </select>
         </div>
         <div className="field">
-          <label htmlFor="status">Status</label>
+          <label htmlFor="status">11–12. Status</label>
           <select
             id="status"
             value={status}
@@ -191,13 +299,13 @@ export default function CatalogCreatePage() {
               setStatus(e.target.value as 'DRAFT' | 'ACTIVE');
             }}
           >
-            <option value="DRAFT">DRAFT</option>
-            <option value="ACTIVE">ACTIVE (requires price)</option>
+            <option value="DRAFT">DRAFT (save)</option>
+            <option value="ACTIVE">ACTIVE / publish (requires price)</option>
           </select>
         </div>
         {error ? <p className="error">{error}</p> : null}
         <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : 'Create'}
+          {busy ? 'Saving…' : 'Create digital product'}
         </button>
       </form>
     </section>

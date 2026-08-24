@@ -29,6 +29,10 @@ describe('LocalFilesystemStorage', () => {
     });
     expect(stored.objectKey).toMatch(/^products\/.+\.jpg$/);
     expect(stored.publicUrl).toContain('/v1/media/files/products/');
+    expect(stored.absolutePath).toBeTruthy();
+    if (!stored.absolutePath) {
+      throw new Error('expected local storage to return absolutePath');
+    }
     const disk = await readFile(stored.absolutePath);
     expect(disk.equals(bytes)).toBe(true);
     const got = await storage.get(stored.objectKey);

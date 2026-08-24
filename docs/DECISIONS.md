@@ -24,7 +24,7 @@ This file is the index of Architecture Decision Records (ADRs) for the Buying Bo
 ### When an ADR is not required
 
 - Local refactors with no boundary impact
-- Dependency patch bumps via Dependabot
+- Routine dependency patch bumps with no architecture impact
 - Docs typos or non-normative examples
 
 ## ADR template

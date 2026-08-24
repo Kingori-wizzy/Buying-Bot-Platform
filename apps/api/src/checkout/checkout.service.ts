@@ -247,9 +247,7 @@ export class CheckoutService {
               ...(input.body.msisdnE164
                 ? { msisdnE164: input.body.msisdnE164 }
                 : {}),
-              ...(input.userId
-                ? { customerSubjectId: input.userId }
-                : {}),
+              ...(input.userId ? { customerSubjectId: input.userId } : {}),
               ...(input.body.returnUrl
                 ? { returnUrl: input.body.returnUrl }
                 : {}),
@@ -318,6 +316,7 @@ export class CheckoutService {
         items: true,
         financialSnapshot: true,
         payments: { include: { attempts: true } },
+        digitalFulfillments: true,
       },
     });
     if (!order) {
@@ -334,7 +333,23 @@ export class CheckoutService {
         });
       }
     }
-    return order;
+    // Customers see fulfillment status; payload only when READY/DELIVERED.
+    const { digitalFulfillments, ...rest } = order;
+    return {
+      ...rest,
+      digitalFulfillments: digitalFulfillments.map((row) => ({
+        id: row.id,
+        orderItemId: row.orderItemId,
+        deliveryMethod: row.deliveryMethod,
+        status: row.status,
+        deliveredAt: row.deliveredAt,
+        createdAt: row.createdAt,
+        ...((row.status === 'READY' || row.status === 'DELIVERED') &&
+        row.deliveryPayloadJson
+          ? { deliveryPayload: row.deliveryPayloadJson }
+          : {}),
+      })),
+    };
   }
 
   async listMyOrders(userId: string): Promise<unknown> {
@@ -359,6 +374,9 @@ export class CheckoutService {
     const allowed = [
       'PENDING_PAYMENT',
       'PAID',
+      'PROCESSING',
+      'FULFILLING',
+      'COMPLETED',
       'CANCELLED',
       'FAILED',
       'RECONCILIATION_HOLD',
@@ -389,6 +407,7 @@ export class CheckoutService {
         items: true,
         financialSnapshot: true,
         payments: { include: { attempts: true } },
+        digitalFulfillments: true,
       },
     });
     if (!order) {

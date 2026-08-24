@@ -9,14 +9,13 @@ import {
 import type { FastifyReply } from 'fastify';
 
 import { Public, SkipCsrf } from '../auth/guards.js';
-import { CatalogService } from '../catalog/catalog.service.js';
-import { LocalFilesystemStorage } from './local-filesystem.storage.js';
+import type { ApiEnv } from '../config/env.js';
+import { APP_ENV } from '../config/tokens.js';
+import { createObjectStorage } from './create-object-storage.js';
 
 @Controller('v1/media')
 export class MediaPublicController {
-  constructor(
-    @Inject(CatalogService) private readonly catalog: CatalogService,
-  ) {}
+  constructor(@Inject(APP_ENV) private readonly env: ApiEnv) {}
 
   @Get('files/products/:fileName')
   @Public()
@@ -25,16 +24,19 @@ export class MediaPublicController {
     @Param('fileName') fileName: string,
     @Res({ passthrough: false }) reply: FastifyReply,
   ): Promise<void> {
-    if (!fileName || fileName.includes('..') || fileName.includes('/') || fileName.includes('\\')) {
+    if (
+      !fileName ||
+      fileName.includes('..') ||
+      fileName.includes('/') ||
+      fileName.includes('\\')
+    ) {
       throw new NotFoundException({
         code: 'MEDIA_NOT_FOUND',
         message: 'Media object not found',
       });
     }
     const objectKey = `products/${fileName}`;
-    const storage = new LocalFilesystemStorage(
-      this.catalog.getMediaStorageRoot(),
-    );
+    const storage = createObjectStorage(this.env);
     const file = await storage.get(objectKey);
     if (!file) {
       throw new NotFoundException({

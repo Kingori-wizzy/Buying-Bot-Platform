@@ -1,0 +1,82 @@
+# Production deploy — Hostinger VPS (manual, protected environment).
+# Never invent secrets. Never auto-deploy on push to main.
+#
+# Prerequisites (EXTERNAL):
+#   1. GitHub Environment named `production` with required reviewers
+#   2. Secrets: PRODUCTION_SSH_HOST, PRODUCTION_SSH_USER, PRODUCTION_SSH_KEY
+#   3. Optional: PRODUCTION_COMPOSE_PATH, PRODUCTION_ENV_FILE
+#   4. VPS already bootstrapped with Docker + /etc/buyingbot/env.production
+#
+# This workflow SSHes to the VPS and runs the repo deploy script.
+# It does NOT print secret values.
+
+name: Production deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type deploy-production to confirm'
+        required: true
+        type: string
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Confirm production intent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require explicit confirmation
+        run: |
+          if [[ "${{ inputs.confirm }}" != "deploy-production" ]]; then
+            echo "Refusing deploy — confirmation string mismatch"
+            exit 1
+          fi
+
+  deploy:
+    name: Deploy to Hostinger VPS
+    needs: guard
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 60
+    steps:
+      - name: Require SSH secrets
+        env:
+          HOST: ${{ secrets.PRODUCTION_SSH_HOST }}
+          USER: ${{ secrets.PRODUCTION_SSH_USER }}
+          KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        run: |
+          if [[ -z "$HOST" || -z "$USER" || -z "$KEY" ]]; then
+            echo "EXTERNAL: set PRODUCTION_SSH_HOST, PRODUCTION_SSH_USER, PRODUCTION_SSH_KEY"
+            echo "on the GitHub Environment named production."
+            exit 1
+          fi
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PRODUCTION_SSH_HOST }}
+          username: ${{ secrets.PRODUCTION_SSH_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            COMPOSE_PATH="${{ secrets.PRODUCTION_COMPOSE_PATH }}"
+            ENV_FILE="${{ secrets.PRODUCTION_ENV_FILE }}"
+            if [[ -z "$COMPOSE_PATH" ]]; then
+              echo "EXTERNAL: set PRODUCTION_COMPOSE_PATH to the repo root on the VPS"
+              exit 1
+            fi
+            if [[ -z "$ENV_FILE" ]]; then
+              ENV_FILE=/etc/buyingbot/env.production
+            fi
+            cd "$COMPOSE_PATH"
+            git fetch --all --tags
+            git pull --ff-only
+            export BUYINGBOT_ENV_FILE="$ENV_FILE"
+            bash ./scripts/deployment/deploy-production.sh "$ENV_FILE"

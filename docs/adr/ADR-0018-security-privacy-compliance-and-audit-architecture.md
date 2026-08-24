@@ -55,7 +55,7 @@ apps/worker (service identity; no public AuthZ bypass)
   via platform disk/KMS for PG/object storage
 - Passwords Argon2id; no plaintext
 - No PAN/CVV/PIN storage; provider tokens only
-- Supply chain: lockfile, CI audit, Dependabot, image scan (ADR-0019/0020)
+- Supply chain: lockfile, CI audit, image scan (ADR-0019/0020)
 - AI: prompt injection defenses, no direct DB, no invented money
   (ADR-0015)
 

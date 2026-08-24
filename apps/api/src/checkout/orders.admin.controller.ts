@@ -1,9 +1,11 @@
 import { z } from '@buying-bot/validation';
 import {
+  Body,
   Controller,
   Get,
   Inject,
   Param,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -20,6 +22,7 @@ import {
 } from '../auth/guards.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import { CheckoutService } from './checkout.service.js';
+import { DigitalFulfillmentService } from './digital-fulfillment.service.js';
 
 @Controller('v1/admin/orders')
 @UseGuards(
@@ -34,6 +37,8 @@ import { CheckoutService } from './checkout.service.js';
 export class OrdersAdminController {
   constructor(
     @Inject(CheckoutService) private readonly checkout: CheckoutService,
+    @Inject(DigitalFulfillmentService)
+    private readonly fulfillment: DigitalFulfillmentService,
   ) {}
 
   @Get()
@@ -61,5 +66,29 @@ export class OrdersAdminController {
   @RequirePermissions('orders:read')
   get(@Param('id') id: string): Promise<unknown> {
     return this.checkout.adminGetOrder(id);
+  }
+
+  @Get(':id/fulfillments')
+  @RequirePermissions('orders:read')
+  listFulfillments(@Param('id') id: string): Promise<unknown> {
+    return this.fulfillment.listForOrder(id, { includePayload: true });
+  }
+
+  @Post('fulfillments/:fulfillmentId/ready')
+  @RequirePermissions('orders:update')
+  markReady(
+    @Param('fulfillmentId') fulfillmentId: string,
+    @Body()
+    body: { payload?: Record<string, unknown> },
+  ): Promise<unknown> {
+    return this.fulfillment.markReady(fulfillmentId, body.payload ?? {});
+  }
+
+  @Post('fulfillments/:fulfillmentId/delivered')
+  @RequirePermissions('orders:update')
+  markDelivered(
+    @Param('fulfillmentId') fulfillmentId: string,
+  ): Promise<unknown> {
+    return this.fulfillment.markDelivered(fulfillmentId);
   }
 }

@@ -19,6 +19,13 @@ interface OrderView {
     readonly status: string;
     readonly provider?: string;
   }[];
+  readonly digitalFulfillments?: readonly {
+    readonly id: string;
+    readonly status: string;
+    readonly deliveryMethod: string;
+    readonly deliveredAt?: string | null;
+    readonly deliveryPayload?: Record<string, unknown>;
+  }[];
 }
 
 function paymentTone(status: string | undefined): 'pending' | 'failed' | 'ok' {
@@ -131,8 +138,7 @@ export default function OrderStatusPage() {
               <div className="alert alert-warning">
                 <strong>Waiting for escrow confirmation…</strong>
                 <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-                  Provider:{' '}
-                  {order.payments?.[0]?.provider ?? 'escrow'}. Elapsed{' '}
+                  Provider: {order.payments?.[0]?.provider ?? 'escrow'}. Elapsed{' '}
                   {elapsedSec}s. If escrow credentials are not configured, the
                   payment attempt fails safely and will not show as paid.
                 </p>
@@ -142,6 +148,43 @@ export default function OrderStatusPage() {
             {tone === 'ok' ? (
               <div className="alert alert-success">
                 Payment confirmed by the server. Thank you.
+              </div>
+            ) : null}
+
+            {order.digitalFulfillments &&
+            order.digitalFulfillments.length > 0 ? (
+              <div className="stack" style={{ gap: '0.5rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+                  Digital delivery
+                </h2>
+                {order.digitalFulfillments.map((f) => (
+                  <div
+                    key={f.id}
+                    className="panel"
+                    style={{ padding: '0.75rem' }}
+                  >
+                    <p style={{ margin: 0 }}>
+                      <strong>Status</strong> {f.status} · {f.deliveryMethod}
+                    </p>
+                    {f.status === 'PENDING' ? (
+                      <p className="muted" style={{ margin: '0.35rem 0 0' }}>
+                        Delivery is being prepared. Sensitive access details
+                        appear only after authorized fulfillment.
+                      </p>
+                    ) : null}
+                    {f.deliveryPayload ? (
+                      <pre
+                        style={{
+                          margin: '0.5rem 0 0',
+                          whiteSpace: 'pre-wrap',
+                          fontSize: '0.85rem',
+                        }}
+                      >
+                        {JSON.stringify(f.deliveryPayload, null, 2)}
+                      </pre>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             ) : null}
 

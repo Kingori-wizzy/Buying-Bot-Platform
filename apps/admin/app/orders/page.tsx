@@ -104,6 +104,9 @@ export default function AdminOrdersPage() {
             <option value="">All statuses</option>
             <option value="PENDING_PAYMENT">PENDING_PAYMENT</option>
             <option value="PAID">PAID</option>
+            <option value="PROCESSING">PROCESSING</option>
+            <option value="FULFILLING">FULFILLING</option>
+            <option value="COMPLETED">COMPLETED</option>
             <option value="CANCELLED">CANCELLED</option>
             <option value="RECONCILIATION_HOLD">RECONCILIATION_HOLD</option>
           </select>

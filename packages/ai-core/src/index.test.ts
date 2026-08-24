@@ -66,4 +66,14 @@ describe('@buying-bot/ai-core', () => {
       ),
     ).toBe(true);
   });
+
+  it('commerce assistant prompt forbids invented catalog and marketplace claims', async () => {
+    const { COMMERCE_ASSISTANT_V1 } = await import('./prompts/registry.js');
+    expect(COMMERCE_ASSISTANT_V1).toMatch(/DIGITAL PRODUCTS/i);
+    expect(COMMERCE_ASSISTANT_V1).toMatch(/NEVER invent/i);
+    expect(COMMERCE_ASSISTANT_V1).toMatch(/Jumia/i);
+    expect(COMMERCE_ASSISTANT_V1).toMatch(
+      /No matching product is currently available/i,
+    );
+  });
 });

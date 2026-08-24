@@ -12,7 +12,7 @@
 - [x] API smoke script (expanded; AI 503 degradation)
 - [x] Journey validation through checkout (`scripts/dev/journey-validation.mjs`)
 - [x] Playwright API + browser page load (`e2e/customer-purchase-flow.spec.ts`)
-- [x] Sandbox webhook → PAID (not live M-Pesa)
+- [x] Sandbox webhook → PAID/PROCESSING (not live Escrow)
 - [x] `pnpm audit --audit-level=high` clean (`deepmerge-ts` override)
 - [x] Staging compose + nginx
 - [x] Dockerfiles for api/web/admin
@@ -20,9 +20,9 @@
 - [x] Production env template (`.env.production.example`)
 - [ ] Staging host provisioned (EXTERNAL)
 - [ ] TLS certs on staging/prod edge (EXTERNAL)
-- [ ] Secrets in secrets manager (EXTERNAL)
-- [ ] Live M-Pesa keys + callback URL (EXTERNAL)
-- [ ] Object storage for media/backups (EXTERNAL)
+- [ ] Secrets in GitHub Environment + `/etc/buyingbot/env.production` (EXTERNAL operator)
+- [ ] Live Escrow keys + webhook URL (EXTERNAL)
+- [ ] Object storage credentials on VPS MinIO (operator)
 - [ ] OTel collector + alerts (EXTERNAL)
 - [ ] Pen-test sign-off (EXTERNAL)
 
@@ -31,7 +31,7 @@
 - [ ] Legal ToS / privacy (EXTERNAL)
 - [ ] Tax rates approved (EXTERNAL)
 - [ ] Support / refund policy (EXTERNAL)
-- [ ] Merchant / M-Pesa contracts (EXTERNAL)
+- [ ] Merchant / Escrow contracts (EXTERNAL)
 
 ## Operational
 

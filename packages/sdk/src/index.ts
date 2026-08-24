@@ -52,10 +52,15 @@ export interface ProductListQuery {
   readonly page?: number;
   readonly pageSize?: number;
   readonly categoryId?: string;
+  readonly categorySlug?: string;
   readonly brandId?: string;
   readonly q?: string;
   readonly priceMinMinor?: number;
   readonly priceMaxMinor?: number;
+  readonly productKind?: 'DIGITAL' | 'PHYSICAL';
+  readonly digitalType?: string;
+  readonly sort?: 'newest' | 'price_asc' | 'price_desc';
+  readonly inStock?: boolean;
 }
 
 export interface ProductProvenance {
@@ -87,7 +92,16 @@ export interface ProductSummary {
   readonly slug: string;
   readonly shortDescription?: string | null;
   readonly status?: string;
+  readonly productKind?: string;
+  readonly digitalType?: string | null;
+  readonly contentOrigin?: string;
   readonly brand?: { readonly id: string; readonly name: string } | null;
+  readonly primaryCategory?: {
+    readonly id: string;
+    readonly name: string;
+    readonly slug: string;
+    readonly parentId?: string | null;
+  } | null;
   readonly primaryImageUrl?: string | null;
   readonly primaryImageAttribution?: string | null;
   readonly provenance?: ProductProvenance | null;
@@ -174,11 +188,7 @@ export interface CreateProductBody {
   readonly shortDescription?: string;
   readonly description?: string;
   readonly status?:
-    | 'DRAFT'
-    | 'PENDING_REVIEW'
-    | 'ACTIVE'
-    | 'INACTIVE'
-    | 'ARCHIVED';
+    'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'ARCHIVED';
   readonly brandId?: string | null;
   readonly primaryCategoryId?: string | null;
   readonly seoTitle?: string;
@@ -189,6 +199,29 @@ export interface CreateProductBody {
   readonly currency?: string;
   readonly initialStock?: number;
   readonly contentOrigin?: 'ADMIN' | 'DEMO' | 'IMPORT';
+  readonly productKind?: 'DIGITAL' | 'PHYSICAL';
+  readonly digitalType?:
+    | 'DIGITAL_ACCOUNT'
+    | 'DIGITAL_SUBSCRIPTION'
+    | 'DIGITAL_SERVICE'
+    | 'DIGITAL_ACCESS'
+    | 'DIGITAL_LICENSE'
+    | 'DIGITAL_CREDENTIAL'
+    | 'DIGITAL_REWARD'
+    | 'OTHER'
+    | null;
+  readonly features?: readonly string[];
+  readonly requirementsText?: string | null;
+  readonly instructionsText?: string | null;
+  readonly inventoryMode?: 'FINITE' | 'UNLIMITED' | 'MANUAL';
+  readonly deliveryMethod?:
+    | 'MANUAL'
+    | 'ENTITLEMENT'
+    | 'LICENSE_CODE'
+    | 'ACCESS_INSTRUCTIONS'
+    | 'DOWNLOAD'
+    | 'NONE';
+  readonly validityDays?: number | null;
 }
 
 export type UpdateProductBody = Partial<CreateProductBody>;
@@ -345,10 +378,20 @@ export class PlatformSdk {
       page: query.page,
       pageSize: query.pageSize,
       categoryId: query.categoryId,
+      categorySlug: query.categorySlug,
       brandId: query.brandId,
       q: query.q,
       priceMinMinor: query.priceMinMinor,
       priceMaxMinor: query.priceMaxMinor,
+      productKind: query.productKind,
+      digitalType: query.digitalType,
+      sort: query.sort,
+      inStock:
+        query.inStock === undefined
+          ? undefined
+          : query.inStock
+            ? 'true'
+            : 'false',
     });
     const response = await this.request(`/v1/products${qs}`);
     return (await response.json()) as ProductListResponse;
@@ -368,10 +411,20 @@ export class PlatformSdk {
       page: query.page,
       pageSize: query.pageSize,
       categoryId: query.categoryId,
+      categorySlug: query.categorySlug,
       brandId: query.brandId,
       q: query.q,
       priceMinMinor: query.priceMinMinor,
       priceMaxMinor: query.priceMaxMinor,
+      productKind: query.productKind,
+      digitalType: query.digitalType,
+      sort: query.sort,
+      inStock:
+        query.inStock === undefined
+          ? undefined
+          : query.inStock
+            ? 'true'
+            : 'false',
     });
     const response = await this.request(`/v1/search/products${qs}`);
     return (await response.json()) as ProductListResponse;
@@ -531,6 +584,32 @@ export class PlatformSdk {
     return response.json();
   }
 
+  async adminListOrderFulfillments(orderId: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/orders/${encodeURIComponent(orderId)}/fulfillments`,
+    );
+    return response.json();
+  }
+
+  async adminMarkFulfillmentReady(
+    fulfillmentId: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/orders/fulfillments/${encodeURIComponent(fulfillmentId)}/ready`,
+      { method: 'POST', json: { payload }, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminMarkFulfillmentDelivered(fulfillmentId: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/orders/fulfillments/${encodeURIComponent(fulfillmentId)}/delivered`,
+      { method: 'POST', json: {}, csrf: true },
+    );
+    return response.json();
+  }
+
   async adminGetProduct(id: string): Promise<unknown> {
     const response = await this.request(
       `/v1/admin/catalog/products/${encodeURIComponent(id)}`,
@@ -544,6 +623,8 @@ export class PlatformSdk {
       pageSize?: number;
       status?: string;
       q?: string;
+      categoryId?: string;
+      digitalType?: string;
     } = {},
   ): Promise<ProductListResponse> {
     const qs = toQuery({
@@ -551,6 +632,8 @@ export class PlatformSdk {
       pageSize: query.pageSize,
       status: query.status,
       q: query.q,
+      categoryId: query.categoryId,
+      digitalType: query.digitalType,
     });
     const response = await this.request(`/v1/admin/catalog/products${qs}`);
     return (await response.json()) as ProductListResponse;
@@ -584,6 +667,30 @@ export class PlatformSdk {
     const response = await this.request(
       `/v1/admin/catalog/products/${encodeURIComponent(id)}/publish`,
       { method: 'POST', json: {}, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminUnpublishProduct(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/products/${encodeURIComponent(id)}/unpublish`,
+      { method: 'POST', json: {}, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminArchiveProduct(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/products/${encodeURIComponent(id)}/archive`,
+      { method: 'POST', json: {}, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminDeleteMedia(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/media/${encodeURIComponent(id)}`,
+      { method: 'DELETE', csrf: true },
     );
     return response.json();
   }
@@ -688,6 +795,32 @@ export class PlatformSdk {
 
   async listCategories(): Promise<unknown> {
     const response = await this.request('/v1/categories');
+    return response.json();
+  }
+
+  async getCategory(slug: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/categories/${encodeURIComponent(slug)}`,
+    );
+    return response.json();
+  }
+
+  async adminUpdateCategory(
+    id: string,
+    body: {
+      name?: string;
+      slug?: string;
+      parentId?: string | null;
+      description?: string;
+      sortOrder?: number;
+      active?: boolean;
+      archived?: boolean;
+    },
+  ): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/catalog/categories/${encodeURIComponent(id)}`,
+      { method: 'PATCH', json: body, csrf: true },
+    );
     return response.json();
   }
 
