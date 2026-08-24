@@ -9,11 +9,8 @@ export default function NotFound() {
         </h1>
         <p className="muted">That route does not exist in the storefront.</p>
         <div className="cta-row" style={{ justifyContent: 'center' }}>
-          <Link className="btn" href="/products">
-            Browse products
-          </Link>
-          <Link className="btn btn-secondary" href="/">
-            Home
+          <Link className="btn" href="/">
+            Shop by category
           </Link>
         </div>
       </section>

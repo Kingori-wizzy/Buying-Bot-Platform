@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
     // Repo uses root eslint flat config; Next plugin not required for M13/M14.
     ignoreDuringBuilds: true,
   },
+  redirects() {
+    return [{ source: '/products', destination: '/', permanent: false }];
+  },
 };
 
 export default nextConfig;

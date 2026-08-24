@@ -215,7 +215,7 @@ test.describe('Customer purchase flow (API)', () => {
 });
 
 test.describe('Customer purchase flow (Web UI)', () => {
-  test('homepage → products → assistant pages load', async ({ page }) => {
+  test('homepage → category → assistant pages load', async ({ page }) => {
     test.skip(
       !webBase,
       'WEB_BASE_URL not set — skipping web e2e (EXTERNAL servers)',
@@ -224,8 +224,8 @@ test.describe('Customer purchase flow (Web UI)', () => {
     const home = await page.goto(`${webBase}/`);
     expect(home?.ok() || home?.status() === 304).toBeTruthy();
 
-    const products = await page.goto(`${webBase}/products`);
-    expect(products?.ok() || products?.status() === 304).toBeTruthy();
+    const category = await page.goto(`${webBase}/category/ai-platforms`);
+    expect(category?.ok() || category?.status() === 304).toBeTruthy();
 
     const assistant = await page.goto(`${webBase}/assistant`);
     expect(assistant?.ok() || assistant?.status() === 304).toBeTruthy();

@@ -98,8 +98,8 @@ export default async function CategoryPage({
           {products.items.length === 0 ? (
             <div className="empty-state">
               <p>No published products in this category yet.</p>
-              <Link className="btn" href="/products">
-                Browse all
+              <Link className="btn" href="/">
+                Shop by category
               </Link>
             </div>
           ) : (

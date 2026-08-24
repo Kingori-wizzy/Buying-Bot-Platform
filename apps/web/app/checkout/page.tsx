@@ -113,8 +113,8 @@ export default function CheckoutPage() {
         {!loading && cart?.lines.length === 0 ? (
           <div className="empty-state">
             <p>Add items before checkout.</p>
-            <Link className="btn" href="/products">
-              Browse products
+            <Link className="btn" href="/">
+              Shop by category
             </Link>
           </div>
         ) : null}

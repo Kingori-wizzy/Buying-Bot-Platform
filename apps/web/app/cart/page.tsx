@@ -79,7 +79,7 @@ export default function CartPage() {
         {!loading && cart?.lines.length === 0 ? (
           <div className="empty-state">
             <p>Your cart is empty.</p>
-            <Link className="btn" href="/products">
+            <Link className="btn" href="/">
               Continue shopping
             </Link>
           </div>

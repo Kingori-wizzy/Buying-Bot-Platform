@@ -86,12 +86,6 @@ export function SiteHeader() {
           aria-label="Primary"
         >
           <Link
-            href="/products"
-            aria-current={isActive(pathname, '/products') ? 'page' : undefined}
-          >
-            Products
-          </Link>
-          <Link
             href="/search"
             aria-current={isActive(pathname, '/search') ? 'page' : undefined}
           >
@@ -158,7 +152,6 @@ export function SiteHeader() {
             onChange={(e) => {
               setQ(e.target.value);
             }}
-            placeholder="Search laptops, phones…"
             autoComplete="off"
           />
           <button className="btn" type="submit">

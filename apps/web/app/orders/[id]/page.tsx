@@ -215,7 +215,7 @@ export default function OrderStatusPage() {
           <Link className="btn btn-secondary" href="/orders">
             My orders
           </Link>
-          <Link className="btn btn-secondary" href="/products">
+          <Link className="btn btn-secondary" href="/">
             Continue shopping
           </Link>
         </div>

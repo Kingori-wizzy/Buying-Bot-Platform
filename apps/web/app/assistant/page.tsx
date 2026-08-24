@@ -346,8 +346,8 @@ export default function AssistantPage() {
                 Stop
               </button>
             ) : null}
-            <Link className="btn btn-secondary" href="/products">
-              Browse catalog
+            <Link className="btn btn-secondary" href="/">
+              Shop by category
             </Link>
           </div>
         </form>

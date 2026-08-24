@@ -49,7 +49,7 @@ export default function RootLayout({
             <p style={{ margin: 0 }}>
               <Link href="/assistant">AI assistant</Link>
               {' · '}
-              <Link href="/products">Catalog</Link>
+              <Link href="/">Categories</Link>
               {' · '}
               <Link href="/cart">Cart</Link>
             </p>

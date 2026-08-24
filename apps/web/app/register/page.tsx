@@ -22,7 +22,7 @@ export default function RegisterPage() {
       const sdk = createBrowserSdk();
       await sdk.register({ email, password });
       await sdk.login({ email, password, realm: 'customer' });
-      router.push('/products');
+      router.push('/');
       router.refresh();
     } catch (err) {
       setError(

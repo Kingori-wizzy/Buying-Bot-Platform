@@ -44,7 +44,6 @@ export default async function SearchPage({
               id="search-q"
               name="q"
               defaultValue={query}
-              placeholder="Search products…"
               required
             />
             <button className="btn" type="submit">

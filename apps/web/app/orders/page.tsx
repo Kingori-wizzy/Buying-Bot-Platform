@@ -73,7 +73,7 @@ export default function OrdersIndexPage() {
         {orders?.length === 0 ? (
           <div className="empty-state">
             <p>No orders yet.</p>
-            <Link className="btn" href="/products">
+            <Link className="btn" href="/">
               Start shopping
             </Link>
           </div>

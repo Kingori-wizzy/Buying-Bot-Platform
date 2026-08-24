@@ -1,6 +1,5 @@
 import Link from 'next/link';
 
-import { ProductCard } from '@/components/ProductCard';
 import { createServerSdk } from '@/lib/api';
 
 const CATEGORY_BLURBS: Record<string, string> = {
@@ -21,21 +20,12 @@ interface CategoryRow {
 }
 
 export default async function HomePage() {
-  let featured: Awaited<
-    ReturnType<ReturnType<typeof createServerSdk>['listProducts']>
-  >['items'] = [];
-  let productCount = 0;
   let catalogError = false;
   let rootCategories: CategoryRow[] = [];
 
   try {
     const sdk = createServerSdk();
-    const [list, categories] = await Promise.all([
-      sdk.listProducts({ pageSize: 8, productKind: 'DIGITAL' }),
-      sdk.listCategories(),
-    ]);
-    featured = list.items;
-    productCount = list.total ?? list.items.length;
+    const categories = await sdk.listCategories();
     const all = Array.isArray(categories) ? (categories as CategoryRow[]) : [];
     rootCategories = all.filter((c) => !c.parentId);
   } catch {
@@ -56,9 +46,6 @@ export default async function HomePage() {
           <div className="cta-row">
             <Link className="btn" href="/assistant">
               Ask the AI assistant
-            </Link>
-            <Link className="btn btn-ghost" href="/products">
-              Browse catalog
             </Link>
           </div>
         </div>
@@ -116,7 +103,6 @@ export default async function HomePage() {
               <input
                 id="home-q"
                 name="q"
-                placeholder="e.g. AI platform under 2000"
                 autoComplete="off"
               />
               <button className="btn" type="submit">
@@ -124,37 +110,6 @@ export default async function HomePage() {
               </button>
             </div>
           </form>
-        </section>
-
-        <section className="section">
-          <div className="section-head">
-            <div>
-              <h2>Published products</h2>
-              <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-                {catalogError
-                  ? 'Catalog temporarily unavailable.'
-                  : productCount > 0
-                    ? `${String(productCount)} published product(s).`
-                    : 'No products published yet — administrators add catalog via Admin.'}
-              </p>
-            </div>
-            <Link href="/products">View all</Link>
-          </div>
-          {featured.length === 0 && !catalogError ? (
-            <div className="empty-state">
-              <p>The shop is ready for admin-uploaded digital products.</p>
-              <Link className="btn" href="/products">
-                Open catalog
-              </Link>
-            </div>
-          ) : null}
-          {featured.length > 0 ? (
-            <ul className="card-list">
-              {featured.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </ul>
-          ) : null}
         </section>
 
         <section className="section">

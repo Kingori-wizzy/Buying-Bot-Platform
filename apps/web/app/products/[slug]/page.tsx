@@ -57,18 +57,29 @@ export default async function ProductDetailPage({ params }: Props) {
     ) ?? [];
 
   let related: Awaited<ReturnType<typeof sdk.listProducts>>['items'] = [];
-  try {
-    const list = await sdk.listProducts({ pageSize: 4 });
-    related = list.items.filter((item) => item.id !== product.id).slice(0, 4);
-  } catch {
-    related = [];
+  const categorySlug = product.primaryCategory?.slug;
+  if (categorySlug) {
+    try {
+      const list = await sdk.listProducts({ pageSize: 4, categorySlug });
+      related = list.items.filter((item) => item.id !== product.id).slice(0, 4);
+    } catch {
+      related = [];
+    }
   }
 
   return (
     <main className="page" id="main">
       <article className="stack">
         <p className="muted" style={{ margin: 0 }}>
-          <Link href="/products">Products</Link>
+          <Link href="/">Categories</Link>
+          {product.primaryCategory ? (
+            <>
+              {' / '}
+              <Link href={`/category/${product.primaryCategory.slug}`}>
+                {product.primaryCategory.name}
+              </Link>
+            </>
+          ) : null}
           {' / '}
           <span>{product.name}</span>
         </p>

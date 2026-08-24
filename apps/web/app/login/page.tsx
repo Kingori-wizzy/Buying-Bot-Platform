@@ -26,7 +26,7 @@ export default function LoginPage() {
       } catch {
         // merge is best-effort after login
       }
-      router.push('/products');
+      router.push('/');
       router.refresh();
     } catch (err) {
       setError(err instanceof PlatformApiError ? err.message : 'Login failed');
