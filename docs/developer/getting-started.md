@@ -82,7 +82,7 @@ Default local URLs (see `.env.example`):
 
 - `DATABASE_URL=postgresql://buyingbot:buyingbot@127.0.0.1:5433/buyingbot?schema=public` (host port **5433** → container 5432)
 - `DATABASE_URL_TEST=postgresql://buyingbot:buyingbot@127.0.0.1:5433/buyingbot_test?schema=public`
-- `REDIS_URL=redis://127.0.0.1:6379`
+- `REDIS_URL=redis://127.0.0.1:6380` (host port **6380** → container 6379)
 
 Create schemas + migrate:
 

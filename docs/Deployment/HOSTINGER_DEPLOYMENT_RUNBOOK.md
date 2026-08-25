@@ -117,9 +117,28 @@ curl -sf https://api.example.com/health/live
 
 Replace hostnames with the company’s domains.
 
-## 15. Admin creation
+## 15. Admin creation + customer auth
 
-Use the identity seed / first-admin process documented in [getting-started](../developer/getting-started.md) against production only with a unique password. Do not reuse development passwords.
+API boot **idempotently seeds** the platform organization and roles (`CUSTOMER`, `ADMIN`, `SUPER_ADMIN`). Prisma migrate must have succeeded first.
+
+**Customers** self-register and log in on the storefront (`/register`, `/login`). Password minimum length is **10**. Ensure `CORS_ORIGIN` matches the exact HTTPS shop origin and `COOKIE_SECURE=true` under HTTPS.
+
+**First admin** (unique production password — never reuse `LocalAdmin1!`):
+
+```bash
+cd /opt/buyingbot
+export DATABASE_URL='postgresql://buyingbot:…@127.0.0.1:5432/buyingbot?schema=public'
+# Prefer connecting via compose network / documented ops tunnel — do not publish Postgres publicly.
+ADMIN_EMAIL='ops@your-company.com'
+ADMIN_PASSWORD='…at-least-12-chars…'
+API_BASE_URL='https://buybot.staging.earnhub.com'
+ADMIN_ORIGIN='https://buybot.staging.earnhub.com'
+node scripts/deployment/create-admin.mjs
+```
+
+Then open `https://buybot.staging.earnhub.com/admin/login` (path-based nginx) and sign in with `realm=admin`.
+
+If CORS or cookies fail: confirm `CORS_ORIGIN`, `NEXT_PUBLIC_API_BASE_URL`, and `PUBLIC_*` URLs all use the same public hostname scheme (`https://…`).
 
 ## 16. Backup configuration
 
