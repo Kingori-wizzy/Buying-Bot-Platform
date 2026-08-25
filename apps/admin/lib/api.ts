@@ -2,10 +2,33 @@ import { PlatformSdk } from '@buying-bot/sdk';
 
 const DEFAULT_API = 'http://localhost:3000';
 
+/**
+ * Resolve API base URL. In the browser, keep the page hostname so session/CSRF
+ * cookies stay same-site (localhost vs 127.0.0.1 are different sites).
+ */
 export function getApiBaseUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? DEFAULT_API
-  );
+  const configured =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? DEFAULT_API;
+
+  if (typeof window === 'undefined') {
+    return configured;
+  }
+
+  try {
+    const api = new URL(configured);
+    const pageHost = window.location.hostname;
+    if (
+      (api.hostname === 'localhost' || api.hostname === '127.0.0.1') &&
+      (pageHost === 'localhost' || pageHost === '127.0.0.1')
+    ) {
+      api.hostname = pageHost;
+      return api.origin;
+    }
+  } catch {
+    // fall through to configured
+  }
+
+  return configured;
 }
 
 export function createBrowserSdk(): PlatformSdk {

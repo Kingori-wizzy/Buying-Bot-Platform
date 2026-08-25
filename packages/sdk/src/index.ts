@@ -959,8 +959,14 @@ export class PlatformSdk {
         body = await response.json();
         if (body && typeof body === 'object') {
           const record = body as Record<string, unknown>;
-          if (typeof record.code === 'string') code = record.code;
-          if (typeof record.message === 'string') message = record.message;
+          const nested =
+            record.error && typeof record.error === 'object'
+              ? (record.error as Record<string, unknown>)
+              : undefined;
+          if (typeof nested?.code === 'string') code = nested.code;
+          else if (typeof record.code === 'string') code = record.code;
+          if (typeof nested?.message === 'string') message = nested.message;
+          else if (typeof record.message === 'string') message = record.message;
         }
       } catch {
         // ignore non-JSON error bodies
