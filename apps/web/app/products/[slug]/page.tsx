@@ -156,9 +156,12 @@ export default async function ProductDetailPage({ params }: Props) {
             {price ? (
               <div className="cta-row">
                 <AddToCartButton offerId={price.offerId} />
-                <Link className="btn btn-secondary" href="/checkout">
-                  Buy now
-                </Link>
+              <Link
+                className="btn btn-secondary"
+                href={`/checkout?offerId=${encodeURIComponent(price.offerId)}`}
+              >
+                Buy now
+              </Link>
                 <Link className="btn btn-secondary" href="/assistant">
                   Ask AI about this
                 </Link>

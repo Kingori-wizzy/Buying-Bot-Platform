@@ -2,18 +2,21 @@
 
 import { PlatformApiError } from '@buying-bot/sdk';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { useAdminSession } from '@/components/AdminShell';
 import { createBrowserSdk } from '@/lib/api';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { refresh } = useAdminSession();
+  const { refresh, loading } = useAdminSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const emailId = useId();
+  const passwordId = useId();
 
   async function onLogin(e: { preventDefault(): void }) {
     e.preventDefault();
@@ -34,49 +37,118 @@ export default function AdminLoginPage() {
     }
   }
 
-  return (
-    <section className="stack" style={{ maxWidth: 420 }}>
-      <h1>Admin login</h1>
-      <p className="muted">
-        Admin cookie realm. MFA is off unless the API sets{' '}
-        <code>ADMIN_MFA_REQUIRED=true</code>.
-      </p>
+  const storefrontUrl =
+    process.env.NEXT_PUBLIC_STOREFRONT_URL?.replace(/\/$/, '') ??
+    'http://localhost:3001';
 
-      <form
-        className="panel"
-        onSubmit={(e) => {
-          void onLogin(e);
-        }}
-      >
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-            }}
-            required
-          />
+  if (loading) {
+    return (
+      <div className="login-screen" aria-busy="true">
+        <div className="login-card login-card-loading">
+          <div className="login-skeleton" />
+          <p className="muted">Checking session…</p>
         </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
+      </div>
+    );
+  }
+
+  return (
+    <div className="login-screen">
+      <div className="login-atmosphere" aria-hidden />
+      <div className="login-grid">
+        <aside className="login-brand-panel">
+          <p className="login-kicker">Operations</p>
+          <h1 className="login-brand-title">
+            Buying <span>Bot</span>
+          </h1>
+          <p className="login-brand-copy">
+            Secure admin access for catalog, inventory, orders, and digital
+            fulfillment. Authorization is enforced by the API — this screen only
+            opens the admin session.
+          </p>
+          <ul className="login-points">
+            <li>Separate admin session cookie</li>
+            <li>Permission-gated console</li>
+            <li>Server-authoritative catalog</li>
+          </ul>
+        </aside>
+
+        <section className="login-card" aria-labelledby="admin-login-heading">
+          <header className="login-card-head">
+            <p className="login-badge">Admin portal</p>
+            <h2 id="admin-login-heading">Sign in</h2>
+            <p className="muted login-lede">
+              Use your administrator credentials. Customer accounts cannot enter
+              this portal.
+            </p>
+          </header>
+
+          <form
+            className="login-form"
+            onSubmit={(e) => {
+              void onLogin(e);
             }}
-            required
-          />
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        <button className="btn" type="submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
-    </section>
+          >
+            <div className="field">
+              <label htmlFor={emailId}>Work email</label>
+              <input
+                id={emailId}
+                type="email"
+                autoComplete="username"
+                inputMode="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                }}
+                placeholder="ops@your-company.com"
+                required
+              />
+            </div>
+            <div className="field">
+              <div className="login-label-row">
+                <label htmlFor={passwordId}>Password</label>
+                <button
+                  type="button"
+                  className="login-text-btn"
+                  onClick={() => {
+                    setShowPassword((v) => !v);
+                  }}
+                >
+                  {showPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <input
+                id={passwordId}
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                }}
+                required
+              />
+            </div>
+
+            {error ? (
+              <p className="login-error" role="alert">
+                {error}
+              </p>
+            ) : null}
+
+            <button
+              className="btn login-submit"
+              type="submit"
+              disabled={busy || !email.trim() || !password}
+            >
+              {busy ? 'Signing in…' : 'Enter admin console'}
+            </button>
+          </form>
+
+          <footer className="login-footer">
+            <a href={storefrontUrl}>← Back to storefront</a>
+          </footer>
+        </section>
+      </div>
+    </div>
   );
 }

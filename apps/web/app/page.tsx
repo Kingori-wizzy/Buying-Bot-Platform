@@ -62,6 +62,12 @@ export default async function HomePage() {
               </p>
             </div>
           </div>
+          {catalogError ? (
+            <div className="alert alert-error" role="alert">
+              Catalog is temporarily unavailable. Check that the API is running,
+              then refresh this page.
+            </div>
+          ) : null}
           {rootCategories.length === 0 && !catalogError ? (
             <p className="muted">
               Categories will appear after the shop taxonomy is seeded.

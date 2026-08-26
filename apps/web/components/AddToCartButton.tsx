@@ -4,6 +4,7 @@ import { PlatformApiError } from '@buying-bot/sdk';
 import { useState } from 'react';
 
 import { createBrowserSdk } from '@/lib/api';
+import { notifyCartChanged } from '@/lib/cart-events';
 
 interface Props {
   offerId: string;
@@ -31,6 +32,7 @@ export function AddToCartButton({
         offerId,
         quantity: Math.max(1, qty),
       });
+      notifyCartChanged();
       setMessage('Added ✓');
       setTimeout(() => {
         setMessage(null);

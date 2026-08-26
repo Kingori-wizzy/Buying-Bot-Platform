@@ -7,6 +7,8 @@ import type { Logger } from '@buying-bot/utils';
 import type { ArgumentsHost, ExecutionContext } from '@nestjs/common';
 import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { CsrfGuard } from '../auth/guards.js';
@@ -17,6 +19,21 @@ describe('security regressions', () => {
     expect(() => {
       assertSafeCorsOrigin('*', 'production');
     }).toThrow();
+  });
+
+  it('guards product-sources admin controller with session + RBAC', () => {
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        'src/product-sources/product-sources.admin.controller.ts',
+      ),
+      'utf8',
+    );
+    expect(source).toContain('SessionAuthGuard');
+    expect(source).toContain('PermissionsGuard');
+    expect(source).toContain('RequireRealm');
+    expect(source).not.toContain("'catalog:write'");
+    expect(source).toContain("'catalog:update'");
   });
 
   it('requires a CSRF token on session mutations', () => {

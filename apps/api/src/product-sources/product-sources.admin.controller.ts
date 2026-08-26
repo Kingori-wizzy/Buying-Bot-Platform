@@ -7,9 +7,19 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 
-import { RequirePermissions } from '../auth/guards.js';
+import {
+  CsrfGuard,
+  MfaSatisfiedGuard,
+  PermissionsGuard,
+  RealmGuard,
+  RequireMfa,
+  RequirePermissions,
+  RequireRealm,
+  SessionAuthGuard,
+} from '../auth/guards.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
 import {
   type PatchProductSourceBody,
@@ -18,6 +28,15 @@ import {
 import { ProductSourcesService } from './product-sources.service.js';
 
 @Controller('v1/admin/product-sources')
+@UseGuards(
+  CsrfGuard,
+  SessionAuthGuard,
+  RealmGuard,
+  MfaSatisfiedGuard,
+  PermissionsGuard,
+)
+@RequireRealm('admin')
+@RequireMfa()
 export class ProductSourcesAdminController {
   constructor(
     @Inject(ProductSourcesService)
@@ -49,7 +68,7 @@ export class ProductSourcesAdminController {
   }
 
   @Patch(':code')
-  @RequirePermissions('catalog:write')
+  @RequirePermissions('catalog:update')
   patch(
     @Param('code') code: string,
     @Body(new ZodValidationPipe(patchProductSourceSchema))
@@ -59,7 +78,7 @@ export class ProductSourcesAdminController {
   }
 
   @Post(':code/sync')
-  @RequirePermissions('catalog:write')
+  @RequirePermissions('catalog:update')
   triggerSync(@Param('code') code: string): Promise<{ syncRunId: string }> {
     return this.sources.triggerSync(code);
   }

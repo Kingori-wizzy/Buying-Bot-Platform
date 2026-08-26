@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
 import { cartSubtotalMinor, createBrowserSdk } from '@/lib/api';
+import { notifyCartChanged } from '@/lib/cart-events';
 
 export default function CartPage() {
   const [cart, setCart] = useState<CartView | null>(null);
@@ -41,6 +42,7 @@ export default function CartPage() {
         quantity,
       });
       setCart(next);
+      notifyCartChanged();
     } catch (err) {
       setError(err instanceof PlatformApiError ? err.message : 'Update failed');
     } finally {
@@ -53,6 +55,7 @@ export default function CartPage() {
     try {
       const next = await createBrowserSdk().removeCartItem(lineId);
       setCart(next);
+      notifyCartChanged();
     } catch (err) {
       setError(err instanceof PlatformApiError ? err.message : 'Remove failed');
     } finally {
@@ -116,11 +119,11 @@ export default function CartPage() {
                       type="number"
                       min={1}
                       max={100}
-                      defaultValue={line.quantity}
+                      value={line.quantity}
                       disabled={busy}
-                      onBlur={(e) => {
+                      onChange={(e) => {
                         const qty = Number(e.target.value);
-                        if (qty >= 1 && qty !== line.quantity) {
+                        if (Number.isFinite(qty) && qty >= 1 && qty <= 100) {
                           void updateQty(line.id, qty);
                         }
                       }}

@@ -6,48 +6,51 @@ import { useEffect, useState } from 'react';
 import { useAdminSession } from '@/components/AdminShell';
 import { createBrowserSdk } from '@/lib/api';
 
-interface DashboardMetrics {
-  readonly productCount: number | null;
-  readonly inventoryRows: number | null;
-  readonly apiPing: string | null;
-  readonly error: string | null;
+interface DashboardData {
+  products?: {
+    total: number;
+    active: number;
+    draft: number;
+    archived: number;
+  };
+  inventory?: { outOfStock: number; lowStock: number };
+  orders?: {
+    pending: number;
+    recent: Array<{
+      id: string;
+      status: string;
+      createdAt: string;
+      financialSnapshot?: {
+        grandTotalMinor?: number;
+        currency?: string;
+      } | null;
+    }>;
+  };
+  audit?: {
+    recent: Array<{
+      id: string;
+      type: string;
+      createdAt: string;
+      userId?: string | null;
+    }>;
+  };
 }
 
 export default function AdminHomePage() {
-  const { me, loading } = useAdminSession();
-  const [metrics, setMetrics] = useState<DashboardMetrics>({
-    productCount: null,
-    inventoryRows: null,
-    apiPing: null,
-    error: null,
-  });
+  const { me, loading, can } = useAdminSession();
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading || !me) return;
     void (async () => {
-      const sdk = createBrowserSdk();
       try {
-        const [products, inventory, ping] = await Promise.all([
-          sdk.listProducts({ pageSize: 1 }).catch(() => null),
-          sdk.adminListInventory({ pageSize: 50 }).catch(() => null),
-          sdk.adminPing().catch(() => null),
-        ]);
-        const inventoryItems = Array.isArray(inventory)
-          ? inventory
-          : ((inventory as { items?: unknown[] } | null)?.items ?? null);
-        setMetrics({
-          productCount: products?.total ?? products?.items.length ?? null,
-          inventoryRows: inventoryItems ? inventoryItems.length : null,
-          apiPing: ping ? 'reachable' : 'unreachable',
-          error: null,
-        });
+        const next = (await createBrowserSdk().adminDashboard()) as DashboardData;
+        setData(next);
+        setError(null);
       } catch (err) {
-        setMetrics({
-          productCount: null,
-          inventoryRows: null,
-          apiPing: null,
-          error: err instanceof Error ? err.message : 'Dashboard load failed',
-        });
+        setData(null);
+        setError(err instanceof Error ? err.message : 'Dashboard load failed');
       }
     })();
   }, [loading, me]);
@@ -64,37 +67,111 @@ export default function AdminHomePage() {
             Operations dashboard
           </h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            KPIs below are loaded from live APIs. Empty means no data or missing
-            permission — nothing is fabricated.
+            Metrics come from the admin API. Missing permission or empty data
+            shows as — — nothing is invented in the browser.
           </p>
         </div>
       </div>
 
-      {metrics.error ? <p className="error">{metrics.error}</p> : null}
+      {error ? <p className="error">{error}</p> : null}
 
       <div className="kpi-grid">
         <div className="kpi-card">
-          <span className="muted">Catalog products</span>
-          <strong>
-            {metrics.productCount === null ? '—' : String(metrics.productCount)}
-          </strong>
+          <span className="muted">Products</span>
+          <strong>{data?.products?.total ?? '—'}</strong>
         </div>
         <div className="kpi-card">
-          <span className="muted">Inventory rows (sample)</span>
-          <strong>
-            {metrics.inventoryRows === null
-              ? '—'
-              : String(metrics.inventoryRows)}
-          </strong>
+          <span className="muted">Active</span>
+          <strong>{data?.products?.active ?? '—'}</strong>
         </div>
         <div className="kpi-card">
-          <span className="muted">Admin API ping</span>
-          <strong>{metrics.apiPing ?? '—'}</strong>
+          <span className="muted">Draft</span>
+          <strong>{data?.products?.draft ?? '—'}</strong>
+        </div>
+        <div className="kpi-card">
+          <span className="muted">Archived</span>
+          <strong>{data?.products?.archived ?? '—'}</strong>
+        </div>
+        <div className="kpi-card">
+          <span className="muted">Low stock</span>
+          <strong>{data?.inventory?.lowStock ?? '—'}</strong>
+        </div>
+        <div className="kpi-card">
+          <span className="muted">Out of stock</span>
+          <strong>{data?.inventory?.outOfStock ?? '—'}</strong>
+        </div>
+        <div className="kpi-card">
+          <span className="muted">Open orders</span>
+          <strong>{data?.orders?.pending ?? '—'}</strong>
         </div>
         <div className="kpi-card">
           <span className="muted">MFA</span>
           <strong>{me?.mfaSatisfied ? 'Satisfied' : 'Required'}</strong>
         </div>
+      </div>
+
+      <div className="panel stack">
+        <div className="section-head">
+          <h2 style={{ margin: 0 }}>Recent orders</h2>
+          {can('orders', 'read') ? (
+            <Link className="btn btn-secondary" href="/orders">
+              View all
+            </Link>
+          ) : null}
+        </div>
+        {data?.orders?.recent?.length ? (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Status</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.orders.recent.map((order) => (
+                  <tr key={order.id}>
+                    <td>
+                      <Link href={`/orders/${order.id}`}>
+                        {order.id.slice(0, 8)}…
+                      </Link>
+                    </td>
+                    <td>{order.status}</td>
+                    <td>{new Date(order.createdAt).toLocaleString('en-KE')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">No recent orders.</p>
+        )}
+      </div>
+
+      <div className="panel stack">
+        <div className="section-head">
+          <h2 style={{ margin: 0 }}>Recent admin activity</h2>
+          {can('audit', 'read') ? (
+            <Link className="btn btn-secondary" href="/audit">
+              Audit log
+            </Link>
+          ) : null}
+        </div>
+        {data?.audit?.recent?.length ? (
+          <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            {data.audit.recent.map((event) => (
+              <li key={event.id}>
+                <strong>{event.type}</strong>{' '}
+                <span className="muted">
+                  {new Date(event.createdAt).toLocaleString('en-KE')}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="muted">No recent security events.</p>
+        )}
       </div>
 
       <div className="panel stack">
@@ -113,24 +190,6 @@ export default function AdminHomePage() {
             </p>
           </>
         ) : null}
-      </div>
-
-      <div className="panel stack">
-        <h2 style={{ margin: 0 }}>Quick links</h2>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
-          <Link className="btn" href="/catalog">
-            Products
-          </Link>
-          <Link className="btn btn-secondary" href="/inventory">
-            Inventory
-          </Link>
-          <Link className="btn btn-secondary" href="/orders">
-            Orders
-          </Link>
-          <Link className="btn btn-secondary" href="/promotions">
-            Promotions
-          </Link>
-        </div>
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import { PlatformSdk } from '@buying-bot/sdk';
 
 const DEFAULT_API = 'http://localhost:3000';
+const DEFAULT_ADMIN = 'http://localhost:3004';
 
 /**
  * Resolve API base URL. In the browser, keep the page hostname so session/CSRF
@@ -29,6 +30,18 @@ export function getApiBaseUrl(): string {
   }
 
   return configured;
+}
+
+/**
+ * Admin portal origin (separate Next app). Links to `/login` — never assume
+ * the visitor is authorized; Nest RBAC remains authoritative.
+ */
+export function getAdminPortalLoginUrl(): string {
+  const configured =
+    process.env.NEXT_PUBLIC_ADMIN_URL?.replace(/\/$/, '') ??
+    process.env.NEXT_PUBLIC_ADMIN_ORIGIN?.replace(/\/$/, '') ??
+    DEFAULT_ADMIN;
+  return `${configured}/login`;
 }
 
 /** Browser SDK — cookie sessions + CSRF for mutations. */

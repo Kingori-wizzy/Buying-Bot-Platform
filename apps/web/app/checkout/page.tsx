@@ -6,10 +6,11 @@ import {
   PlatformApiError,
 } from '@buying-bot/sdk';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 
 import { cartSubtotalMinor, createBrowserSdk } from '@/lib/api';
+import { notifyCartChanged } from '@/lib/cart-events';
 
 function newIdempotencyKey(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -20,8 +21,11 @@ function newIdempotencyKey(): string {
 
 const STEPS = ['Cart review', 'Delivery', 'Confirm & escrow'] as const;
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const buyNowOfferId = searchParams.get('offerId');
+  const buyNowHandled = useRef(false);
   const [step, setStep] = useState(0);
   const [cart, setCart] = useState<CartView | null>(null);
   const [coupon, setCoupon] = useState('');
@@ -32,7 +36,14 @@ export default function CheckoutPage() {
 
   const loadCart = useCallback(async () => {
     try {
-      const next = await createBrowserSdk().getCart();
+      const sdk = createBrowserSdk();
+      if (buyNowOfferId && !buyNowHandled.current) {
+        buyNowHandled.current = true;
+        await sdk.addCartItem({ offerId: buyNowOfferId, quantity: 1 });
+        notifyCartChanged();
+        router.replace('/checkout');
+      }
+      const next = await sdk.getCart();
       setCart(next);
       setError(null);
     } catch (err) {
@@ -42,7 +53,7 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [buyNowOfferId, router]);
 
   useEffect(() => {
     void loadCart();
@@ -71,6 +82,7 @@ export default function CheckoutPage() {
         setError('Checkout succeeded but no order id was returned');
         return;
       }
+      notifyCartChanged();
       router.push(`/orders/${orderId}`);
     } catch (err) {
       setError(
@@ -88,8 +100,8 @@ export default function CheckoutPage() {
       <section className="stack">
         <h1 style={{ margin: 0, fontFamily: 'var(--bb-display)' }}>Checkout</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Prices, discounts, tax, inventory, and payable amount are resolved by
-          the API. Payment is via escrow when configured.
+          Prices, discounts, tax, and payable amount are resolved by the API.
+          Payment is via escrow when configured.
         </p>
 
         <div className="steps" aria-label="Checkout steps">
@@ -246,5 +258,19 @@ export default function CheckoutPage() {
         ) : null}
       </section>
     </main>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="page" id="main">
+          <div className="skeleton" style={{ height: 120 }} />
+        </main>
+      }
+    >
+      <CheckoutPageInner />
+    </Suspense>
   );
 }

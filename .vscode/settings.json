@@ -17,7 +17,11 @@
     "**/node_modules": true,
     "**/.turbo": true,
     "**/dist": true,
-    "**/.next": true
+    "**/.next": true,
+    "Buying-Bot-Platform": true
+  },
+  "files.watcherExclude": {
+    "**/Buying-Bot-Platform/**": true
   },
   "typescript.tsdk": "node_modules/typescript/lib",
   "typescript.enablePromptUseWorkspaceTsdk": true,

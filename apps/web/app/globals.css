@@ -145,6 +145,31 @@ textarea:focus-visible {
   font-weight: 600;
 }
 
+.nav .admin-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.15rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--bb-border);
+  border-radius: 999px;
+  color: var(--bb-muted);
+  text-decoration: none;
+  line-height: 1;
+}
+
+.nav .admin-entry:hover,
+.nav .admin-entry:focus-visible {
+  color: var(--bb-accent);
+  border-color: color-mix(in srgb, var(--bb-accent) 45%, var(--bb-border));
+  outline: none;
+}
+
+.nav .admin-entry-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .nav-toggle {
   display: none;
   border: 1px solid var(--bb-border);

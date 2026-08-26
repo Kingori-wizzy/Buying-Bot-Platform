@@ -29,7 +29,13 @@ export default function LoginPage() {
       router.push('/');
       router.refresh();
     } catch (err) {
-      setError(err instanceof PlatformApiError ? err.message : 'Login failed');
+      setError(
+        err instanceof PlatformApiError
+          ? err.message
+          : err instanceof TypeError
+            ? 'Cannot reach the API. Start the API (port 3000) and retry.'
+            : 'Login failed',
+      );
     } finally {
       setBusy(false);
     }

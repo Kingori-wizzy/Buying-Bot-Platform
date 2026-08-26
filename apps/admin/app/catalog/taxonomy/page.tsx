@@ -88,7 +88,10 @@ export default function TaxonomyPage() {
         ...(parentId ? { parentId } : {}),
       });
       setCategoryName('');
-      setParentId('');
+      // Keep parent selected so admins can add many subcategories in a row.
+      if (!parentId) {
+        setParentId('');
+      }
       await reload();
       setMessage(parentId ? 'Subcategory created' : 'Category created');
     } catch (err) {
@@ -96,6 +99,33 @@ export default function TaxonomyPage() {
         err instanceof PlatformApiError
           ? err.message
           : 'Category create failed',
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function archiveCategory(id: string, name: string): Promise<void> {
+    if (!can('catalog', 'update')) {
+      setError('Missing catalog:update');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await createBrowserSdk().adminUpdateCategory(id, {
+        name,
+        active: false,
+        archived: true,
+      });
+      await reload();
+      setMessage('Category archived');
+    } catch (err) {
+      setError(
+        err instanceof PlatformApiError
+          ? err.message
+          : 'Category archive failed',
       );
     } finally {
       setBusy(false);
@@ -110,9 +140,9 @@ export default function TaxonomyPage() {
         <div>
           <h1 style={{ margin: 0 }}>Categories &amp; brands</h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Digital shop taxonomy. Five root categories are seeded on API boot.
-            Create subcategories under a parent. Do not invent commercial
-            products here.
+            Digital shop taxonomy. Seeded root categories are a starting point.
+            Add as many subcategories under a parent as you need — the form
+            keeps the parent selected after each create.
           </p>
         </div>
       </div>
@@ -193,19 +223,56 @@ export default function TaxonomyPage() {
             type="submit"
             disabled={busy || !can('catalog', 'create')}
           >
-            {busy ? 'Saving…' : 'Add category'}
+            {busy
+              ? 'Saving…'
+              : parentId
+                ? 'Add subcategory'
+                : 'Add category'}
           </button>
           <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
             {roots.map((c) => (
               <li key={c.id}>
                 <strong>{c.name}</strong>{' '}
-                <span className="muted">({c.slug})</span>
+                <span className="muted">({c.slug})</span>{' '}
+                {can('catalog', 'update') ? (
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    disabled={busy}
+                    style={{
+                      fontSize: '0.75rem',
+                      padding: '0.15rem 0.5rem',
+                      marginLeft: '0.35rem',
+                    }}
+                    onClick={() => {
+                      void archiveCategory(c.id, c.name);
+                    }}
+                  >
+                    Archive
+                  </button>
+                ) : null}
                 {c.children && c.children.length > 0 ? (
                   <ul>
                     {c.children.map((child) => (
                       <li key={child.id}>
                         {child.name}{' '}
-                        <span className="muted">({child.slug})</span>
+                        <span className="muted">({child.slug})</span>{' '}
+                        {can('catalog', 'update') ? (
+                          <button
+                            className="btn btn-secondary"
+                            type="button"
+                            disabled={busy}
+                            style={{
+                              fontSize: '0.75rem',
+                              padding: '0.15rem 0.5rem',
+                            }}
+                            onClick={() => {
+                              void archiveCategory(child.id, child.name);
+                            }}
+                          >
+                            Archive
+                          </button>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

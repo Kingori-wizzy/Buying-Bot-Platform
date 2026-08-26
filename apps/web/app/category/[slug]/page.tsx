@@ -83,7 +83,7 @@ export default async function CategoryPage({
                 <li key={child.id}>
                   <Link
                     className="btn btn-ghost"
-                    href={`/category/${slug}?subcategory=${encodeURIComponent(child.slug)}`}
+                    href={`/category/${child.slug}`}
                   >
                     {child.name} ({String(child._count?.primaryProducts ?? 0)})
                   </Link>

@@ -885,6 +885,11 @@ export class PlatformSdk {
     return response.json();
   }
 
+  async adminListPromotions(): Promise<unknown> {
+    const response = await this.request('/v1/admin/pricing/promotions');
+    return response.json();
+  }
+
   async adminCreateCoupon(body: CreateCouponBody): Promise<unknown> {
     const response = await this.request('/v1/admin/pricing/coupons', {
       method: 'POST',
@@ -894,9 +899,109 @@ export class PlatformSdk {
     return response.json();
   }
 
+  async adminListCoupons(): Promise<unknown> {
+    const response = await this.request('/v1/admin/pricing/coupons');
+    return response.json();
+  }
+
   async adminPing(): Promise<unknown> {
     const response = await this.request('/v1/admin/ping');
     return response.json();
+  }
+
+  async adminDashboard(): Promise<unknown> {
+    const response = await this.request('/v1/admin/dashboard');
+    return response.json();
+  }
+
+  async adminListCustomers(
+    query: {
+      q?: string;
+      page?: number;
+      pageSize?: number;
+      status?: string;
+    } = {},
+  ): Promise<unknown> {
+    const qs = toQuery({
+      q: query.q,
+      page: query.page,
+      pageSize: query.pageSize,
+      status: query.status,
+    });
+    const response = await this.request(`/v1/admin/customers${qs}`);
+    return response.json();
+  }
+
+  async adminGetCustomer(id: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/customers/${encodeURIComponent(id)}`,
+    );
+    return response.json();
+  }
+
+  async adminPatchCustomerStatus(
+    id: string,
+    body: { status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED' | 'LOCKED' },
+  ): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/customers/${encodeURIComponent(id)}/status`,
+      { method: 'PATCH', json: body, csrf: true },
+    );
+    return response.json();
+  }
+
+  async adminListAuditEvents(
+    query: {
+      page?: number;
+      pageSize?: number;
+      type?: string;
+      userId?: string;
+    } = {},
+  ): Promise<unknown> {
+    const qs = toQuery({
+      page: query.page,
+      pageSize: query.pageSize,
+      type: query.type,
+      userId: query.userId,
+    });
+    const response = await this.request(`/v1/admin/audit/events${qs}`);
+    return response.json();
+  }
+
+  async adminListProductSources(): Promise<unknown> {
+    const response = await this.request('/v1/admin/product-sources');
+    return response.json();
+  }
+
+  async adminProductSourceStats(code: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/product-sources/${encodeURIComponent(code)}/stats`,
+    );
+    return response.json();
+  }
+
+  async adminProductSourceSyncRuns(code: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/product-sources/${encodeURIComponent(code)}/sync-runs`,
+    );
+    return response.json();
+  }
+
+  async adminProductSourceQuarantine(code: string): Promise<unknown> {
+    const response = await this.request(
+      `/v1/admin/product-sources/${encodeURIComponent(code)}/quarantine`,
+    );
+    return response.json();
+  }
+
+  async adminTriggerProductSourceSync(
+    code: string,
+  ): Promise<{ syncRunId: string }> {
+    const response = await this.request(
+      `/v1/admin/product-sources/${encodeURIComponent(code)}/sync`,
+      { method: 'POST', json: {}, csrf: true },
+    );
+    return (await response.json()) as { syncRunId: string };
   }
 
   private async resolveCsrf(): Promise<string> {

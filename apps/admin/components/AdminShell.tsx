@@ -90,9 +90,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return pathname.startsWith(href);
   }
 
+  const storefrontAssistant =
+    process.env.NEXT_PUBLIC_STOREFRONT_URL?.replace(/\/$/, '') ??
+    'http://localhost:3001';
+
   return (
     <AdminSessionContext.Provider value={value}>
-      <div className="shell">
+      <div className={showNav ? 'shell' : 'shell shell-auth'}>
         {showNav ? (
           <aside className="sidebar">
             <Link className="brand" href="/">
@@ -102,36 +106,52 @@ export function AdminShell({ children }: { children: ReactNode }) {
               <Link href="/" aria-current={isActive('/') ? 'page' : undefined}>
                 Dashboard
               </Link>
-              {value.can('catalog', 'read') ||
-              value.can('catalog', 'create') ? (
-                <Link
-                  href="/catalog"
-                  aria-current={isActive('/catalog') ? 'page' : undefined}
-                >
-                  Products
-                </Link>
+
+              {value.can('catalog', 'read') || value.can('catalog', 'create') ? (
+                <>
+                  <p className="nav-section">Catalog</p>
+                  <Link
+                    href="/catalog"
+                    aria-current={
+                      isActive('/catalog') &&
+                      !pathname.startsWith('/catalog/taxonomy') &&
+                      !pathname.startsWith('/catalog/imports') &&
+                      !pathname.startsWith('/catalog/sources')
+                        ? 'page'
+                        : undefined
+                    }
+                  >
+                    Products
+                  </Link>
+                  <Link
+                    href="/catalog/taxonomy"
+                    aria-current={
+                      isActive('/catalog/taxonomy') ? 'page' : undefined
+                    }
+                  >
+                    Brands & categories
+                  </Link>
+                  {value.can('catalog', 'create') ? (
+                    <Link
+                      href="/catalog/imports"
+                      aria-current={
+                        isActive('/catalog/imports') ? 'page' : undefined
+                      }
+                    >
+                      Imports
+                    </Link>
+                  ) : null}
+                  <Link
+                    href="/catalog/sources"
+                    aria-current={
+                      isActive('/catalog/sources') ? 'page' : undefined
+                    }
+                  >
+                    Sources
+                  </Link>
+                </>
               ) : null}
-              {value.can('catalog', 'create') ? (
-                <Link
-                  href="/catalog/imports"
-                  aria-current={
-                    isActive('/catalog/imports') ? 'page' : undefined
-                  }
-                >
-                  Imports
-                </Link>
-              ) : null}
-              {value.can('catalog', 'create') ||
-              value.can('catalog', 'read') ? (
-                <Link
-                  href="/catalog/taxonomy"
-                  aria-current={
-                    isActive('/catalog/taxonomy') ? 'page' : undefined
-                  }
-                >
-                  Brands & categories
-                </Link>
-              ) : null}
+
               {value.can('inventory', 'read') ||
               value.can('inventory', 'update') ? (
                 <Link
@@ -141,6 +161,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   Inventory
                 </Link>
               ) : null}
+
               {value.can('orders', 'read') ? (
                 <Link
                   href="/orders"
@@ -149,7 +170,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   Orders
                 </Link>
               ) : null}
-              {value.can('catalog', 'create') ? (
+
+              {value.can('customers', 'read') ? (
+                <Link
+                  href="/customers"
+                  aria-current={isActive('/customers') ? 'page' : undefined}
+                >
+                  Customers
+                </Link>
+              ) : null}
+
+              {value.can('catalog', 'create') || value.can('catalog', 'read') ? (
                 <Link
                   href="/promotions"
                   aria-current={isActive('/promotions') ? 'page' : undefined}
@@ -157,7 +188,21 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   Promotions
                 </Link>
               ) : null}
-              <a href="http://localhost:3001/assistant" rel="noreferrer">
+
+              {value.can('audit', 'read') ? (
+                <Link
+                  href="/audit"
+                  aria-current={isActive('/audit') ? 'page' : undefined}
+                >
+                  Audit log
+                </Link>
+              ) : null}
+
+              <a
+                href={`${storefrontAssistant}/assistant`}
+                rel="noreferrer"
+                target="_blank"
+              >
                 AI (storefront)
               </a>
               <button
@@ -172,7 +217,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </nav>
           </aside>
         ) : null}
-        <div className="content">{children}</div>
+        <div className={showNav ? 'content' : 'auth-stage'}>{children}</div>
       </div>
     </AdminSessionContext.Provider>
   );

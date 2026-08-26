@@ -27,12 +27,8 @@ function newId(): string {
   return `turn-${String(Date.now())}`;
 }
 
-const SUGGESTED_PROMPTS = [
-  'Laptops under KES 80,000 with at least 16 GB RAM',
-  'Best smartphones for photography under KES 50,000',
-  'Compare available tablets for students',
-  'What gaming accessories do you stock?',
-];
+const WELCOME =
+  'Hi! I can help you find products that match your needs and budget. I use live catalog data for prices and availability — I never invent them.';
 
 export default function AssistantPage() {
   const [message, setMessage] = useState('');
@@ -40,8 +36,7 @@ export default function AssistantPage() {
     {
       id: 'welcome',
       role: 'assistant',
-      content:
-        'Hi! I can help you find products that match your needs and budget. I use live catalog data for prices and availability — I never invent them.\n\nTry one of the suggestions below, or type your own question.',
+      content: WELCOME,
     },
   ]);
   const [busy, setBusy] = useState(false);
@@ -291,28 +286,6 @@ export default function AssistantPage() {
           <div ref={bottomRef} />
         </div>
 
-        {turns.length === 1 && !busy ? (
-          <div className="chat-suggestions" aria-label="Suggested prompts">
-            <p className="muted" style={{ margin: 0, fontSize: '0.9rem' }}>
-              Try asking:
-            </p>
-            <div className="suggestions-row">
-              {SUGGESTED_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  className="suggestion-pill"
-                  onClick={() => {
-                    setMessage(prompt);
-                  }}
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         <form
           className="panel stack"
           onSubmit={(e) => {
@@ -327,7 +300,6 @@ export default function AssistantPage() {
               setMessage(e.target.value);
             }}
             rows={3}
-            placeholder="e.g. I need a laptop for development under KES 100,000…"
           />
           <div className="cta-row">
             <button

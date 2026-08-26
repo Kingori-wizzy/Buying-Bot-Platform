@@ -26,7 +26,11 @@ export default function RegisterPage() {
       router.refresh();
     } catch (err) {
       setError(
-        err instanceof PlatformApiError ? err.message : 'Registration failed',
+        err instanceof PlatformApiError
+          ? err.message
+          : err instanceof TypeError
+            ? 'Cannot reach the API. Start the API (port 3000) and retry.'
+            : 'Registration failed',
       );
     } finally {
       setBusy(false);

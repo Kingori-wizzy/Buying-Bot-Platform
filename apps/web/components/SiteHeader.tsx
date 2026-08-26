@@ -5,11 +5,33 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
-import { createBrowserSdk } from '@/lib/api';
+import { createBrowserSdk, getAdminPortalLoginUrl } from '@/lib/api';
+import { CART_CHANGED_EVENT } from '@/lib/cart-events';
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
   return pathname.startsWith(href);
+}
+
+function AdminPortalIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.75" />
+      <path
+        d="M5.5 19.25c.9-3.2 3.2-4.75 6.5-4.75s5.6 1.55 6.5 4.75"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
 
 export function SiteHeader() {
@@ -19,6 +41,7 @@ export function SiteHeader() {
   const [me, setMe] = useState<AuthMe | null>(null);
   const [cartCount, setCartCount] = useState(0);
   const [q, setQ] = useState('');
+  const adminLoginUrl = getAdminPortalLoginUrl();
 
   const refresh = useCallback(async () => {
     try {
@@ -38,6 +61,16 @@ export function SiteHeader() {
   useEffect(() => {
     void refresh();
   }, [refresh, pathname]);
+
+  useEffect(() => {
+    const onCartChanged = () => {
+      void refresh();
+    };
+    window.addEventListener(CART_CHANGED_EVENT, onCartChanged);
+    return () => {
+      window.removeEventListener(CART_CHANGED_EVENT, onCartChanged);
+    };
+  }, [refresh]);
 
   useEffect(() => {
     setOpen(false);
@@ -85,6 +118,12 @@ export function SiteHeader() {
           className={open ? 'nav open' : 'nav'}
           aria-label="Primary"
         >
+          <Link
+            href="/"
+            aria-current={pathname === '/' ? 'page' : undefined}
+          >
+            Categories
+          </Link>
           <Link
             href="/search"
             aria-current={isActive(pathname, '/search') ? 'page' : undefined}
@@ -140,6 +179,15 @@ export function SiteHeader() {
               </Link>
             </>
           )}
+          <a
+            className="admin-entry"
+            href={adminLoginUrl}
+            title="Admin Portal"
+            aria-label="Admin Portal"
+          >
+            <AdminPortalIcon />
+            <span className="admin-entry-label">Admin</span>
+          </a>
         </nav>
         <form className="header-search" onSubmit={onSearch} role="search">
           <label className="sr-only" htmlFor="header-q">
