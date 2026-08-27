@@ -2,17 +2,14 @@ import { PlatformSdk } from '@buying-bot/sdk';
 
 const DEFAULT_API = 'http://localhost:3000';
 
-/**
- * Resolve API base URL. In the browser, keep the page hostname so session/CSRF
- * cookies stay same-site (localhost vs 127.0.0.1 are different sites).
- */
-export function getApiBaseUrl(): string {
-  const configured =
-    process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? DEFAULT_API;
+function stripTrailingSlash(value: string): string {
+  return value.replace(/\/$/, '');
+}
 
-  if (typeof window === 'undefined') {
-    return configured;
-  }
+function getBrowserApiBaseUrl(): string {
+  const configured =
+    process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, '') ||
+    DEFAULT_API;
 
   try {
     const api = new URL(configured);
@@ -29,6 +26,28 @@ export function getApiBaseUrl(): string {
   }
 
   return configured;
+}
+
+function getServerApiBaseUrl(): string {
+  const internal = process.env.INTERNAL_API_BASE_URL?.trim();
+  if (internal) {
+    return stripTrailingSlash(internal);
+  }
+  const publicUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
+  if (publicUrl) {
+    return stripTrailingSlash(publicUrl);
+  }
+  return DEFAULT_API;
+}
+
+/**
+ * Resolve API base URL. Browser uses public origin; server may use internal Docker DNS.
+ */
+export function getApiBaseUrl(): string {
+  if (typeof window === 'undefined') {
+    return getServerApiBaseUrl();
+  }
+  return getBrowserApiBaseUrl();
 }
 
 export function createBrowserSdk(): PlatformSdk {

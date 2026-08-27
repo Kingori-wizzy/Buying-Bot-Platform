@@ -158,13 +158,17 @@ services:
       dockerfile: infrastructure/docker/apps/Dockerfile.web
       args:
         NODE_VERSION: '22'
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+        # Build-time only — inlined into the Next.js browser/SSR public bundle.
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://buybot.staging.earnhub.tech}
+        NEXT_PUBLIC_ADMIN_URL: ${NEXT_PUBLIC_ADMIN_URL:-https://buybot.staging.earnhub.tech/admin}
+        NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL:-https://buybot.staging.earnhub.tech}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3001
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+      # SSR → Docker DNS (not reachable from browsers; not a NEXT_PUBLIC_ var).
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-http://api:3000}
     depends_on:
       api:
         condition: service_healthy
@@ -189,13 +193,18 @@ services:
       dockerfile: infrastructure/docker/apps/Dockerfile.admin
       args:
         NODE_VERSION: '22'
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://buybot.staging.earnhub.tech}
+        NEXT_PUBLIC_STOREFRONT_URL: ${NEXT_PUBLIC_STOREFRONT_URL:-https://buybot.staging.earnhub.tech}
+        # Enables Next.js basePath so assets are /admin/_next/...
+        NEXT_PUBLIC_ADMIN_BASE_PATH: ${NEXT_PUBLIC_ADMIN_BASE_PATH:-/admin}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3004
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8080}
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-http://api:3000}
+      # Used by healthcheck when image was built with basePath=/admin.
+      NEXT_PUBLIC_ADMIN_BASE_PATH: ${NEXT_PUBLIC_ADMIN_BASE_PATH:-/admin}
     depends_on:
       api:
         condition: service_healthy
@@ -207,7 +216,7 @@ services:
           'CMD',
           'node',
           '-e',
-          "fetch('http://127.0.0.1:3004/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "const b=process.env.NEXT_PUBLIC_ADMIN_BASE_PATH||''; const p=b.endsWith('/')?b.slice(0,-1):b; fetch('http://127.0.0.1:3004'+p+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 30s
       timeout: 5s

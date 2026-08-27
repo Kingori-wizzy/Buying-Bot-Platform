@@ -3,6 +3,7 @@
 # Build from repository root:
 #   docker build -f infrastructure/docker/apps/Dockerfile.admin -t buying-bot-admin .
 #
+# Path-based staging: pass NEXT_PUBLIC_ADMIN_BASE_PATH=/admin at build time.
 # EXTERNAL: full monorepo Next standalone builds can be heavy; prefer CI/GHCR
 # images when a shared staging host is provisioned.
 
@@ -22,8 +23,13 @@ COPY apps/admin ./apps/admin
 RUN pnpm install --frozen-lockfile --filter @buying-bot/admin...
 
 FROM deps AS build
-ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080
+# Local defaults — staging compose overrides with public HTTPS + basePath=/admin.
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+ARG NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3001
+ARG NEXT_PUBLIC_ADMIN_BASE_PATH=
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_STOREFRONT_URL=$NEXT_PUBLIC_STOREFRONT_URL
+ENV NEXT_PUBLIC_ADMIN_BASE_PATH=$NEXT_PUBLIC_ADMIN_BASE_PATH
 ENV DOCKER_BUILD=1
 RUN pnpm --filter @buying-bot/admin... build
 
@@ -32,6 +38,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3004
 ENV HOSTNAME=0.0.0.0
+ENV INTERNAL_API_BASE_URL=http://api:3000
+# Surfaced for healthcheck when the image was built with basePath=/admin.
+ARG NEXT_PUBLIC_ADMIN_BASE_PATH=
+ENV NEXT_PUBLIC_ADMIN_BASE_PATH=$NEXT_PUBLIC_ADMIN_BASE_PATH
 WORKDIR /app
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
@@ -41,5 +51,5 @@ COPY --from=build --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/admi
 USER nextjs
 EXPOSE 3004
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3004)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "const b=process.env.NEXT_PUBLIC_ADMIN_BASE_PATH||''; const p=b.endsWith('/')?b.slice(0,-1):b; fetch('http://127.0.0.1:'+(process.env.PORT||3004)+p+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["node", "apps/admin/server.js"]

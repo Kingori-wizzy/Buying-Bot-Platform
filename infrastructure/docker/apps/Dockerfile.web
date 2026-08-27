@@ -2,6 +2,9 @@
 # Multi-stage Next.js 15 storefront image (standalone output).
 # Build from repository root:
 #   docker build -f infrastructure/docker/apps/Dockerfile.web -t buying-bot-web .
+#
+# Staging must pass public NEXT_PUBLIC_* as build-args (inlined into the bundle).
+# Runtime INTERNAL_API_BASE_URL is used by SSR only (see apps/web/lib/api.ts).
 
 ARG NODE_VERSION=22
 
@@ -19,8 +22,13 @@ COPY apps/web ./apps/web
 RUN pnpm install --frozen-lockfile --filter @buying-bot/web...
 
 FROM deps AS build
-ARG NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8080
+# Local/dev-friendly defaults — staging compose overrides with public HTTPS URLs.
+ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+ARG NEXT_PUBLIC_ADMIN_URL=http://localhost:3004
+ARG NEXT_PUBLIC_STOREFRONT_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_ADMIN_URL=$NEXT_PUBLIC_ADMIN_URL
+ENV NEXT_PUBLIC_STOREFRONT_URL=$NEXT_PUBLIC_STOREFRONT_URL
 ENV DOCKER_BUILD=1
 RUN pnpm --filter @buying-bot/web... build
 
@@ -29,6 +37,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
+# SSR catalog/API calls inside the compose network (not inlined into the browser bundle).
+ENV INTERNAL_API_BASE_URL=http://api:3000
 WORKDIR /app
 RUN groupadd --system --gid 1001 nodejs \
   && useradd --system --uid 1001 --gid nodejs nextjs
