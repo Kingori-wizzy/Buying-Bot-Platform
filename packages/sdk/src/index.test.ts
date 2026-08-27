@@ -28,6 +28,74 @@ describe('@buying-bot/sdk', () => {
     });
   });
 
+  it('default fetchImpl works when request() calls this.fetchImpl(...)', async () => {
+    const calls: string[] = [];
+    const originalFetch = globalThis.fetch;
+    const strictFetch = function (
+      this: unknown,
+      input: RequestInfo | URL,
+      init?: RequestInit,
+    ) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError(
+          "Failed to execute 'fetch' on 'Window': Illegal invocation",
+        );
+      }
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      calls.push(url);
+      return Promise.resolve(
+        new Response(JSON.stringify({ status: 'ok', service: 'api' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    };
+    globalThis.fetch = strictFetch as typeof fetch;
+
+    try {
+      const sdk = new PlatformSdk({ baseUrl: 'http://localhost:3000' });
+      await expect(sdk.health()).resolves.toEqual({
+        status: 'ok',
+        service: 'api',
+      });
+      expect(calls).toEqual(['http://localhost:3000/health']);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it('preserves custom fetchImpl injection for tests and callers', async () => {
+    const fetchImpl: typeof fetch = (input) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      expect(url).toBe('http://localhost:3000/health');
+      return Promise.resolve(
+        new Response(JSON.stringify({ status: 'ok', service: 'api' }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+      );
+    };
+
+    const sdk = new PlatformSdk({
+      baseUrl: 'http://localhost:3000',
+      fetchImpl,
+    });
+    await expect(sdk.health()).resolves.toEqual({
+      status: 'ok',
+      service: 'api',
+    });
+  });
+
   it('throws PlatformApiError on failure', async () => {
     const fetchImpl: typeof fetch = () =>
       Promise.resolve(

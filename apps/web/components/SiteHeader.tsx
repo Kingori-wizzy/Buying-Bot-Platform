@@ -189,20 +189,32 @@ export function SiteHeader() {
             <span className="admin-entry-label">Admin</span>
           </a>
         </nav>
-        <form className="header-search" onSubmit={onSearch} role="search">
+        <form
+          id="header-search"
+          className="header-search"
+          onSubmit={onSearch}
+          role="search"
+        >
           <label className="sr-only" htmlFor="header-q">
             Search products
           </label>
           <input
             id="header-q"
             name="q"
+            form="header-search"
             value={q}
             onChange={(e) => {
               setQ(e.target.value);
             }}
             autoComplete="off"
           />
-          <button className="btn" type="submit">
+          {/* type="button": must not compete as the page's first submit control with login/register */}
+          <button
+            className="btn"
+            type="button"
+            form="header-search"
+            onClick={onSearch}
+          >
             Search
           </button>
         </form>

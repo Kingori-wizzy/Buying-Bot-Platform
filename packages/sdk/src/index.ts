@@ -282,7 +282,10 @@ export class PlatformSdk {
     this.getAccessToken = options.getAccessToken;
     this.getCsrfToken = options.getCsrfToken;
     this.credentials = options.credentials ?? 'omit';
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Wrap default fetch so `this.fetchImpl(url, init)` in request() does not
+    // trigger "Illegal invocation" when the browser's native fetch is used.
+    this.fetchImpl =
+      options.fetchImpl ?? ((input, init) => fetch(input, init));
   }
 
   async health(): Promise<HealthResponse> {
