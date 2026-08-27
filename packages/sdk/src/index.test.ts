@@ -198,4 +198,67 @@ describe('@buying-bot/sdk', () => {
     }
     expect(events.map((e) => e.type)).toEqual(['status', 'delta', 'done']);
   });
+
+  it('chatStream sends conversationId and reads x-conversation-id', async () => {
+    const calls: { url: string; body: unknown; headers: Headers }[] = [];
+    const fetchImpl: typeof fetch = (input, init) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+      const headers = new Headers(init?.headers);
+      calls.push({
+        url,
+        body: init?.body ? JSON.parse(String(init.body)) : undefined,
+        headers,
+      });
+      if (url.endsWith('/v1/auth/csrf')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ csrfToken: 'csrf-test' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        );
+      }
+      const payload = [
+        'data: {"type":"delta","text":"Hi"}\n\n',
+        'data: {"type":"done","products":[]}\n\n',
+      ].join('');
+      return Promise.resolve(
+        new Response(payload, {
+          status: 200,
+          headers: {
+            'content-type': 'text/event-stream',
+            'x-conversation-id': '11111111-1111-4111-8111-111111111111',
+          },
+        }),
+      );
+    };
+
+    const sdk = new PlatformSdk({
+      baseUrl: 'http://localhost:3000',
+      fetchImpl,
+      credentials: 'include',
+    });
+
+    const events: string[] = [];
+    for await (const event of sdk.chatStream('hello', {
+      conversationId: '11111111-1111-4111-8111-111111111111',
+    })) {
+      events.push(event.type);
+      if (event.type === 'done') {
+        expect(event.conversationId).toBe(
+          '11111111-1111-4111-8111-111111111111',
+        );
+      }
+    }
+    expect(events).toEqual(['delta', 'done']);
+    const streamCall = calls.find((c) => c.url.endsWith('/v1/ai/chat/stream'));
+    expect(streamCall?.body).toMatchObject({
+      message: 'hello',
+      conversationId: '11111111-1111-4111-8111-111111111111',
+    });
+  });
 });

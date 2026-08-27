@@ -27,6 +27,7 @@ export class AiToolsController {
     @Param('toolName') toolName: string,
     @Headers('x-acting-subject') actingSubject: string | undefined,
     @Headers('x-acting-realm') actingRealm: string | undefined,
+    @Headers('x-conversation-id') conversationId: string | undefined,
     @Body(new ZodValidationPipe(toolArgsSchema)) args: ToolArgs,
   ): Promise<unknown> {
     if (!actingSubject) {
@@ -49,6 +50,7 @@ export class AiToolsController {
       args,
       actingSubject,
       actingRealm === 'admin' ? 'admin' : 'customer',
+      conversationId,
     );
   }
 }

@@ -1,5 +1,14 @@
 import type { AuthPrincipal } from '@buying-bot/auth';
-import { Body, Controller, Inject, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 
 import {
@@ -66,6 +75,15 @@ export class AiController {
       reader.releaseLock();
       reply.raw.end();
     }
+  }
+
+  @Get('conversations/:conversationId')
+  @UseGuards(SessionAuthGuard)
+  getConversation(
+    @CurrentUser() principal: AuthPrincipal,
+    @Param('conversationId') conversationId: string,
+  ): Promise<unknown> {
+    return this.ai.getConversation(conversationId, principal.subjectId);
   }
 
   @Post('retrieve')

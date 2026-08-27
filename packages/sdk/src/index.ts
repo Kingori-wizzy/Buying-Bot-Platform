@@ -162,7 +162,26 @@ export interface AiChatResponse {
   readonly conversationId: string;
   readonly result: {
     readonly content?: string;
+    readonly products?: readonly ProductSummary[];
   };
+}
+
+export interface AiChatStreamOptions {
+  readonly conversationId?: string;
+  readonly signal?: AbortSignal;
+}
+
+export interface AiConversationMessage {
+  readonly id: string;
+  readonly role: string;
+  readonly content: string;
+  readonly createdAt: string;
+  readonly products?: readonly ProductSummary[];
+}
+
+export interface AiConversationResponse {
+  readonly conversationId: string;
+  readonly messages: readonly AiConversationMessage[];
 }
 
 export type AiStreamEvent =
@@ -170,8 +189,10 @@ export type AiStreamEvent =
   | { readonly type: 'delta'; readonly text: string }
   | {
       readonly type: 'done';
+      readonly conversationId?: string;
       readonly citations?: unknown;
       readonly usage?: unknown;
+      readonly products?: readonly ProductSummary[];
     }
   | { readonly type: 'error'; readonly message: string };
 
@@ -442,27 +463,54 @@ export class PlatformSdk {
     return response.json();
   }
 
-  async chat(message: string): Promise<AiChatResponse> {
+  async chat(
+    message: string,
+    options: { readonly conversationId?: string } = {},
+  ): Promise<AiChatResponse> {
     const response = await this.request('/v1/ai/chat', {
       method: 'POST',
-      json: { message },
+      json: {
+        message,
+        ...(options.conversationId
+          ? { conversationId: options.conversationId }
+          : {}),
+      },
       csrf: true,
     });
     return (await response.json()) as AiChatResponse;
   }
 
+  async getConversation(
+    conversationId: string,
+  ): Promise<AiConversationResponse> {
+    const response = await this.request(
+      `/v1/ai/conversations/${encodeURIComponent(conversationId)}`,
+    );
+    return (await response.json()) as AiConversationResponse;
+  }
+
   async *chatStream(
     message: string,
-    options: { readonly signal?: AbortSignal } = {},
+    options: AiChatStreamOptions = {},
   ): AsyncGenerator<AiStreamEvent> {
     const response = await this.request('/v1/ai/chat/stream', {
       method: 'POST',
-      json: { message },
+      json: {
+        message,
+        ...(options.conversationId
+          ? { conversationId: options.conversationId }
+          : {}),
+      },
       csrf: true,
       stream: true,
       ...(options.signal ? { signal: options.signal } : {}),
     });
+    const conversationId =
+      response.headers.get('x-conversation-id') ?? undefined;
     if (!response.body) {
+      if (conversationId) {
+        yield { type: 'done', conversationId };
+      }
       return;
     }
     for await (const event of parseSseJsonStream(
@@ -477,10 +525,14 @@ export class PlatformSdk {
       } else if (type === 'done') {
         yield {
           type: 'done',
+          ...(conversationId ? { conversationId } : {}),
           ...(event.citations !== undefined
             ? { citations: event.citations }
             : {}),
           ...(event.usage !== undefined ? { usage: event.usage } : {}),
+          ...(Array.isArray(event.products)
+            ? { products: event.products as ProductSummary[] }
+            : {}),
         };
       } else if (type === 'error') {
         yield {

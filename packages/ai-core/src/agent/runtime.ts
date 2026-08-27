@@ -1,3 +1,8 @@
+import {
+  extractProductsFromToolResult,
+  mergeProductResults,
+  type CatalogProductCard,
+} from '../commerce/product-results.js';
 import type {
   AgentRuntime,
   AgentRuntimeOptions,
@@ -19,7 +24,12 @@ export const COMMERCE_TOOL_DEFINITIONS: readonly AiToolDefinition[] = [
     requiresHumanApproval: false,
     parametersJsonSchema: {
       type: 'object',
-      properties: { query: { type: 'string' } },
+      properties: {
+        query: { type: 'string' },
+        priceMinMinor: { type: 'integer', minimum: 0 },
+        priceMaxMinor: { type: 'integer', minimum: 0 },
+        sort: { type: 'string', enum: ['newest', 'price_asc', 'price_desc'] },
+      },
       required: ['query'],
     },
   },
@@ -104,6 +114,9 @@ export const COMMERCE_TOOL_DEFINITIONS: readonly AiToolDefinition[] = [
         productId: { type: 'string' },
         query: { type: 'string' },
         limit: { type: 'integer' },
+        priceMinMinor: { type: 'integer', minimum: 0 },
+        priceMaxMinor: { type: 'integer', minimum: 0 },
+        sort: { type: 'string', enum: ['newest', 'price_asc', 'price_desc'] },
       },
     },
   },
@@ -234,6 +247,7 @@ export class DefaultAgentRuntime implements AgentRuntime {
     const maxRounds = this.options.maxToolRounds ?? 4;
     const executed: ToolCall[] = [];
     let usage: AgentTurnResult['usage'];
+    let products: CatalogProductCard[] = [];
 
     for (let round = 0; round < maxRounds; round += 1) {
       const completion = await this.options.provider.complete({
@@ -266,6 +280,9 @@ export class DefaultAgentRuntime implements AgentRuntime {
           ],
           toolCalls: executed,
           citations,
+          ...(products.length > 0
+            ? { products: products as unknown as Record<string, unknown>[] }
+            : {}),
           usage,
         };
       }
@@ -317,6 +334,12 @@ export class DefaultAgentRuntime implements AgentRuntime {
           args,
           request.context,
         );
+        products = [
+          ...mergeProductResults(products, extractProductsFromToolResult(
+            toolCall.name,
+            result.resultJson,
+          )),
+        ];
         messages.push({
           role: 'tool',
           name: toolCall.name,
@@ -334,6 +357,9 @@ export class DefaultAgentRuntime implements AgentRuntime {
       messages,
       toolCalls: executed,
       citations,
+      ...(products.length > 0
+        ? { products: products as unknown as Record<string, unknown>[] }
+        : {}),
       usage,
     };
   }

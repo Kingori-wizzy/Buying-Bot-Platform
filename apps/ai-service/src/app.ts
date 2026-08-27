@@ -312,6 +312,9 @@ function registerChatRoutes(deps: {
           type: 'done',
           citations: result.citations,
           usage: result.usage,
+          ...(result.products && result.products.length > 0
+            ? { products: result.products }
+            : {}),
         })}\n\n`,
       );
       deps.metrics.inc('ai_chat_stream_total', { outcome: 'ok' });
@@ -361,6 +364,7 @@ async function runChat(
   readonly id: string;
   readonly content: string;
   readonly citations: readonly Citation[];
+  readonly products?: readonly Record<string, unknown>[];
   readonly usage?: {
     readonly promptTokens: number;
     readonly completionTokens: number;
@@ -422,6 +426,9 @@ async function runChat(
     id: randomUUID(),
     content: result.content,
     citations: result.citations,
+    ...(result.products && result.products.length > 0
+      ? { products: result.products }
+      : {}),
     ...(result.usage ? { usage: result.usage } : {}),
   };
 }

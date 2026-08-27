@@ -7,7 +7,7 @@ import {
   type ProductSummary,
 } from '@buying-bot/sdk';
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AddToCartButton } from '@/components/AddToCartButton';
 import { createBrowserSdk } from '@/lib/api';
@@ -20,6 +20,8 @@ interface ChatTurn {
   readonly unavailable?: boolean;
 }
 
+const CONVERSATION_STORAGE_KEY = 'bb_assistant_conversation_id';
+
 function newId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -30,16 +32,45 @@ function newId(): string {
 const WELCOME =
   'Hi! I can help you find products that match your needs and budget. I use live catalog data for prices and availability — I never invent them.';
 
+function assistantErrorMessage(err: unknown): string {
+  if (err instanceof PlatformApiError) {
+    if (err.status === 401) {
+      return 'Sign in to use the shopping assistant.';
+    }
+    if (err.status === 403) {
+      return 'You do not have access to this conversation.';
+    }
+    if (err.status === 503 || err.code === 'AI_SERVICE_UNAVAILABLE') {
+      return 'The AI service is temporarily unavailable. Catalog, cart, and checkout still work.';
+    }
+    if (err.status === 502 || err.code === 'AI_SERVICE_ERROR') {
+      return 'The assistant could not complete your request. Please try again.';
+    }
+    if (err.status === 400 || err.status === 422) {
+      return err.message || 'Your message could not be processed.';
+    }
+    return err.message;
+  }
+  if (err instanceof Error && err.name === 'AbortError') {
+    return '';
+  }
+  if (err instanceof TypeError && /fetch|network/i.test(err.message)) {
+    return 'Network error — check your connection and try again.';
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return 'Assistant request failed. Please retry.';
+}
+
 export default function AssistantPage() {
   const [message, setMessage] = useState('');
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([
-    {
-      id: 'welcome',
-      role: 'assistant',
-      content: WELCOME,
-    },
+    { id: 'welcome', role: 'assistant', content: WELCOME },
   ]);
   const [busy, setBusy] = useState(false);
+  const [hydrating, setHydrating] = useState(true);
   const [connectionState, setConnectionState] = useState<
     'idle' | 'connecting' | 'streaming' | 'error'
   >('idle');
@@ -48,9 +79,78 @@ export default function AssistantPage() {
   const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
+  const persistConversationId = useCallback((id: string | null) => {
+    setConversationId(id);
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (id) {
+      sessionStorage.setItem(CONVERSATION_STORAGE_KEY, id);
+    } else {
+      sessionStorage.removeItem(CONVERSATION_STORAGE_KEY);
+    }
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [turns, busy, draft, toolState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function hydrateConversation(): Promise<void> {
+      if (typeof window === 'undefined') {
+        setHydrating(false);
+        return;
+      }
+      const stored = sessionStorage.getItem(CONVERSATION_STORAGE_KEY);
+      if (!stored) {
+        setHydrating(false);
+        return;
+      }
+      try {
+        const sdk = createBrowserSdk();
+        const conversation = await sdk.getConversation(stored);
+        if (cancelled) {
+          return;
+        }
+        persistConversationId(conversation.conversationId);
+        const restored: ChatTurn[] = [
+          { id: 'welcome', role: 'assistant', content: WELCOME },
+        ];
+        for (const row of conversation.messages) {
+          if (row.role !== 'user' && row.role !== 'assistant') {
+            continue;
+          }
+          restored.push({
+            id: row.id,
+            role: row.role,
+            content: row.content,
+            ...(row.products ? { products: [...row.products] } : {}),
+          });
+        }
+        setTurns(restored);
+      } catch {
+        if (!cancelled) {
+          sessionStorage.removeItem(CONVERSATION_STORAGE_KEY);
+        }
+      } finally {
+        if (!cancelled) {
+          setHydrating(false);
+        }
+      }
+    }
+    void hydrateConversation();
+    return () => {
+      cancelled = true;
+    };
+  }, [persistConversationId]);
+
+  function startNewConversation(): void {
+    stopStream();
+    persistConversationId(null);
+    setTurns([{ id: 'welcome', role: 'assistant', content: WELCOME }]);
+    setConnectionState('idle');
+  }
 
   function stopStream(): void {
     abortRef.current?.abort();
@@ -74,52 +174,50 @@ export default function AssistantPage() {
     setToolState('Connecting to assistant…');
 
     const sdk = createBrowserSdk();
-    let products: ProductSummary[] = [];
-    try {
-      setToolState('Hydrating catalog matches from the API…');
-      const search = await sdk.searchProducts({ q: text, pageSize: 6 });
-      products = [...search.items];
-    } catch {
-      products = [];
-    }
-
     const controller = new AbortController();
     abortRef.current = controller;
     let streamed = '';
-    let sawDelta = false;
+    let products: ProductSummary[] = [];
+    let nextConversationId = conversationId ?? undefined;
 
     try {
       setConnectionState('streaming');
-      setToolState('Waiting for stream…');
+      setToolState('Waiting for assistant reply…');
       for await (const event of sdk.chatStream(text, {
+        ...(nextConversationId ? { conversationId: nextConversationId } : {}),
         signal: controller.signal,
       })) {
         if (event.type === 'status') {
           setToolState(event.text);
         } else if (event.type === 'delta') {
-          sawDelta = true;
           streamed += event.text;
           setDraft(streamed);
           setToolState(null);
         } else if (event.type === 'error') {
           throw new Error(event.message);
-        } else {
-          break;
+        } else if (event.type === 'done') {
+          if (event.conversationId) {
+            nextConversationId = event.conversationId;
+            persistConversationId(event.conversationId);
+          }
+          if (event.products && event.products.length > 0) {
+            products = [...event.products];
+          }
         }
       }
 
-      const content =
-        streamed.trim() ||
-        (sawDelta
-          ? streamed
-          : 'I could not produce a text reply, but catalog matches below are from the API.');
+      const content = streamed.trim();
+      if (!content) {
+        throw new Error('The assistant returned an empty reply.');
+      }
+
       setTurns((prev) => [
         ...prev,
         {
           id: newId(),
           role: 'assistant',
           content,
-          products,
+          ...(products.length > 0 ? { products } : {}),
         },
       ]);
       setConnectionState('idle');
@@ -132,48 +230,28 @@ export default function AssistantPage() {
               id: newId(),
               role: 'assistant',
               content: streamed,
-              products,
+              ...(products.length > 0 ? { products } : {}),
             },
           ]);
         }
         setConnectionState('idle');
-      } else if (err instanceof PlatformApiError && err.status === 503) {
-        setConnectionState('error');
-        setTurns((prev) => [
-          ...prev,
-          {
-            id: newId(),
-            role: 'assistant',
-            unavailable: true,
-            content:
-              'The AI service is temporarily unavailable. You can keep shopping — catalog, cart, and checkout still work. Showing live catalog matches for your query when available.',
-            products,
-          },
-        ]);
-      } else if (err instanceof PlatformApiError && err.status === 401) {
-        setConnectionState('error');
-        setTurns((prev) => [
-          ...prev,
-          {
-            id: newId(),
-            role: 'system',
-            content: 'Sign in to use the shopping assistant.',
-          },
-        ]);
       } else {
+        const errorText = assistantErrorMessage(err);
         setConnectionState('error');
-        setTurns((prev) => [
-          ...prev,
-          {
-            id: newId(),
-            role: 'system',
-            content:
-              err instanceof PlatformApiError
-                ? err.message
-                : 'Assistant request failed. Please retry.',
-            products,
-          },
-        ]);
+        if (errorText) {
+          const unavailable =
+            err instanceof PlatformApiError &&
+            (err.status === 503 || err.code === 'AI_SERVICE_UNAVAILABLE');
+          setTurns((prev) => [
+            ...prev,
+            {
+              id: newId(),
+              role: unavailable ? 'assistant' : 'system',
+              content: errorText,
+              ...(unavailable ? { unavailable: true } : {}),
+            },
+          ]);
+        }
       }
     } finally {
       abortRef.current = null;
@@ -191,19 +269,21 @@ export default function AssistantPage() {
             AI shopping assistant
           </h1>
           <p className="muted" style={{ margin: '0.35rem 0 0' }}>
-            Responses stream from the API. Product cards use live catalog
-            search. Prices and availability are never invented in the browser.
+            Responses stream from the API with catalog-backed product cards.
+            Prices and availability are never invented in the browser.
           </p>
         </div>
 
         <p className="muted" aria-live="polite" style={{ margin: 0 }}>
-          {connectionState === 'connecting'
-            ? 'Connecting…'
-            : connectionState === 'streaming'
-              ? 'Streaming reply…'
-              : connectionState === 'error'
-                ? 'Assistant connection failed — catalog shopping still works.'
-                : 'Ready'}
+          {hydrating
+            ? 'Loading conversation…'
+            : connectionState === 'connecting'
+              ? 'Connecting…'
+              : connectionState === 'streaming'
+                ? 'Streaming reply…'
+                : connectionState === 'error'
+                  ? 'Assistant request failed — catalog shopping still works.'
+                  : 'Ready'}
         </p>
 
         <div className="chat-thread" aria-live="polite">
@@ -252,7 +332,7 @@ export default function AssistantPage() {
                           className="muted"
                           style={{ margin: 0, fontSize: '0.85rem' }}
                         >
-                          Matched from catalog search for your query.
+                          Recommended from the live catalog.
                         </p>
                         <div className="cta-row">
                           {price ? (
@@ -300,12 +380,13 @@ export default function AssistantPage() {
               setMessage(e.target.value);
             }}
             rows={3}
+            disabled={hydrating}
           />
           <div className="cta-row">
             <button
               className="btn"
               type="submit"
-              disabled={busy || !message.trim()}
+              disabled={busy || hydrating || !message.trim()}
             >
               {busy ? 'Working…' : 'Send'}
             </button>
@@ -317,7 +398,16 @@ export default function AssistantPage() {
               >
                 Stop
               </button>
-            ) : null}
+            ) : (
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={startNewConversation}
+                disabled={hydrating}
+              >
+                New conversation
+              </button>
+            )}
             <Link className="btn btn-secondary" href="/">
               Shop by category
             </Link>

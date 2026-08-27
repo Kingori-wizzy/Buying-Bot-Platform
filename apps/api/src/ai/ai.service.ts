@@ -1,4 +1,7 @@
-import { deterministicEmbedding } from '@buying-bot/ai-core';
+import {
+  deterministicEmbedding,
+  enrichSearchToolArgs,
+} from '@buying-bot/ai-core';
 import type { PrismaClient, PrismaDatabaseClient } from '@buying-bot/database';
 import {
   BadGatewayException,
@@ -25,6 +28,16 @@ export interface RetrievalResult {
   readonly excerpt: string;
 }
 
+export interface ConversationMessageView {
+  readonly id: string;
+  readonly role: string;
+  readonly content: string;
+  readonly createdAt: string;
+  readonly products?: readonly Record<string, unknown>[];
+}
+
+const MAX_HISTORY_MESSAGES = 24;
+
 @Injectable()
 export class AiService {
   constructor(
@@ -46,8 +59,12 @@ export class AiService {
       actingSubjectId,
       realm,
     );
+    const messages = await this.loadConversationModelMessages(
+      conversationId,
+      actingSubjectId,
+    );
     const response = await this.callAi('/v1/chat', {
-      messages: [{ role: 'user', content: body.message }],
+      messages,
       conversationId,
       actingSubjectId,
       realm,
@@ -56,12 +73,14 @@ export class AiService {
     });
     const result: unknown = await response.json();
     const content = this.readString(result, 'content');
+    const products = this.readProducts(result);
     if (content) {
-      await this.prisma().conversationMessage.create({
-        data: { conversationId, role: 'assistant', content },
+      await this.persistAssistantMessage(conversationId, content, {
+        citationsJson: this.readCitations(result),
+        ...(products ? { products } : {}),
       });
     }
-    return { conversationId, result };
+    return { conversationId, result: { ...this.asRecord(result), products } };
   }
 
   async streamChat(
@@ -74,15 +93,102 @@ export class AiService {
       actingSubjectId,
       realm,
     );
-    const response = await this.callAi('/v1/chat/stream', {
-      messages: [{ role: 'user', content: body.message }],
+    const messages = await this.loadConversationModelMessages(
+      conversationId,
+      actingSubjectId,
+    );
+    const upstream = await this.callAi('/v1/chat/stream', {
+      messages,
       conversationId,
       actingSubjectId,
       realm,
       queryForRetrieve: body.message,
       enableTools: true,
     });
+
+    const response = this.wrapStreamForPersistence(
+      upstream,
+      conversationId,
+    );
     return { conversationId, response };
+  }
+
+  async getConversation(
+    conversationId: string,
+    actingSubjectId: string,
+  ): Promise<{
+    readonly conversationId: string;
+    readonly messages: readonly ConversationMessageView[];
+  }> {
+    const prisma = this.prisma();
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId: actingSubjectId },
+    });
+    if (!conversation) {
+      throw new ForbiddenException('Conversation not found');
+    }
+    const rows = await prisma.conversationMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'asc' },
+      take: MAX_HISTORY_MESSAGES,
+    });
+    return {
+      conversationId,
+      messages: rows.map((row) => {
+        const storedProducts = this.readStoredProducts(row.citationsJson);
+        return {
+          id: row.id,
+          role: row.role,
+          content: row.content,
+          createdAt: row.createdAt.toISOString(),
+          ...(storedProducts ? { products: storedProducts } : {}),
+        };
+      }),
+    };
+  }
+
+  async persistAssistantMessage(
+    conversationId: string,
+    content: string,
+    metadata: {
+      readonly citationsJson?: unknown;
+      readonly products?: readonly Record<string, unknown>[];
+    } = {},
+  ): Promise<void> {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      return;
+    }
+    const prisma = this.prisma();
+    const latest = await prisma.conversationMessage.findFirst({
+      where: { conversationId, role: 'assistant' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (latest?.content === trimmed) {
+      return;
+    }
+    const citationsJson =
+      metadata.products && metadata.products.length > 0
+        ? {
+            products: metadata.products,
+            ...(metadata.citationsJson ? { citations: metadata.citationsJson } : {}),
+          }
+        : metadata.citationsJson;
+
+    await prisma.conversationMessage.create({
+      data: {
+        conversationId,
+        role: 'assistant',
+        content: trimmed,
+        ...(citationsJson !== undefined
+          ? { citationsJson: this.asJson(citationsJson) }
+          : {}),
+      },
+    });
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    });
   }
 
   async retrieve(body: RetrieveBody): Promise<{
@@ -152,11 +258,18 @@ export class AiService {
     args: ToolArgs,
     actingSubjectId: string,
     realm: 'customer' | 'admin',
+    conversationId?: string,
   ): Promise<unknown> {
     let result: unknown;
     let ok = false;
     try {
-      result = await this.runTool(name, args, actingSubjectId, realm);
+      result = await this.runTool(
+        name,
+        args,
+        actingSubjectId,
+        realm,
+        conversationId,
+      );
       ok = true;
       return result;
     } finally {
@@ -165,6 +278,7 @@ export class AiService {
           toolName: name,
           actingSubject: actingSubjectId,
           argsJson: this.asJson(args),
+          ...(conversationId ? { conversationId } : {}),
           ...(result !== undefined ? { resultJson: this.asJson(result) } : {}),
           ok,
         },
@@ -177,14 +291,32 @@ export class AiService {
     args: ToolArgs,
     subjectId: string,
     realm: 'customer' | 'admin',
+    conversationId?: string,
   ): Promise<unknown> {
+    const userMessages = conversationId
+      ? await this.loadConversationUserMessages(conversationId, subjectId)
+      : [];
+
     switch (name) {
-      case 'searchProducts':
+      case 'searchProducts': {
+        const enriched = enrichSearchToolArgs(args, userMessages);
         return this.catalog.searchProducts({
-          q: this.requiredString(args, 'query'),
+          q: this.requiredString(enriched, 'query'),
           page: 1,
           pageSize: 10,
+          ...(typeof enriched.priceMinMinor === 'number'
+            ? { priceMinMinor: enriched.priceMinMinor }
+            : {}),
+          ...(typeof enriched.priceMaxMinor === 'number'
+            ? { priceMaxMinor: enriched.priceMaxMinor }
+            : {}),
+          ...(typeof enriched.sort === 'string'
+            ? {
+                sort: enriched.sort as 'newest' | 'price_asc' | 'price_desc',
+              }
+            : {}),
         });
+      }
       case 'getProduct':
         return this.catalog.getProduct(
           this.optionalString(args, 'productId') ??
@@ -212,12 +344,25 @@ export class AiService {
           subjectId,
           realm,
         );
-      case 'recommendProducts':
+      case 'recommendProducts': {
+        const enriched = enrichSearchToolArgs(args, userMessages);
         return this.catalog.searchProducts({
-          q: this.optionalString(args, 'query'),
+          q: this.optionalString(enriched, 'query'),
           page: 1,
-          pageSize: this.positiveInteger(args, 'limit', 5),
+          pageSize: this.positiveInteger(enriched, 'limit', 5),
+          ...(typeof enriched.priceMinMinor === 'number'
+            ? { priceMinMinor: enriched.priceMinMinor }
+            : {}),
+          ...(typeof enriched.priceMaxMinor === 'number'
+            ? { priceMaxMinor: enriched.priceMaxMinor }
+            : {}),
+          ...(typeof enriched.sort === 'string'
+            ? {
+                sort: enriched.sort as 'newest' | 'price_asc' | 'price_desc',
+              }
+            : {}),
         });
+      }
       case 'compareProducts': {
         const ids = args.productIds;
         if (!Array.isArray(ids) || ids.length < 2) {
@@ -272,6 +417,159 @@ export class AiService {
           message: `Unsupported AI tool: ${name}`,
         });
     }
+  }
+
+  private wrapStreamForPersistence(
+    upstream: Response,
+    conversationId: string,
+  ): Response {
+    if (!upstream.body) {
+      return upstream;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let accumulated = '';
+    let products: readonly Record<string, unknown>[] | undefined;
+    let citations: unknown;
+    let hadError = false;
+
+    const transform = new TransformStream<Uint8Array, Uint8Array>({
+      transform: (chunk, controller) => {
+        controller.enqueue(chunk);
+        buffer += decoder.decode(chunk, { stream: true });
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+        for (const frame of frames) {
+          for (const line of frame.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith('data:')) {
+              continue;
+            }
+            const json = trimmed.slice(5).trim();
+            if (!json) {
+              continue;
+            }
+            try {
+              const event = JSON.parse(json) as Record<string, unknown>;
+              if (event.type === 'delta' && typeof event.text === 'string') {
+                accumulated += event.text;
+              } else if (event.type === 'error') {
+                hadError = true;
+              } else if (event.type === 'done') {
+                if (Array.isArray(event.products)) {
+                  products = event.products.filter(
+                    (item): item is Record<string, unknown> =>
+                      !!item && typeof item === 'object',
+                  );
+                }
+                if (event.citations !== undefined) {
+                  citations = event.citations;
+                }
+              }
+            } catch {
+              // ignore malformed frames while proxying
+            }
+          }
+        }
+      },
+      flush: () => {
+        if (!hadError && accumulated.trim()) {
+          void this.persistAssistantMessage(conversationId, accumulated, {
+            ...(citations !== undefined ? { citationsJson: citations } : {}),
+            ...(products && products.length > 0 ? { products } : {}),
+          }).catch(() => {
+            // persistence must not break an already-delivered stream
+          });
+        }
+      },
+    });
+
+    return new Response(upstream.body.pipeThrough(transform), {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers: upstream.headers,
+    });
+  }
+
+  private async loadConversationModelMessages(
+    conversationId: string,
+    userId: string,
+  ): Promise<{ role: 'user' | 'assistant'; content: string }[]> {
+    const prisma = this.prisma();
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+    });
+    if (!conversation) {
+      throw new ForbiddenException('Conversation not found');
+    }
+    const rows = await prisma.conversationMessage.findMany({
+      where: {
+        conversationId,
+        role: { in: ['user', 'assistant'] },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: MAX_HISTORY_MESSAGES,
+      select: { role: true, content: true },
+    });
+    return rows
+      .filter(
+        (row): row is { role: 'user' | 'assistant'; content: string } =>
+          (row.role === 'user' || row.role === 'assistant') &&
+          typeof row.content === 'string',
+      )
+      .map((row) => ({ role: row.role, content: row.content }));
+  }
+
+  private async loadConversationUserMessages(
+    conversationId: string,
+    userId: string,
+  ): Promise<string[]> {
+    const prisma = this.prisma();
+    const conversation = await prisma.conversation.findFirst({
+      where: { id: conversationId, userId },
+    });
+    if (!conversation) {
+      return [];
+    }
+    const rows = await prisma.conversationMessage.findMany({
+      where: { conversationId, role: 'user' },
+      orderBy: { createdAt: 'asc' },
+      take: MAX_HISTORY_MESSAGES,
+      select: { content: true },
+    });
+    return rows.map((row) => row.content);
+  }
+
+  private readStoredProducts(
+    citationsJson: unknown,
+  ): readonly Record<string, unknown>[] | undefined {
+    if (!citationsJson || typeof citationsJson !== 'object') {
+      return undefined;
+    }
+    const record = citationsJson as Record<string, unknown>;
+    if (!Array.isArray(record.products)) {
+      return undefined;
+    }
+    return record.products.filter(
+      (item): item is Record<string, unknown> =>
+        !!item && typeof item === 'object',
+    );
+  }
+
+  private readProducts(value: unknown): readonly Record<string, unknown>[] | undefined {
+    const record = this.asRecord(value);
+    if (!Array.isArray(record.products)) {
+      return undefined;
+    }
+    return record.products.filter(
+      (item): item is Record<string, unknown> =>
+        !!item && typeof item === 'object',
+    );
+  }
+
+  private readCitations(value: unknown): unknown {
+    return this.asRecord(value).citations;
   }
 
   private async getOfferPrice(offerId: string): Promise<unknown> {
@@ -391,6 +689,10 @@ export class AiService {
     }
     await prisma.conversationMessage.create({
       data: { conversationId, role: 'user', content: body.message },
+    });
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
     });
     return conversationId;
   }

@@ -15,6 +15,18 @@ export {
   type TextChunk,
 } from './chunking/chunk-text.js';
 export {
+  enrichSearchToolArgs,
+  extractBudgetFromConversation,
+  extractBudgetFromText,
+  type BudgetConstraint,
+} from './commerce/budget-extraction.js';
+export {
+  extractProductsFromToolResult,
+  formatDeterministicCommerceReply,
+  mergeProductResults,
+  type CatalogProductCard,
+} from './commerce/product-results.js';
+export {
   DefaultGuardrails,
   scrubSecrets,
 } from './guardrails/default-guardrails.js';

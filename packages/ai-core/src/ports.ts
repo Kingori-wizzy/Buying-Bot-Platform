@@ -103,6 +103,7 @@ export interface AgentTurnResult {
   readonly messages: readonly AiMessage[];
   readonly toolCalls: readonly ToolCall[];
   readonly citations: readonly Citation[];
+  readonly products?: readonly Record<string, unknown>[];
   readonly usage?: AiCompletionResponse['usage'];
 }
 
