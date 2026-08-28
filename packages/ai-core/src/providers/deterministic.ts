@@ -8,6 +8,7 @@ import {
   extractProductsFromToolResult,
   formatDeterministicCommerceReply,
 } from '../commerce/product-results.js';
+import { deriveCatalogSearchQuery } from '../commerce/search-query.js';
 import type { ModelProvider } from '../ports.js';
 import type {
   AiCompletionRequest,
@@ -142,8 +143,7 @@ export class DeterministicModelProvider implements ModelProvider {
   }
 
   private buildSearchQuery(userMessages: readonly string[]): string {
-    const joined = userMessages.join(' ').trim();
-    return joined.slice(0, 120) || 'digital platform';
+    return deriveCatalogSearchQuery(userMessages);
   }
 }
 

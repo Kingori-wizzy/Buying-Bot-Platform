@@ -1,4 +1,5 @@
 import {
+  deriveCatalogSearchQuery,
   deterministicEmbedding,
   enrichSearchToolArgs,
 } from '@buying-bot/ai-core';
@@ -292,8 +293,7 @@ export class AiService {
     switch (name) {
       case 'searchProducts': {
         const enriched = enrichSearchToolArgs(args, userMessages);
-        return this.catalog.searchProducts({
-          q: this.requiredString(enriched, 'query'),
+        const baseQuery = {
           page: 1,
           pageSize: 10,
           ...(typeof enriched.priceMinMinor === 'number'
@@ -307,6 +307,17 @@ export class AiService {
                 sort: enriched.sort as 'newest' | 'price_asc' | 'price_desc',
               }
             : {}),
+        };
+        const primary = await this.catalog.searchProducts({
+          q: this.requiredString(enriched, 'query'),
+          ...baseQuery,
+        });
+        if (primary.items.length > 0 || userMessages.length === 0) {
+          return primary;
+        }
+        return this.catalog.searchProducts({
+          q: deriveCatalogSearchQuery(userMessages),
+          ...baseQuery,
         });
       }
       case 'getProduct':

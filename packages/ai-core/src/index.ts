@@ -15,17 +15,18 @@ export {
   type TextChunk,
 } from './chunking/chunk-text.js';
 export {
+  type BudgetConstraint,
   enrichSearchToolArgs,
   extractBudgetFromConversation,
   extractBudgetFromText,
-  type BudgetConstraint,
 } from './commerce/budget-extraction.js';
 export {
+  type CatalogProductCard,
   extractProductsFromToolResult,
   formatDeterministicCommerceReply,
   mergeProductResults,
-  type CatalogProductCard,
 } from './commerce/product-results.js';
+export { deriveCatalogSearchQuery } from './commerce/search-query.js';
 export {
   DefaultGuardrails,
   scrubSecrets,
