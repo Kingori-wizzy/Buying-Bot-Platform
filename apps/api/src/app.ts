@@ -284,6 +284,7 @@ export async function bootstrap(
       callback(new Error('Not allowed by CORS'), false);
     },
     credentials: true,
+    exposedHeaders: ['x-conversation-id', 'x-request-id', 'x-correlation-id'],
   });
 
   app.useGlobalFilters(

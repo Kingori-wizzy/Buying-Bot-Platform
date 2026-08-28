@@ -1,4 +1,5 @@
 import type { AuthPrincipal } from '@buying-bot/auth';
+import type { ApiEnv } from '@buying-bot/config';
 import {
   Body,
   Controller,
@@ -6,10 +7,11 @@ import {
   Inject,
   Param,
   Post,
+  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import {
   CsrfGuard,
@@ -20,6 +22,7 @@ import {
 } from '../auth/guards.js';
 import { ServiceJwtGuard } from '../auth/service-jwt.guard.js';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe.js';
+import { APP_ENV } from '../config/tokens.js';
 import {
   type ChatBody,
   chatBodySchema,
@@ -27,10 +30,14 @@ import {
   retrieveBodySchema,
 } from './ai.schemas.js';
 import { AiService } from './ai.service.js';
+import { buildAiStreamResponseHeaders } from './ai-stream-headers.js';
 
 @Controller('v1/ai')
 export class AiController {
-  constructor(@Inject(AiService) private readonly ai: AiService) {}
+  constructor(
+    @Inject(AiService) private readonly ai: AiService,
+    @Inject(APP_ENV) private readonly env: ApiEnv,
+  ) {}
 
   @Post('chat')
   @UseGuards(CsrfGuard, SessionAuthGuard)
@@ -46,6 +53,7 @@ export class AiController {
   async stream(
     @CurrentUser() principal: AuthPrincipal,
     @Body(new ZodValidationPipe(chatBodySchema)) body: ChatBody,
+    @Req() request: FastifyRequest,
     @Res() reply: FastifyReply,
   ): Promise<void> {
     const proxied = await this.ai.streamChat(
@@ -53,10 +61,17 @@ export class AiController {
       principal.subjectId,
       this.realm(principal),
     );
-    reply.header('content-type', 'text/event-stream; charset=utf-8');
-    reply.header('cache-control', 'no-cache, no-transform');
-    reply.header('x-conversation-id', proxied.conversationId);
+
+    const origin = headerString(request.headers.origin);
     reply.hijack();
+    reply.raw.writeHead(
+      200,
+      buildAiStreamResponseHeaders({
+        conversationId: proxied.conversationId,
+        corsOrigin: this.env.CORS_ORIGIN,
+        ...(origin ? { origin } : {}),
+      }),
+    );
 
     if (!proxied.response.body) {
       reply.raw.end();
@@ -99,4 +114,16 @@ export class AiController {
   private realm(principal: AuthPrincipal): 'customer' | 'admin' {
     return principal.realm === 'admin' ? 'admin' : 'customer';
   }
+}
+
+function headerString(
+  value: string | string[] | undefined,
+): string | undefined {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (Array.isArray(value) && value[0]) {
+    return value[0];
+  }
+  return undefined;
 }
