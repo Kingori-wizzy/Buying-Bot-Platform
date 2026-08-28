@@ -106,10 +106,7 @@ export class AiService {
       enableTools: true,
     });
 
-    const response = this.wrapStreamForPersistence(
-      upstream,
-      conversationId,
-    );
+    const response = this.wrapStreamForPersistence(upstream, conversationId);
     return { conversationId, response };
   }
 
@@ -160,18 +157,13 @@ export class AiService {
       return;
     }
     const prisma = this.prisma();
-    const latest = await prisma.conversationMessage.findFirst({
-      where: { conversationId, role: 'assistant' },
-      orderBy: { createdAt: 'desc' },
-    });
-    if (latest?.content === trimmed) {
-      return;
-    }
     const citationsJson =
       metadata.products && metadata.products.length > 0
         ? {
             products: metadata.products,
-            ...(metadata.citationsJson ? { citations: metadata.citationsJson } : {}),
+            ...(metadata.citationsJson
+              ? { citations: metadata.citationsJson }
+              : {}),
           }
         : metadata.citationsJson;
 
@@ -381,7 +373,14 @@ export class AiService {
             this.requiredString(args, 'slug'),
         )) as {
           variants?: {
-            sku?: { offers?: { id: string; listPriceMinor: number; currency: string; active: boolean }[] };
+            sku?: {
+              offers?: {
+                id: string;
+                listPriceMinor: number;
+                currency: string;
+                active: boolean;
+              }[];
+            };
           }[];
           provenance?: unknown;
         };
@@ -433,6 +432,7 @@ export class AiService {
     let products: readonly Record<string, unknown>[] | undefined;
     let citations: unknown;
     let hadError = false;
+    let persisted = false;
 
     const transform = new TransformStream<Uint8Array, Uint8Array>({
       transform: (chunk, controller) => {
@@ -474,14 +474,16 @@ export class AiService {
         }
       },
       flush: () => {
-        if (!hadError && accumulated.trim()) {
-          void this.persistAssistantMessage(conversationId, accumulated, {
-            ...(citations !== undefined ? { citationsJson: citations } : {}),
-            ...(products && products.length > 0 ? { products } : {}),
-          }).catch(() => {
-            // persistence must not break an already-delivered stream
-          });
+        if (persisted || hadError || !accumulated.trim()) {
+          return;
         }
+        persisted = true;
+        void this.persistAssistantMessage(conversationId, accumulated, {
+          ...(citations !== undefined ? { citationsJson: citations } : {}),
+          ...(products && products.length > 0 ? { products } : {}),
+        }).catch(() => {
+          // persistence must not break an already-delivered stream
+        });
       },
     });
 
@@ -557,7 +559,9 @@ export class AiService {
     );
   }
 
-  private readProducts(value: unknown): readonly Record<string, unknown>[] | undefined {
+  private readProducts(
+    value: unknown,
+  ): readonly Record<string, unknown>[] | undefined {
     const record = this.asRecord(value);
     if (!Array.isArray(record.products)) {
       return undefined;

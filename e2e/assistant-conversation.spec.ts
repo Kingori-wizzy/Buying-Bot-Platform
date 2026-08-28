@@ -66,7 +66,9 @@ test.describe('Assistant multi-turn conversation', () => {
     await registerAndLogin(page);
 
     await page.goto(`${webBase}/assistant`, { waitUntil: 'networkidle' });
-    await expect(page.getByRole('heading', { name: /AI shopping assistant/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /AI shopping assistant/i }),
+    ).toBeVisible();
 
     const streamHeaders: string[] = [];
 
@@ -80,23 +82,26 @@ test.describe('Assistant multi-turn conversation', () => {
     });
 
     async function sendMessage(text: string): Promise<void> {
+      const input = page.locator('#assistant-message');
+      await input.fill(text);
+      await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled();
       const streamWait = page.waitForResponse(
         (r) =>
           r.url().includes('/v1/ai/chat/stream') &&
           r.request().method() === 'POST',
         { timeout: 60_000 },
       );
-      await page.locator('#assistant-message').fill(text);
       await page.getByRole('button', { name: 'Send' }).click();
       const streamRes = await streamWait;
       expect(streamRes.status()).toBe(200);
-      await expect(page.getByRole('button', { name: 'Send' })).toBeEnabled({
+      await expect(page.getByText('Ready', { exact: true })).toBeVisible({
         timeout: 60_000,
       });
+      await expect(page.locator('.bubble.assistant').last()).not.toBeEmpty();
     }
 
-    await sendMessage('I need an AI writing platform.');
-    await sendMessage('My budget is KES 10,000.');
+    await sendMessage('I need a product for my business.');
+    await sendMessage('My budget is KES 30,000.');
     await sendMessage('Which one would you recommend?');
 
     expect(streamHeaders.length).toBeGreaterThanOrEqual(3);
@@ -108,10 +113,17 @@ test.describe('Assistant multi-turn conversation', () => {
       /Based on tool results/i,
     );
 
-    const storedId = await page.evaluate((key) => sessionStorage.getItem(key), 'bb_assistant_conversation_id');
+    const storedId = await page.evaluate(
+      (key) => sessionStorage.getItem(key),
+      'bb_assistant_conversation_id',
+    );
     expect(storedId).toBe(firstId);
 
     await page.reload({ waitUntil: 'networkidle' });
+    await expect(page.getByText('Loading conversation…')).toBeHidden({
+      timeout: 30_000,
+    });
     await expect(page.locator('.bubble.user')).toHaveCount(3);
+    await expect(page.locator('.bubble.assistant')).toHaveCount(4);
   });
 });

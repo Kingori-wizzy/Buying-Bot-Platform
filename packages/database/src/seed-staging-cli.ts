@@ -3,6 +3,7 @@
  */
 import { createPrismaClient, disconnectPrisma } from './prisma-client.js';
 import { seedStagingCatalog } from './seed-staging.js';
+import { seedStagingDigitalCatalog } from './seed-staging-digital-catalog.js';
 
 async function main(): Promise<void> {
   if (process.env.NODE_ENV === 'production') {
@@ -14,13 +15,14 @@ async function main(): Promise<void> {
 
   const prisma = createPrismaClient();
   try {
-    const result = await seedStagingCatalog(prisma);
+    const smoke = await seedStagingCatalog(prisma);
+    const digital = await seedStagingDigitalCatalog(prisma);
     process.stdout.write(
       `${JSON.stringify({
         ok: true,
-        productId: result.productId,
-        skuId: result.skuId,
-        offerId: result.offerId,
+        smokeProductId: smoke.productId,
+        digitalProductIds: digital.productIds,
+        digitalOfferIds: digital.offerIds,
       })}\n`,
     );
   } finally {

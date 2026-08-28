@@ -44,3 +44,7 @@ export {
   seedDigitalShopTaxonomy,
 } from './seed-digital-taxonomy.js';
 export { seedStagingCatalog, STAGING_PRODUCT_SLUG } from './seed-staging.js';
+export {
+  seedStagingDigitalCatalog,
+  STAGING_DIGITAL_CATALOG_NOTICE,
+} from './seed-staging-digital-catalog.js';
