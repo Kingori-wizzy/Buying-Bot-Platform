@@ -31,7 +31,7 @@ test.describe('Admin-managed catalog journey', () => {
         'content-type': 'application/json',
         'x-csrf-token': csrf,
       },
-      data: { email: adminEmail, password: adminPassword },
+      data: { email: adminEmail, password: adminPassword, realm: 'admin' },
     });
     test.skip(!login.ok(), 'Admin login failed (MFA may be required)');
 
