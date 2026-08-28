@@ -44,6 +44,7 @@ docs/
 | Escrow ops                            | [Deployment/ESCROW_CONFIGURATION.md](./Deployment/ESCROW_CONFIGURATION.md)                         |
 | Backups                               | [Deployment/BACKUP_RESTORE.md](./Deployment/BACKUP_RESTORE.md)                                     |
 | Admin catalog ops                     | [runbooks/ADMIN_PRODUCT_MANAGEMENT.md](./runbooks/ADMIN_PRODUCT_MANAGEMENT.md)                     |
+| Admin MFA enrollment                  | [runbooks/ADMIN_MFA_ENROLLMENT.md](./runbooks/ADMIN_MFA_ENROLLMENT.md)                             |
 | Digital fulfillment ops               | [runbooks/DIGITAL_FULFILLMENT.md](./runbooks/DIGITAL_FULFILLMENT.md)                               |
 | Developer setup                       | [developer/getting-started.md](./developer/getting-started.md)                                     |
 

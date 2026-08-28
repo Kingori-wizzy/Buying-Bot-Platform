@@ -136,6 +136,18 @@ if (env.MEDIA_DRIVER !== 's3' && env.MEDIA_DRIVER !== 'minio') {
   );
 } else ok(`MEDIA_DRIVER=${env.MEDIA_DRIVER}`);
 
+if (env.ADMIN_MFA_REQUIRED !== 'true') {
+  fail('ADMIN_MFA_REQUIRED must be true in production');
+} else {
+  ok('ADMIN_MFA_REQUIRED=true');
+}
+
+if (env.ESCROW_ALLOW_TEST_DOUBLE === 'true') {
+  fail('ESCROW_ALLOW_TEST_DOUBLE must be false in production');
+} else {
+  ok('ESCROW_ALLOW_TEST_DOUBLE is not enabled');
+}
+
 if (env.PAYMENTS_ENABLED === 'true') {
   for (const key of [
     'ESCROW_API_KEY',

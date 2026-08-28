@@ -55,7 +55,7 @@ const lines = [
   `SESSION_SECRET=${sessionSecret}`,
   `SERVICE_JWT_SECRET=${serviceJwt}`,
   'COOKIE_SECURE=true',
-  'ADMIN_MFA_REQUIRED=false',
+  'ADMIN_MFA_REQUIRED=true',
   '',
   `CORS_ORIGIN=${publicWeb},${publicAdmin}`,
   `NEXT_PUBLIC_API_BASE_URL=${publicApi}`,

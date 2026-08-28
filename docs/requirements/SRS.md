@@ -23,8 +23,8 @@ re-deciding architecture.
 ## 2. Scope
 
 **In scope:** Kenya-first AI-assisted omnichannel commerce: identity, catalog,
-inventory, pricing, cart, checkout, payments (M-Pesa first), fulfillment,
-returns, notifications, AI assistant (tools + RAG), admin operations,
+inventory, pricing, cart, checkout, payments (Escrow customer rail; M-Pesa deferred),
+fulfillment, returns, notifications, AI assistant (tools + RAG), admin operations,
 observability, security, and deployability of the modular monolith monorepo.
 
 **Out of scope (v1 product):** Full marketplace multi-seller settlements,
@@ -112,19 +112,19 @@ enumerated in the final audit.
 
 ### 12.2 Catalog & search
 
-| ID         | Requirement                                                                                                    | ADR       |
-| ---------- | -------------------------------------------------------------------------------------------------------------- | --------- |
-| FR-CAT-001 | Catalog SHALL model Product → Variant → SKU → Offer.                                                           | 0010      |
-| FR-CAT-002 | Offer SHALL be the commercial boundary for price/currency even for single merchant.                            | 0010      |
-| FR-CAT-003 | Public catalog SHALL expose only ACTIVE products (and sellable offers per policy).                             | 0010      |
-| FR-CAT-004 | Product lifecycle SHALL use DRAFT, PENDING_REVIEW, ACTIVE, INACTIVE, ARCHIVED — not OUT_OF_STOCK as lifecycle. | 0010      |
-| FR-CAT-005 | Inventory availability SHALL be derived (AVAILABLE/LOW_STOCK/OUT_OF_STOCK) separately from lifecycle.          | 0010      |
-| FR-CAT-006 | Media bytes SHALL live in object storage; PostgreSQL SHALL store metadata only.                                | 0010,0006 |
-| FR-CAT-007 | Images SHALL NOT be a universal hard requirement for ACTIVE; validation MAY be policy-configurable.            | 0010      |
-| FR-CAT-008 | Search SHALL use PostgreSQL FTS + pg_trgm (+ pgvector where used) as stage-1; search index is derived.         | 0010,0006 |
-| FR-CAT-009 | Filters/sorts SHALL be allow-listed; unknown filters SHALL be rejected.                                        | 0009,0010 |
-| FR-CAT-010 | AI catalog access SHALL use authorized tools only; AI SHALL NOT query PostgreSQL directly.                     | 0010,0015 |
-| FR-CAT-011 | Current production catalog SHALL be administered by authorized administrators only; external marketplace ingestion is deferred and SHALL NOT be required for storefront, search, or AI product facts. | 0010 |
+| ID         | Requirement                                                                                                                                                                                           | ADR       |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| FR-CAT-001 | Catalog SHALL model Product → Variant → SKU → Offer.                                                                                                                                                  | 0010      |
+| FR-CAT-002 | Offer SHALL be the commercial boundary for price/currency even for single merchant.                                                                                                                   | 0010      |
+| FR-CAT-003 | Public catalog SHALL expose only ACTIVE products (and sellable offers per policy).                                                                                                                    | 0010      |
+| FR-CAT-004 | Product lifecycle SHALL use DRAFT, PENDING_REVIEW, ACTIVE, INACTIVE, ARCHIVED — not OUT_OF_STOCK as lifecycle.                                                                                        | 0010      |
+| FR-CAT-005 | Inventory availability SHALL be derived (AVAILABLE/LOW_STOCK/OUT_OF_STOCK) separately from lifecycle.                                                                                                 | 0010      |
+| FR-CAT-006 | Media bytes SHALL live in object storage; PostgreSQL SHALL store metadata only.                                                                                                                       | 0010,0006 |
+| FR-CAT-007 | Images SHALL NOT be a universal hard requirement for ACTIVE; validation MAY be policy-configurable.                                                                                                   | 0010      |
+| FR-CAT-008 | Search SHALL use PostgreSQL FTS + pg_trgm (+ pgvector where used) as stage-1; search index is derived.                                                                                                | 0010,0006 |
+| FR-CAT-009 | Filters/sorts SHALL be allow-listed; unknown filters SHALL be rejected.                                                                                                                               | 0009,0010 |
+| FR-CAT-010 | AI catalog access SHALL use authorized tools only; AI SHALL NOT query PostgreSQL directly.                                                                                                            | 0010,0015 |
+| FR-CAT-011 | Current production catalog SHALL be administered by authorized administrators only; external marketplace ingestion is deferred and SHALL NOT be required for storefront, search, or AI product facts. | 0010      |
 
 **Business decision (2026-08-20):** Buying Bot’s current product catalog is administered
 directly by authorized administrators. External marketplace ingestion is deferred.
