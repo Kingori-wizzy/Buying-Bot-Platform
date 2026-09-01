@@ -23,7 +23,13 @@ function AdminPortalIcon() {
       aria-hidden="true"
       focusable="false"
     >
-      <circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.75" />
+      <circle
+        cx="12"
+        cy="8"
+        r="3.25"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      />
       <path
         d="M5.5 19.25c.9-3.2 3.2-4.75 6.5-4.75s5.6 1.55 6.5 4.75"
         stroke="currentColor"
@@ -100,7 +106,7 @@ export function SiteHeader() {
     <header className="site-header">
       <div className="site-header-row">
         <Link className="brand" href="/">
-          Buying <span>Bot</span>
+          Online Accounts <span>Market</span>
         </Link>
         <button
           type="button"
@@ -118,10 +124,7 @@ export function SiteHeader() {
           className={open ? 'nav open' : 'nav'}
           aria-label="Primary"
         >
-          <Link
-            href="/"
-            aria-current={pathname === '/' ? 'page' : undefined}
-          >
+          <Link href="/" aria-current={pathname === '/' ? 'page' : undefined}>
             Categories
           </Link>
           <Link

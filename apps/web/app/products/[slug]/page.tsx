@@ -22,7 +22,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: product.name,
       description:
-        product.shortDescription ?? `Buy ${product.name} on Buying Bot`,
+        product.shortDescription ??
+        `Buy ${product.name} on Online Accounts Market`,
       openGraph: {
         title: product.name,
         description: product.shortDescription ?? undefined,
@@ -101,8 +102,7 @@ export default async function ProductDetailPage({ params }: Props) {
             )}
           </div>
           <div className="stack">
-            {(product as { contentOrigin?: string }).contentOrigin ===
-              'DEMO' ||
+            {(product as { contentOrigin?: string }).contentOrigin === 'DEMO' ||
             (product as { contentOrigin?: string }).contentOrigin ===
               'IMPORT' ? (
               <span className="badge badge-sandbox">
@@ -156,12 +156,12 @@ export default async function ProductDetailPage({ params }: Props) {
             {price ? (
               <div className="cta-row">
                 <AddToCartButton offerId={price.offerId} />
-              <Link
-                className="btn btn-secondary"
-                href={`/checkout?offerId=${encodeURIComponent(price.offerId)}`}
-              >
-                Buy now
-              </Link>
+                <Link
+                  className="btn btn-secondary"
+                  href={`/checkout?offerId=${encodeURIComponent(price.offerId)}`}
+                >
+                  Buy now
+                </Link>
                 <Link className="btn btn-secondary" href="/assistant">
                   Ask AI about this
                 </Link>

@@ -34,9 +34,9 @@ export default async function HomePage() {
 
   return (
     <main className="page bleed" id="main">
-      <section className="hero" aria-label="Buying Bot hero">
+      <section className="hero" aria-label="Online Accounts Market hero">
         <div className="hero-inner">
-          <p className="brand-mark">Buying Bot</p>
+          <p className="brand-mark">Online Accounts Market</p>
           <h1>Shop digital products</h1>
           <p className="lede">
             Admin-curated digital accounts, platforms, and access — with
@@ -106,11 +106,7 @@ export default async function HomePage() {
               <strong>Search digital products</strong>
             </label>
             <div className="header-search" style={{ marginTop: '0.65rem' }}>
-              <input
-                id="home-q"
-                name="q"
-                autoComplete="off"
-              />
+              <input id="home-q" name="q" autoComplete="off" />
               <button className="btn" type="submit">
                 Search
               </button>

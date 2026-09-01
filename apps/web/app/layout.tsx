@@ -21,8 +21,8 @@ const display = Syne({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Buying Bot',
-    template: '%s · Buying Bot',
+    default: 'Online Accounts Market',
+    template: '%s · Online Accounts Market',
   },
   description:
     'Kenya-first AI shopping — browse, chat, checkout, and pay securely via escrow.',
@@ -41,7 +41,7 @@ export default function RootLayout({
         {children}
         <footer className="site-footer">
           <div className="site-footer-inner">
-            <strong>Buying Bot</strong>
+            <strong>Online Accounts Market</strong>
             <p style={{ margin: 0 }}>
               Prices, stock, tax, and payment status come from the Nest API —
               never from the browser.

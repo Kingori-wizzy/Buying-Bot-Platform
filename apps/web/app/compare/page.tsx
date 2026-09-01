@@ -69,7 +69,7 @@ export default function ComparePage() {
           Compare products
         </h1>
         <p className="muted" style={{ margin: 0 }}>
-          Prices and availability come from Buying Bot&apos;s
+          Prices and availability come from Online Accounts Market&apos;s
           administrator-managed catalog.
         </p>
         {error ? (
